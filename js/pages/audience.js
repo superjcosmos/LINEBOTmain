@@ -1,8 +1,18 @@
 async function loadAudience() {
   setContent('<div class="loading">載入中...</div>');
 
+  // 先取得受眾列表
   var audienceResult = await apiCall({ action: "getAudienceList" });
   var richMenuResult = await apiCall({ action: "getRichMenuList" });
+
+  // 自動同步所有受眾人數
+  if (audienceResult.success && audienceResult.data.length > 0) {
+    await Promise.all(audienceResult.data.map(function(row) {
+      return apiCall({ action: "syncAudienceCount", audience_id: row.audience_id });
+    }));
+    // 同步完重新取得最新人數
+    audienceResult = await apiCall({ action: "getAudienceList" });
+  }
 
   if (!audienceResult.success) {
     setContent('<div class="loading">載入失敗：' + audienceResult.message + '</div>');
