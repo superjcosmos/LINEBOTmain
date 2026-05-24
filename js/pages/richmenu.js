@@ -35,7 +35,7 @@ async function loadRichMenu() {
     '<h2 class="page-title">圖文選單</h2>' +
     '<div class="card">' +
       '<div class="toolbar">' +
-        '<button class="btn btn-primary" onclick="openCreateModal()">＋ 建立圖文選單</button>' +
+        '<button class="btn btn-primary" onclick="openRmCreateModal()">＋ 建立圖文選單</button>' +
       '</div>' +
       '<table>' +
         '<thead><tr>' +
@@ -46,7 +46,7 @@ async function loadRichMenu() {
         '</tbody>' +
       '</table>' +
     '</div>' +
-    _buildCreateModal() +
+    _buildRmCreateModal() +
     _buildUploadModal()
   );
 
@@ -56,7 +56,7 @@ async function loadRichMenu() {
 // ==========================================
 // Modal HTML
 // ==========================================
-function _buildCreateModal() {
+function _buildRmCreateModal() {
   return (
     '<div class="modal-overlay" id="rmCreateModal">' +
       '<div class="modal" style="width:620px;max-height:85vh;overflow-y:auto">' +
@@ -87,7 +87,7 @@ function _buildCreateModal() {
         '<div id="buttonFields"></div>' +
 
         '<div class="modal-footer">' +
-          '<button class="btn-cancel" onclick="closeCreateModal()">取消</button>' +
+          '<button class="btn-cancel" onclick="closeRmCreateModal()">取消</button>' +
           '<button class="btn btn-primary" onclick="saveRichMenu()">儲存</button>' +
         '</div>' +
       '</div>' +
@@ -156,10 +156,10 @@ function updateButtonFields() {
 }
 
 function toggleActionInput(i) {
-  var type    = document.getElementById("btn" + i + "_type").value;
-  var wrap    = document.getElementById("btn" + i + "_action_wrap");
-  var label   = document.getElementById("btn" + i + "_action_label");
-  var input   = document.getElementById("btn" + i + "_action");
+  var type  = document.getElementById("btn" + i + "_type").value;
+  var wrap  = document.getElementById("btn" + i + "_action_wrap");
+  var label = document.getElementById("btn" + i + "_action_label");
+  var input = document.getElementById("btn" + i + "_action");
 
   if (type === "none") {
     wrap.style.display = "none";
@@ -180,7 +180,7 @@ function toggleActionInput(i) {
 var rmEditIndex = null;
 var rmEditId    = null;
 
-function openCreateModal() {
+function openRmCreateModal() {
   rmEditIndex = null;
   rmEditId    = null;
   document.getElementById("rmModalTitle").textContent = "建立圖文選單";
@@ -191,7 +191,7 @@ function openCreateModal() {
   updateButtonFields();
 }
 
-function closeCreateModal() {
+function closeRmCreateModal() {
   document.getElementById("rmCreateModal").classList.remove("show");
   rmEditIndex = null;
   rmEditId    = null;
@@ -211,7 +211,6 @@ function editRichMenu(index, rowJson) {
 
   updateButtonFields();
 
-  // 填入按鈕資料
   var count = {
     "large_6": 6, "large_3": 3, "small_3": 3,
     "small_2": 2, "small_left": 2, "small_1": 1
@@ -224,7 +223,6 @@ function editRichMenu(index, rowJson) {
     document.getElementById("btn" + i + "_label").value  = label;
     document.getElementById("btn" + i + "_action").value = action;
 
-    // 判斷動作類型
     var type = "message";
     if (!action || action === "") {
       type = "none";
@@ -263,7 +261,7 @@ async function saveRichMenu() {
     var labelEl  = document.getElementById("btn" + i + "_label");
     var actionEl = document.getElementById("btn" + i + "_action");
 
-    var btnType   = typeEl   ? typeEl.value   : "message";
+    var btnType   = typeEl   ? typeEl.value          : "message";
     var btnLabel  = labelEl  ? labelEl.value.trim()  : "";
     var btnAction = actionEl ? actionEl.value.trim() : "";
 
@@ -272,22 +270,19 @@ async function saveRichMenu() {
     payload["btn" + i + "_type"]   = btnType;
   }
 
-  var action;
   if (rmEditIndex !== null) {
-    // 編輯模式
     payload.action       = "updateRichMenu";
     payload.index        = rmEditIndex;
     payload.rich_menu_id = rmEditId;
   } else {
-    // 新增模式
     payload.action = "createRichMenu";
   }
 
   var result = await apiCall(payload);
 
   if (result.success) {
-    closeCreateModal();
-    showToast(rmEditIndex !== null ? "更新成功" : "建立成功，請上傳圖片");
+    closeRmCreateModal();
+    showToast(rmEditIndex !== null ? "更新成功，請重新上傳圖片" : "建立成功，請上傳圖片");
     loadRichMenu();
   } else {
     showToast(result.message, "error");
