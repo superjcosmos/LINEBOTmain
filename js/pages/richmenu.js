@@ -8,33 +8,33 @@ async function loadRichMenu() {
     return;
   }
 
- var rows = result.data.map(function(row) {
-  var isDefault = row.is_default === "是"
-    ? '<span class="tag tag-active">預設</span>'
-    : '<button class="btn btn-sync" onclick="setDefault(\'' +
-        row.rich_menu_id + '\',' + row.index + ')">設為預設</button>';
+  var rows = result.data.map(function(row) {
+    var isDefault = row.is_default === "是"
+      ? '<span class="tag tag-active">預設</span>'
+      : '<button class="btn btn-sync" onclick="setDefault(\'' +
+          row.rich_menu_id + '\',' + row.index + ')">設為預設</button>';
 
-  var thumbnail = row.image_url
-    ? '<img src="' + row.image_url + '" style="width:80px;height:30px;object-fit:cover;border-radius:4px">'
-    : '<span style="color:#aaa;font-size:12px">未上傳</span>';
+    var thumbnail = row.image_url
+      ? '<img src="' + row.image_url + '" style="width:80px;height:30px;object-fit:cover;border-radius:4px">'
+      : '<span style="color:#aaa;font-size:12px">未上傳</span>';
 
-  return '<tr>' +
-    '<td>' + thumbnail + '</td>' +
-    '<td>' + row.name + '</td>' +
-    '<td>' + row.layout + '</td>' +
-    '<td>' + row.display_text + '</td>' +
-    '<td>' + isDefault + '</td>' +
-    '<td>' +
-      '<button class="btn btn-edit" ' +
-        'onclick="editRichMenu(' + row.index + ',\'' +
-        encodeURIComponent(JSON.stringify(row)) + '\')">編輯</button> ' +
-      '<button class="btn btn-primary" ' +
-        'onclick="openUploadModal(\'' + row.rich_menu_id + '\',' + row.index + ')">上傳圖片</button> ' +
-      '<button class="btn btn-danger" ' +
-        'onclick="deleteRichMenu(\'' + row.rich_menu_id + '\',' + row.index + ')">刪除</button>' +
-    '</td>' +
-  '</tr>';
-}).join("");
+    return '<tr>' +
+      '<td>' + thumbnail + '</td>' +
+      '<td>' + row.name + '</td>' +
+      '<td>' + row.layout + '</td>' +
+      '<td>' + row.display_text + '</td>' +
+      '<td>' + isDefault + '</td>' +
+      '<td>' +
+        '<button class="btn btn-edit" ' +
+          'onclick="editRichMenu(' + row.index + ',\'' +
+          encodeURIComponent(JSON.stringify(row)) + '\')">編輯</button> ' +
+        '<button class="btn btn-primary" ' +
+          'onclick="openUploadModal(\'' + row.rich_menu_id + '\',' + row.index + ')">上傳圖片</button> ' +
+        '<button class="btn btn-danger" ' +
+          'onclick="deleteRichMenu(\'' + row.rich_menu_id + '\',' + row.index + ')">刪除</button>' +
+      '</td>' +
+    '</tr>';
+  }).join("");
 
   setContent(
     '<h2 class="page-title">圖文選單</h2>' +
@@ -44,10 +44,15 @@ async function loadRichMenu() {
       '</div>' +
       '<table>' +
         '<thead><tr>' +
-          '<th>名稱</th><th>版型</th><th>選單文字</th><th>預設</th><th>操作</th>' +
+          '<th>預覽</th>' +
+          '<th>名稱</th>' +
+          '<th>版型</th>' +
+          '<th>選單文字</th>' +
+          '<th>預設</th>' +
+          '<th>操作</th>' +
         '</tr></thead>' +
         '<tbody>' +
-          (rows || '<tr><td colspan="5" class="empty">尚無圖文選單</td></tr>') +
+          (rows || '<tr><td colspan="6" class="empty">尚無圖文選單</td></tr>') +
         '</tbody>' +
       '</table>' +
     '</div>' +
