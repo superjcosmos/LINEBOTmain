@@ -10,16 +10,20 @@ async function loadUserLog() {
 
   var rows = result.data.map(function(row) {
     return '<tr>' +
-      '<td>' + formatDate(row.time)   + '</td>' +
-      '<td>' + (row.name    || "-")   + '</td>' +
+      '<td>' + formatDate(row.time)    + '</td>' +
+      '<td>' + (row.name    || "-")    + '</td>' +
       '<td class="uid-cell">' + (row.userId  || "-") + '</td>' +
-      '<td>' + (row.keyword || "-")   + '</td>' +
-      '<td>' + (row.status  || "-")   + '</td>' +
+      '<td>' + (row.keyword || "-")    + '</td>' +
+      '<td>' + (row.status  || "-")    + '</td>' +
     '</tr>';
   }).join("");
 
   setContent(
-    '<h2 class="page-title">UserLog</h2>' +
+    '<div class="toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">' +
+      '<h2 class="page-title" style="margin-bottom:0">UserLog</h2>' +
+      '<button class="btn" style="background:#f0f0f0;color:#666;font-size:12px" ' +
+        'onclick="initSheet()">⚙ 初始化工作表</button>' +
+    '</div>' +
     '<div class="card">' +
       '<table>' +
         '<thead><tr>' +
