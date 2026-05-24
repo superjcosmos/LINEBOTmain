@@ -1,18 +1,38 @@
 async function loadAudience() {
   setContent('<div class="loading">載入中...</div>');
 
-  var result = await apiCall({ action: "getAudienceList" });
+  // 同時取得受眾列表和圖文選單列表
+  var audienceResult  = await apiCall({ action: "getAudienceList" });
+  var richMenuResult  = await apiCall({ action: "getRichMenuList" });
 
-  if (!result.success) {
-    setContent('<div class="loading">載入失敗：' + result.message + '</div>');
+  if (!audienceResult.success) {
+    setContent('<div class="loading">載入失敗：' + audienceResult.message + '</div>');
     return;
   }
 
-  var rows = result.data.map(function(row) {
+  // 建立圖文選單下拉選單選項
+  var rmOptions = '<option value="">不切換圖文選單</option>';
+  if (richMenuResult.success) {
+    richMenuResult.data.forEach(function(rm) {
+      rmOptions += '<option value="' + rm.rich_menu_id + '">' + rm.name + '</option>';
+    });
+  }
+
+  var rows = audienceResult.data.map(function(row) {
+    // 找對應的圖文選單名稱
+    var rmName = "-";
+    if (row.rich_menu_id && richMenuResult.success) {
+      var found = richMenuResult.data.find(function(rm) {
+        return rm.rich_menu_id === row.rich_menu_id;
+      });
+      if (found) rmName = found.name;
+    }
+
     return '<tr>' +
       '<td>' + row.name + '</td>' +
       '<td>' + (row.keyword || "-") + '</td>' +
       '<td>' + (row.count || 0) + ' 人</td>' +
+      '<td>' + rmName + '</td>' +
       '<td>' +
         '<button class="btn btn-sync" ' +
           'onclick="syncCount(\'' + row.audience_id + '\',' + row.index + ')">同步人數</button> ' +
@@ -35,10 +55,11 @@ async function loadAudience() {
           '<th>受眾名稱</th>' +
           '<th>觸發關鍵字</th>' +
           '<th>人數</th>' +
+          '<th>對應圖文選單</th>' +
           '<th>操作</th>' +
         '</tr></thead>' +
         '<tbody>' +
-          (rows || '<tr><td colspan="4" class="empty">尚無受眾</td></tr>') +
+          (rows || '<tr><td colspan="5" class="empty">尚無受眾</td></tr>') +
         '</tbody>' +
       '</table>' +
     '</div>' +
@@ -55,6 +76,10 @@ async function loadAudience() {
           '<label>觸發關鍵字（選填）</label>' +
           '<input type="text" id="audienceKeyword" placeholder="用戶輸入此關鍵字自動加入">' +
         '</div>' +
+        '<div class="form-group">' +
+          '<label>觸發後切換圖文選單（選填）</label>' +
+          '<select id="audienceRichMenu">' + rmOptions + '</select>' +
+        '</div>' +
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeCreateModal()">取消</button>' +
           '<button class="btn btn-primary" onclick="createAudience()">建立</button>' +
@@ -69,7 +94,7 @@ async function loadAudience() {
         '<p id="importModalTitle" style="color:#888;font-size:13px;margin-bottom:12px"></p>' +
         '<div class="form-group">' +
           '<label>UID 清單（每行一個）</label>' +
-          '<textarea id="importUids" placeholder="Uxxxxxxxxxx\nUxxxxxxxxxx\nUxxxxxxxxxx" style="height:160px"></textarea>' +
+          '<textarea id="importUids" placeholder="Uxxxxxxxxxx\nUxxxxxxxxxx" style="height:160px"></textarea>' +
         '</div>' +
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeImportModal()">取消</button>' +
@@ -89,11 +114,13 @@ function closeCreateModal() {
   document.getElementById("createModal").classList.remove("show");
   document.getElementById("audienceName").value    = "";
   document.getElementById("audienceKeyword").value = "";
+  document.getElementById("audienceRichMenu").value = "";
 }
 
 async function createAudience() {
-  var name    = document.getElementById("audienceName").value.trim();
-  var keyword = document.getElementById("audienceKeyword").value.trim();
+  var name       = document.getElementById("audienceName").value.trim();
+  var keyword    = document.getElementById("audienceKeyword").value.trim();
+  var richMenuId = document.getElementById("audienceRichMenu").value;
 
   if (!name) {
     showToast("請填入受眾名稱", "error");
@@ -101,9 +128,10 @@ async function createAudience() {
   }
 
   var result = await apiCall({
-    action:  "createAudience",
-    name:    name,
-    keyword: keyword
+    action:        "createAudience",
+    name:          name,
+    keyword:       keyword,
+    rich_menu_id:  richMenuId
   });
 
   if (result.success) {
