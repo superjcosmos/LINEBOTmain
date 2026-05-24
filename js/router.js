@@ -1,6 +1,7 @@
 var currentPage = null;
 
 const PAGES = {
+  dashboard: { label: '儀表板',   icon: '📊', feature: null,        load: loadDashboard },
   userlog:   { label: '用戶記錄', icon: '📋', feature: 'userlog',   load: loadUserLog },
   reply:     { label: '自動回覆', icon: '💬', feature: 'reply',     load: loadReply },
   audience:  { label: '受眾管理', icon: '👥', feature: 'audience',  load: loadAudience },
