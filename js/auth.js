@@ -35,21 +35,20 @@ async function login() {
       password: password
     });
 
-  if (result.success) {
+    if (result.success) {
       localStorage.setItem("sessionToken", result.sessionToken);
       localStorage.setItem("clientId",     result.clientId);
       localStorage.setItem("plan",         result.plan);
       localStorage.setItem("email",        email);
       localStorage.setItem("features",     JSON.stringify(result.features || {}));
-    
+
       authState.sessionToken = result.sessionToken;
       authState.clientId     = result.clientId;
       authState.plan         = result.plan;
       authState.email        = email;
       authState.features     = result.features || {};
-    
+
       enterMainPage();
-      }
     } else {
       showLoginError(result.message);
     }
@@ -86,35 +85,36 @@ function clearSession() {
   authState.clientId     = null;
   authState.plan         = null;
   authState.email        = null;
+  authState.features     = {};
 }
 
 function showLoginError(msg) {
   var el = document.getElementById("errorMsg");
-  el.textContent    = msg;
-  el.style.display  = "block";
+  el.textContent   = msg;
+  el.style.display = "block";
 }
 
 function showLoginPage() {
-  document.getElementById("loginPage").style.display  = "flex";
-  document.getElementById("mainPage").style.display   = "none";
+  document.getElementById("loginPage").style.display = "flex";
+  document.getElementById("mainPage").style.display  = "none";
 }
 
 function enterMainPage() {
-  document.getElementById("loginPage").style.display        = "none";
-  document.getElementById("mainPage").style.display         = "block";
-  document.getElementById("sidebarEmail").textContent       = authState.email;
-  document.getElementById("sidebarPlan").textContent        = authState.plan;
+  document.getElementById("loginPage").style.display  = "none";
+  document.getElementById("mainPage").style.display   = "block";
+  document.getElementById("sidebarEmail").textContent = authState.email;
+  document.getElementById("sidebarPlan").textContent  = authState.plan;
 
   // 依方案建立選單
   buildSidebarMenu();
 
   // 找第一個有權限的頁面
-  var firstPage = "userlog";
+  var firstPage = null;
   Object.keys(PAGES).forEach(function(key) {
-    if (hasFeature(key) && firstPage === "userlog") {
+    if (!firstPage && hasFeature(key)) {
       firstPage = key;
     }
   });
 
-  navigateTo(firstPage);
+  if (firstPage) navigateTo(firstPage);
 }
