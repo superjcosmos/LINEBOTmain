@@ -104,5 +104,17 @@ function enterMainPage() {
   document.getElementById("mainPage").style.display         = "block";
   document.getElementById("sidebarEmail").textContent       = authState.email;
   document.getElementById("sidebarPlan").textContent        = authState.plan;
-  navigateTo("userlog");
+
+  // 依方案建立選單
+  buildSidebarMenu();
+
+  // 找第一個有權限的頁面
+  var firstPage = "userlog";
+  Object.keys(PAGES).forEach(function(key) {
+    if (hasFeature(key) && firstPage === "userlog") {
+      firstPage = key;
+    }
+  });
+
+  navigateTo(firstPage);
 }
