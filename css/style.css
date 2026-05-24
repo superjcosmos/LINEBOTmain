@@ -347,3 +347,18 @@ tr:hover td { background: #fafafa; }
 
 .btn-sync { background: #e8f4fd; color: #2b7bb9; }
 .btn-sync:hover { background: #d1e9f7; }
+
+.btn-init {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: #aaa;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+
+.btn-init:hover { color: white; border-color: rgba(255,255,255,0.3); }
