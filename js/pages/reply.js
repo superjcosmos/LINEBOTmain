@@ -9,8 +9,7 @@ async function loadReply() {
   }
 
   var rows = result.data.map(function(row) {
-    var tagClass = (row.status === "啟用" || row.status === "開啟")
-      ? "tag-active" : "tag-inactive";
+    var tagClass  = (row.status === "啟用" || row.status === "開啟") ? "tag-active" : "tag-inactive";
     var timeRange = (row.start && row.end) ? row.start + " ~ " + row.end : "全天";
     var weekText  = row.week ? row.week : "每天";
     return '<tr>' +
@@ -20,6 +19,9 @@ async function loadReply() {
       '<td>' + weekText + '</td>' +
       '<td><span class="tag ' + tagClass + '">' + row.status + '</span></td>' +
       '<td>' +
+        '<button class="btn btn-edit" ' +
+          'onclick="editReply(' + row.index + ',\'' +
+          encodeURIComponent(JSON.stringify(row)) + '\')">編輯</button> ' +
         '<button class="btn btn-danger" ' +
           'onclick="deleteReply(' + row.index + ')">刪除</button>' +
       '</td>' +
@@ -47,10 +49,9 @@ async function loadReply() {
       '</table>' +
     '</div>' +
 
-    // Modal
     '<div class="modal-overlay" id="replyModal">' +
       '<div class="modal">' +
-        '<h3>新增自動回覆</h3>' +
+        '<h3 id="modalTitle">新增自動回覆</h3>' +
 
         '<div class="form-group">' +
           '<label>關鍵字</label>' +
@@ -109,25 +110,46 @@ function openReplyModal() {
 
 function closeReplyModal() {
   document.getElementById("replyModal").classList.remove("show");
+  document.getElementById("replyModal").dataset.editIndex = "";
+  document.getElementById("modalTitle").textContent       = "新增自動回覆";
   document.getElementById("replyKeyword").value = "";
   document.getElementById("replyContent").value = "";
   document.getElementById("replyStart").value   = "00:00";
   document.getElementById("replyEnd").value     = "23:59";
   document.getElementById("replyStatus").value  = "啟用";
-  // 星期全部重設為勾選
   document.querySelectorAll(".week-item input").forEach(function(cb) {
     cb.checked = true;
   });
 }
 
-async function saveReply() {
-  var keyword = document.getElementById("replyKeyword").value.trim();
-  var content = document.getElementById("replyContent").value.trim();
-  var start   = document.getElementById("replyStart").value;
-  var end     = document.getElementById("replyEnd").value;
-  var status  = document.getElementById("replyStatus").value;
+function editReply(index, rowJson) {
+  var row = JSON.parse(decodeURIComponent(rowJson));
 
-  // 取得勾選的星期
+  document.getElementById("replyKeyword").value = row.keyword;
+  document.getElementById("replyContent").value = row.content;
+  document.getElementById("replyStart").value   = row.start || "00:00";
+  document.getElementById("replyEnd").value     = row.end   || "23:59";
+  document.getElementById("replyStatus").value  = row.status;
+
+  var selectedDays = row.week ? row.week.split(",") : ["0","1","2","3","4","5","6"];
+  document.querySelectorAll(".week-item input").forEach(function(cb) {
+    cb.checked = selectedDays.indexOf(cb.value) !== -1;
+  });
+
+  document.getElementById("replyModal").dataset.editIndex = index;
+  document.getElementById("modalTitle").textContent       = "編輯自動回覆";
+
+  openReplyModal();
+}
+
+async function saveReply() {
+  var keyword   = document.getElementById("replyKeyword").value.trim();
+  var content   = document.getElementById("replyContent").value.trim();
+  var start     = document.getElementById("replyStart").value;
+  var end       = document.getElementById("replyEnd").value;
+  var status    = document.getElementById("replyStatus").value;
+  var editIndex = document.getElementById("replyModal").dataset.editIndex;
+
   var weeks = [];
   document.querySelectorAll(".week-item input:checked").forEach(function(cb) {
     weeks.push(cb.value);
@@ -144,7 +166,7 @@ async function saveReply() {
     return;
   }
 
-  var result = await apiCall({
+  var payload = {
     action:  "saveReply",
     keyword: keyword,
     content: content,
@@ -153,11 +175,17 @@ async function saveReply() {
     end:     end,
     week:    weekStr,
     status:  status
-  });
+  };
+
+  if (editIndex) {
+    payload.index = editIndex;
+  }
+
+  var result = await apiCall(payload);
 
   if (result.success) {
     closeReplyModal();
-    showToast("儲存成功");
+    showToast(editIndex ? "更新成功" : "儲存成功");
     loadReply();
   } else {
     showToast(result.message, "error");
