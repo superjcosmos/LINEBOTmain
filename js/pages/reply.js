@@ -9,7 +9,7 @@ async function loadReply() {
   }
 
   var rows = result.data.map(function(row) {
-    var tagClass = row.status === "啟用" ? "tag-active" : "tag-inactive";
+    var tagClass = (row.status === "啟用" || row.status === "開啟") ? "tag-active" : "tag-inactive";
     return '<tr>' +
       '<td>' + row.keyword + '</td>' +
       '<td>' + row.content + '</td>' +
