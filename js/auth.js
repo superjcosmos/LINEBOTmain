@@ -2,7 +2,8 @@ var authState = {
   sessionToken: localStorage.getItem("sessionToken") || null,
   clientId:     localStorage.getItem("clientId")     || null,
   plan:         localStorage.getItem("plan")          || null,
-  email:        localStorage.getItem("email")         || null
+  email:        localStorage.getItem("email")         || null,
+  features:     JSON.parse(localStorage.getItem("features") || "{}")
 };
 
 // 頁面載入時自動驗證
