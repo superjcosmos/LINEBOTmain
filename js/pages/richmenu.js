@@ -20,6 +20,9 @@ async function loadRichMenu() {
       '<td>' + row.display_text + '</td>' +
       '<td>' + isDefault + '</td>' +
       '<td>' +
+        '<button class="btn btn-edit" ' +
+          'onclick="editRichMenu(' + row.index + ',\'' +
+          encodeURIComponent(JSON.stringify(row)) + '\')">編輯</button> ' +
         '<button class="btn btn-primary" ' +
           'onclick="openUploadModal(\'' + row.rich_menu_id + '\',' + row.index + ')">上傳圖片</button> ' +
         '<button class="btn btn-danger" ' +
@@ -43,11 +46,21 @@ async function loadRichMenu() {
         '</tbody>' +
       '</table>' +
     '</div>' +
+    _buildCreateModal() +
+    _buildUploadModal()
+  );
 
-    // 建立 Modal
+  updateButtonFields();
+}
+
+// ==========================================
+// Modal HTML
+// ==========================================
+function _buildCreateModal() {
+  return (
     '<div class="modal-overlay" id="rmCreateModal">' +
-      '<div class="modal" style="width:600px;max-height:80vh;overflow-y:auto">' +
-        '<h3>建立圖文選單</h3>' +
+      '<div class="modal" style="width:620px;max-height:85vh;overflow-y:auto">' +
+        '<h3 id="rmModalTitle">建立圖文選單</h3>' +
 
         '<div class="form-group">' +
           '<label>名稱（內部識別用）</label>' +
@@ -56,7 +69,7 @@ async function loadRichMenu() {
 
         '<div class="form-group">' +
           '<label>選單欄文字</label>' +
-          '<input type="text" id="rmDisplayText" placeholder="例如：點我開啟選單" value="開啟選單">' +
+          '<input type="text" id="rmDisplayText" placeholder="例如：開啟選單" value="開啟選單">' +
         '</div>' +
 
         '<div class="form-group">' +
@@ -75,12 +88,15 @@ async function loadRichMenu() {
 
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeCreateModal()">取消</button>' +
-          '<button class="btn btn-primary" onclick="createRichMenu()">建立</button>' +
+          '<button class="btn btn-primary" onclick="saveRichMenu()">儲存</button>' +
         '</div>' +
       '</div>' +
-    '</div>' +
+    '</div>'
+  );
+}
 
-    // 上傳圖片 Modal
+function _buildUploadModal() {
+  return (
     '<div class="modal-overlay" id="rmUploadModal">' +
       '<div class="modal">' +
         '<h3>上傳圖文選單圖片</h3>' +
@@ -98,21 +114,11 @@ async function loadRichMenu() {
       '</div>' +
     '</div>'
   );
-
-  // 初始化按鈕欄位
-  updateButtonFields();
 }
 
-// ===== 建立圖文選單 =====
-function openCreateModal() {
-  document.getElementById("rmCreateModal").classList.add("show");
-  updateButtonFields();
-}
-
-function closeCreateModal() {
-  document.getElementById("rmCreateModal").classList.remove("show");
-}
-
+// ==========================================
+// 按鈕欄位動態產生
+// ==========================================
 function updateButtonFields() {
   var layout = document.getElementById("rmLayout");
   if (!layout) return;
@@ -126,16 +132,22 @@ function updateButtonFields() {
   for (var i = 1; i <= count; i++) {
     html +=
       '<div style="border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:8px">' +
-        '<div style="font-weight:600;margin-bottom:8px;color:#666">按鈕 ' + i + '</div>' +
-        '<div class="form-row">' +
-          '<div class="form-group half">' +
-            '<label>標籤文字</label>' +
-            '<input type="text" id="btn' + i + '_label" placeholder="例如：了解更多">' +
-          '</div>' +
-          '<div class="form-group half">' +
-            '<label>觸發文字</label>' +
-            '<input type="text" id="btn' + i + '_action" placeholder="按下後傳送的文字">' +
-          '</div>' +
+        '<div style="font-weight:600;margin-bottom:8px;color:#555">按鈕 ' + i + '</div>' +
+        '<div class="form-group">' +
+          '<label>標籤文字</label>' +
+          '<input type="text" id="btn' + i + '_label" placeholder="顯示在按鈕上的文字">' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label>動作類型</label>' +
+          '<select id="btn' + i + '_type" onchange="toggleActionInput(' + i + ')">' +
+            '<option value="message">傳送文字（message）</option>' +
+            '<option value="uri">開啟網址（uri）</option>' +
+            '<option value="none">不設定</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="form-group" id="btn' + i + '_action_wrap">' +
+          '<label id="btn' + i + '_action_label">傳送文字內容</label>' +
+          '<input type="text" id="btn' + i + '_action" placeholder="按下後傳送的文字">' +
         '</div>' +
       '</div>';
   }
@@ -143,7 +155,89 @@ function updateButtonFields() {
   document.getElementById("buttonFields").innerHTML = html;
 }
 
-async function createRichMenu() {
+function toggleActionInput(i) {
+  var type    = document.getElementById("btn" + i + "_type").value;
+  var wrap    = document.getElementById("btn" + i + "_action_wrap");
+  var label   = document.getElementById("btn" + i + "_action_label");
+  var input   = document.getElementById("btn" + i + "_action");
+
+  if (type === "none") {
+    wrap.style.display = "none";
+  } else if (type === "uri") {
+    wrap.style.display = "block";
+    label.textContent  = "網址";
+    input.placeholder  = "https://example.com";
+  } else {
+    wrap.style.display = "block";
+    label.textContent  = "傳送文字內容";
+    input.placeholder  = "按下後傳送的文字";
+  }
+}
+
+// ==========================================
+// 建立 / 編輯
+// ==========================================
+var rmEditIndex = null;
+var rmEditId    = null;
+
+function openCreateModal() {
+  rmEditIndex = null;
+  rmEditId    = null;
+  document.getElementById("rmModalTitle").textContent = "建立圖文選單";
+  document.getElementById("rmName").value        = "";
+  document.getElementById("rmDisplayText").value = "開啟選單";
+  document.getElementById("rmLayout").value      = "large_6";
+  document.getElementById("rmCreateModal").classList.add("show");
+  updateButtonFields();
+}
+
+function closeCreateModal() {
+  document.getElementById("rmCreateModal").classList.remove("show");
+  rmEditIndex = null;
+  rmEditId    = null;
+}
+
+function editRichMenu(index, rowJson) {
+  var row = JSON.parse(decodeURIComponent(rowJson));
+
+  rmEditIndex = index;
+  rmEditId    = row.rich_menu_id;
+
+  document.getElementById("rmModalTitle").textContent = "編輯圖文選單";
+  document.getElementById("rmName").value        = row.name;
+  document.getElementById("rmDisplayText").value = row.display_text;
+  document.getElementById("rmLayout").value      = row.layout;
+  document.getElementById("rmCreateModal").classList.add("show");
+
+  updateButtonFields();
+
+  // 填入按鈕資料
+  var count = {
+    "large_6": 6, "large_3": 3, "small_3": 3,
+    "small_2": 2, "small_left": 2, "small_1": 1
+  }[row.layout] || 6;
+
+  for (var i = 1; i <= count; i++) {
+    var label  = row["btn" + i + "_label"]  || "";
+    var action = row["btn" + i + "_action"] || "";
+
+    document.getElementById("btn" + i + "_label").value  = label;
+    document.getElementById("btn" + i + "_action").value = action;
+
+    // 判斷動作類型
+    var type = "message";
+    if (!action || action === "") {
+      type = "none";
+    } else if (action.indexOf("http") === 0) {
+      type = "uri";
+    }
+
+    document.getElementById("btn" + i + "_type").value = type;
+    toggleActionInput(i);
+  }
+}
+
+async function saveRichMenu() {
   var name        = document.getElementById("rmName").value.trim();
   var displayText = document.getElementById("rmDisplayText").value.trim();
   var layout      = document.getElementById("rmLayout").value;
@@ -153,37 +247,56 @@ async function createRichMenu() {
     return;
   }
 
-  var payload = {
-    action:       "createRichMenu",
-    name:         name,
-    display_text: displayText,
-    layout:       layout
-  };
-
   var count = {
     "large_6": 6, "large_3": 3, "small_3": 3,
     "small_2": 2, "small_left": 2, "small_1": 1
   }[layout] || 6;
 
+  var payload = {
+    name:         name,
+    display_text: displayText,
+    layout:       layout
+  };
+
   for (var i = 1; i <= count; i++) {
+    var typeEl   = document.getElementById("btn" + i + "_type");
     var labelEl  = document.getElementById("btn" + i + "_label");
     var actionEl = document.getElementById("btn" + i + "_action");
-    payload["btn" + i + "_label"]  = labelEl  ? labelEl.value.trim()  : "";
-    payload["btn" + i + "_action"] = actionEl ? actionEl.value.trim() : "";
+
+    var btnType   = typeEl   ? typeEl.value   : "message";
+    var btnLabel  = labelEl  ? labelEl.value.trim()  : "";
+    var btnAction = actionEl ? actionEl.value.trim() : "";
+
+    payload["btn" + i + "_label"]  = btnLabel;
+    payload["btn" + i + "_action"] = btnType === "none" ? "" : btnAction;
+    payload["btn" + i + "_type"]   = btnType;
+  }
+
+  var action;
+  if (rmEditIndex !== null) {
+    // 編輯模式
+    payload.action       = "updateRichMenu";
+    payload.index        = rmEditIndex;
+    payload.rich_menu_id = rmEditId;
+  } else {
+    // 新增模式
+    payload.action = "createRichMenu";
   }
 
   var result = await apiCall(payload);
 
   if (result.success) {
     closeCreateModal();
-    showToast("圖文選單建立成功，請上傳圖片");
+    showToast(rmEditIndex !== null ? "更新成功" : "建立成功，請上傳圖片");
     loadRichMenu();
   } else {
     showToast(result.message, "error");
   }
 }
 
-// ===== 上傳圖片 =====
+// ==========================================
+// 上傳圖片
+// ==========================================
 var currentRichMenuId  = null;
 var currentRichMenuIdx = null;
 
@@ -221,11 +334,11 @@ async function uploadImage() {
     var base64 = e.target.result.split(",")[1];
 
     var result = await apiCall({
-      action:        "uploadRichMenuImage",
-      rich_menu_id:  currentRichMenuId,
-      index:         currentRichMenuIdx,
-      image_data:    base64,
-      mime_type:     file.type
+      action:       "uploadRichMenuImage",
+      rich_menu_id: currentRichMenuId,
+      index:        currentRichMenuIdx,
+      image_data:   base64,
+      mime_type:    file.type
     });
 
     if (result.success) {
@@ -240,7 +353,9 @@ async function uploadImage() {
   reader.readAsDataURL(file);
 }
 
-// ===== 設為預設 =====
+// ==========================================
+// 設為預設
+// ==========================================
 async function setDefault(richMenuId, index) {
   if (!confirmDialog("確定要將此圖文選單設為所有用戶的預設嗎？")) return;
 
@@ -258,7 +373,9 @@ async function setDefault(richMenuId, index) {
   }
 }
 
-// ===== 刪除 =====
+// ==========================================
+// 刪除
+// ==========================================
 async function deleteRichMenu(richMenuId, index) {
   if (!confirmDialog("確定要刪除此圖文選單嗎？")) return;
 
