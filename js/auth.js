@@ -103,7 +103,9 @@ function enterMainPage() {
   document.getElementById("loginPage").style.display  = "none";
   document.getElementById("mainPage").style.display   = "block";
   document.getElementById("sidebarEmail").textContent = authState.email;
-  document.getElementById("sidebarPlan").textContent  = authState.plan;
+  var planEl = document.getElementById("sidebarPlan");
+  planEl.textContent = authState.plan;
+  planEl.className   = "plan plan-" + authState.plan;
 
   // 依方案建立選單
   buildSidebarMenu();
