@@ -32,7 +32,7 @@
 </div>
 
 <!-- 主介面 -->
-<div id="mainPage">
+<div id="mainPage" style="display:none">
   <div class="sidebar">
     <div class="sidebar-logo">
       <p style="color:#06C755;font-size:11px;font-weight:600;letter-spacing:1px;margin-bottom:4px">J Cosmos</p>
@@ -40,36 +40,22 @@
       <p class="email" id="sidebarEmail"></p>
       <span class="plan" id="sidebarPlan"></span>
     </div>
-     <div class="sidebar">
-      <div class="sidebar-logo">
-        <p style="color:#06C755;font-size:11px;font-weight:600;letter-spacing:1px;margin-bottom:4px">J Cosmos</p>
-        <h2>LINE BOT API 後台</h2>
-        <p class="email" id="sidebarEmail"></p>
-        <span class="plan" id="sidebarPlan"></span>
-      </div>
-      <div class="sidebar-menu" id="sidebarMenu">
-        <!-- 由 buildSidebarMenu() 動態產生 -->
-      </div>
-      <div class="sidebar-footer">
-        <button class="btn-logout" onclick="logout()">登出</button>
-      </div>
-    </div>
+    <div class="sidebar-menu" id="sidebarMenu">
+      <!-- 由 buildSidebarMenu() 動態產生 -->
     </div>
     <div class="sidebar-footer">
       <button class="btn-logout" onclick="logout()">登出</button>
     </div>
   </div>
-
   <div class="main-content" id="mainContent">
     <div class="loading">載入中...</div>
   </div>
 </div>
 
-<!-- JS 載入順序很重要，不能亂 -->
+<!-- JS 載入順序：pages 必須在 router 之後，auth 最後 -->
 <script src="js/config.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/api.js"></script>
-<script src="js/router.js"></script>
 <script src="js/pages/userlog.js"></script>
 <script src="js/pages/reply.js"></script>
 <script src="js/pages/audience.js"></script>
@@ -77,6 +63,8 @@
 <script src="js/pages/lottery.js"></script>
 <script src="js/pages/broadcast.js"></script>
 <script src="js/pages/dashboard.js"></script>
+<script src="js/router.js"></script>
 <script src="js/auth.js"></script>
+
 </body>
 </html>
