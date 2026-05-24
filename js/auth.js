@@ -34,18 +34,21 @@ async function login() {
       password: password
     });
 
-    if (result.success) {
+  if (result.success) {
       localStorage.setItem("sessionToken", result.sessionToken);
       localStorage.setItem("clientId",     result.clientId);
       localStorage.setItem("plan",         result.plan);
       localStorage.setItem("email",        email);
-
+      localStorage.setItem("features",     JSON.stringify(result.features || {}));
+    
       authState.sessionToken = result.sessionToken;
       authState.clientId     = result.clientId;
       authState.plan         = result.plan;
       authState.email        = email;
-
+      authState.features     = result.features || {};
+    
       enterMainPage();
+      }
     } else {
       showLoginError(result.message);
     }
