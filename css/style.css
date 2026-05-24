@@ -301,3 +301,43 @@ tr:hover td { background: #fafafa; }
 
 /* ===== Loading ===== */
 .loading { text-align: center; padding: 40px; color: #aaa; }
+
+/* ===== 表單排版 ===== */
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-group.half {
+  flex: 1;
+}
+
+/* ===== 星期選擇器 ===== */
+.week-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.week-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.week-item:has(input:checked) {
+  border-color: #06C755;
+  background: #e6faf0;
+  color: #06C755;
+}
+
+.week-item input {
+  display: none;
+}
