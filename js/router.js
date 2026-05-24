@@ -1,11 +1,16 @@
 var currentPage = null;
 
-var PAGES = {
-  userlog:  { label: "使用者記錄", icon: "📊", load: function() { loadUserLog();  } },
-  reply:    { label: "自動回覆",   icon: "💬", load: function() { loadReply();    } },
-  audience: { label: "受眾管理",   icon: "👥", load: function() { loadAudience(); } },
-  richmenu: { label: "圖文選單",   icon: "🖼️", load: function() { loadRichMenu(); } },
-  lottery:  { label: "小遊戲",    icon: "🎰", load: function() { loadLottery();  } }
+// router.js 的 PAGES 加入：
+
+const PAGES = {
+  dashboard:  { label: '儀表板',     feature: null,        load: loadDashboard },
+  userlog:    { label: '用戶記錄',   feature: 'userlog',   load: loadUserLog },
+  reply:      { label: '自動回覆',   feature: 'reply',     load: loadReply },
+  audience:   { label: '受眾管理',   feature: 'audience',  load: loadAudience },
+  richmenu:   { label: '圖文選單',   feature: 'richmenu',  load: loadRichMenu },
+  lottery:    { label: '小遊戲',     feature: 'lottery',   load: loadLottery },
+  broadcast:  { label: '推播管理',   feature: 'broadcast', load: loadBroadcast },
+  dashboard_page: { label: '儀表板', feature: null,        load: loadDashboard },
 };
 
 function navigateTo(page) {
