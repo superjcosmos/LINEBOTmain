@@ -40,22 +40,20 @@
       <p class="email" id="sidebarEmail"></p>
       <span class="plan" id="sidebarPlan"></span>
     </div>
-    <div class="sidebar-menu">
-      <div class="menu-item" data-page="userlog" onclick="navigateTo('userlog')">
-        <span class="menu-icon">📊</span> 使用者記錄
+     <div class="sidebar">
+      <div class="sidebar-logo">
+        <p style="color:#06C755;font-size:11px;font-weight:600;letter-spacing:1px;margin-bottom:4px">J Cosmos</p>
+        <h2>LINE BOT API 後台</h2>
+        <p class="email" id="sidebarEmail"></p>
+        <span class="plan" id="sidebarPlan"></span>
       </div>
-      <div class="menu-item" data-page="reply" onclick="navigateTo('reply')">
-        <span class="menu-icon">💬</span> 自動回覆
+      <div class="sidebar-menu" id="sidebarMenu">
+        <!-- 由 buildSidebarMenu() 動態產生 -->
       </div>
-      <div class="menu-item" data-page="audience" onclick="navigateTo('audience')">
-        <span class="menu-icon">👥</span> 受眾管理
+      <div class="sidebar-footer">
+        <button class="btn-logout" onclick="logout()">登出</button>
       </div>
-      <div class="menu-item" data-page="richmenu" onclick="navigateTo('richmenu')">
-        <span class="menu-icon">🖼️</span> 圖文選單
-      </div>
-      <div class="menu-item" data-page="lottery" onclick="navigateTo('lottery')">
-        <span class="menu-icon">🎰</span> 小遊戲
-      </div>
+    </div>
     </div>
     <div class="sidebar-footer">
       <button class="btn-logout" onclick="logout()">登出</button>
