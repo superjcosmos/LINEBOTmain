@@ -92,12 +92,26 @@ function openBroadcastModal() {
         </div>
         <div id="bc-flex-fields" style="display:none">
           <div class="form-group">
-            <label>Alt Text</label>
-            <input id="bc-alt-text" type="text" placeholder="訊息摘要">
+            <label>快速範本</label>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <button class="btn btn-edit" onclick="fillFlexTemplate('announce')">📢 公告</button>
+              <button class="btn btn-edit" onclick="fillFlexTemplate('coupon')">🎫 優惠券</button>
+              <button class="btn btn-edit" onclick="fillFlexTemplate('event')">🎉 活動</button>
+            </div>
           </div>
           <div class="form-group">
-            <label>Flex JSON</label>
-            <textarea id="bc-flex-json" rows="6" placeholder='{"type":"bubble",...}'></textarea>
+            <label>Alt Text（通知列顯示文字）</label>
+            <input id="bc-alt-text" type="text" placeholder="例：最新公告">
+          </div>
+          <div class="form-group">
+            <label>
+              Flex JSON
+              <a href="https://developers.line.biz/flex-simulator/" target="_blank"
+                 style="font-size:12px;color:#06C755;margin-left:8px">
+                ✏️ 開啟 LINE Flex 編輯器
+              </a>
+            </label>
+            <textarea id="bc-flex-json" rows="8" placeholder="貼上 Flex JSON..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -107,6 +121,99 @@ function openBroadcastModal() {
       </div>
     </div>
   `);
+}
+
+function fillFlexTemplate(type) {
+  const templates = {
+    announce: {
+      altText: '最新公告',
+      json: JSON.stringify({
+        type: 'bubble',
+        header: {
+          type: 'box', layout: 'vertical',
+          backgroundColor: '#1a1a2e',
+          contents: [{ type: 'text', text: '📢 最新公告', color: '#ffffff', size: 'lg', weight: 'bold' }]
+        },
+        body: {
+          type: 'box', layout: 'vertical', spacing: 'md',
+          contents: [
+            { type: 'text', text: '公告標題', size: 'lg', weight: 'bold', wrap: true },
+            { type: 'text', text: '請在此填入公告內容，可以換行顯示。', size: 'sm', color: '#666666', wrap: true }
+          ]
+        },
+        footer: {
+          type: 'box', layout: 'vertical',
+          contents: [{
+            type: 'button', style: 'primary', color: '#06C755',
+            action: { type: 'uri', label: '了解更多', uri: 'https://line.me' }
+          }]
+        }
+      }, null, 2)
+    },
+    coupon: {
+      altText: '專屬優惠券',
+      json: JSON.stringify({
+        type: 'bubble',
+        body: {
+          type: 'box', layout: 'vertical', spacing: 'md',
+          contents: [
+            { type: 'text', text: '🎫 專屬優惠', weight: 'bold', size: 'xl', color: '#06C755' },
+            { type: 'separator' },
+            { type: 'text', text: '優惠內容說明', size: 'md', wrap: true },
+            { type: 'text', text: '折扣碼：SAVE2026', size: 'lg', weight: 'bold', color: '#e53e3e' },
+            { type: 'separator' },
+            { type: 'text', text: '有效期限：2026/12/31', size: 'xs', color: '#999999' }
+          ]
+        },
+        footer: {
+          type: 'box', layout: 'vertical',
+          contents: [{
+            type: 'button', style: 'primary', color: '#06C755',
+            action: { type: 'message', label: '立即使用', text: '使用優惠券' }
+          }]
+        }
+      }, null, 2)
+    },
+    event: {
+      altText: '活動通知',
+      json: JSON.stringify({
+        type: 'bubble',
+        header: {
+          type: 'box', layout: 'vertical',
+          backgroundColor: '#06C755',
+          contents: [{ type: 'text', text: '🎉 活動通知', color: '#ffffff', weight: 'bold', size: 'lg' }]
+        },
+        body: {
+          type: 'box', layout: 'vertical', spacing: 'md',
+          contents: [
+            { type: 'text', text: '活動名稱', weight: 'bold', size: 'xl', wrap: true },
+            { type: 'box', layout: 'vertical', spacing: 'sm', contents: [
+              { type: 'box', layout: 'baseline', contents: [
+                { type: 'text', text: '時間', size: 'sm', color: '#999999', flex: 2 },
+                { type: 'text', text: '2026/06/01 14:00', size: 'sm', flex: 5, wrap: true }
+              ]},
+              { type: 'box', layout: 'baseline', contents: [
+                { type: 'text', text: '地點', size: 'sm', color: '#999999', flex: 2 },
+                { type: 'text', text: '台北市信義區', size: 'sm', flex: 5, wrap: true }
+              ]}
+            ]}
+          ]
+        },
+        footer: {
+          type: 'box', layout: 'vertical',
+          contents: [{
+            type: 'button', style: 'primary', color: '#06C755',
+            action: { type: 'message', label: '我要報名', text: '報名活動' }
+          }]
+        }
+      }, null, 2)
+    }
+  };
+
+  const t = templates[type];
+  if (!t) return;
+  document.getElementById('bc-alt-text').value  = t.altText;
+  document.getElementById('bc-flex-json').value = t.json;
 }
 
 function toggleAudienceSelect() {
