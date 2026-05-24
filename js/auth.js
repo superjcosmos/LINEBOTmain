@@ -102,17 +102,3 @@ function enterMainPage() {
   document.getElementById("sidebarPlan").textContent        = authState.plan;
   navigateTo("userlog");
 }
-
-async function initSheet() {
-  if (!confirmDialog("確定要初始化工作表嗎？\n已存在的工作表不會被覆蓋。")) return;
-
-  showToast("初始化中...");
-
-  var result = await apiCall({ action: "initClientSheet" });
-
-  if (result.success) {
-    showToast(result.message);
-  } else {
-    showToast(result.message, "error");
-  }
-}
