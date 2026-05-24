@@ -18,8 +18,14 @@ function showToast(message, type) {
   }, 3000);
 }
 
-function setContent(html) {
-  document.getElementById("mainContent").innerHTML = html;
+function setContent(idOrHtml, html) {
+  if (html === undefined) {
+    // 舊用法：setContent(html)
+    document.getElementById("mainContent").innerHTML = idOrHtml;
+  } else {
+    // 新用法：setContent('elementId', html)
+    document.getElementById(idOrHtml).innerHTML = html;
+  }
 }
 
 function confirmDialog(message) {
