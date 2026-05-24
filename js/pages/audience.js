@@ -1,9 +1,8 @@
 async function loadAudience() {
   setContent('<div class="loading">載入中...</div>');
 
-  // 同時取得受眾列表和圖文選單列表
-  var audienceResult  = await apiCall({ action: "getAudienceList" });
-  var richMenuResult  = await apiCall({ action: "getRichMenuList" });
+  var audienceResult = await apiCall({ action: "getAudienceList" });
+  var richMenuResult = await apiCall({ action: "getRichMenuList" });
 
   if (!audienceResult.success) {
     setContent('<div class="loading">載入失敗：' + audienceResult.message + '</div>');
@@ -19,7 +18,6 @@ async function loadAudience() {
   }
 
   var rows = audienceResult.data.map(function(row) {
-    // 找對應的圖文選單名稱
     var rmName = "-";
     if (row.rich_menu_id && richMenuResult.success) {
       var found = richMenuResult.data.find(function(rm) {
@@ -34,6 +32,9 @@ async function loadAudience() {
       '<td>' + (row.count || 0) + ' 人</td>' +
       '<td>' + rmName + '</td>' +
       '<td>' +
+        '<button class="btn btn-edit" ' +
+          'onclick="editAudience(' + row.index + ',\'' +
+          encodeURIComponent(JSON.stringify(row)) + '\')">編輯</button> ' +
         '<button class="btn btn-sync" ' +
           'onclick="syncCount(\'' + row.audience_id + '\',' + row.index + ')">同步人數</button> ' +
         '<button class="btn btn-primary" ' +
@@ -67,7 +68,7 @@ async function loadAudience() {
     // 建立受眾 Modal
     '<div class="modal-overlay" id="createModal">' +
       '<div class="modal">' +
-        '<h3>建立受眾</h3>' +
+        '<h3 id="audienceModalTitle">建立受眾</h3>' +
         '<div class="form-group">' +
           '<label>受眾名稱</label>' +
           '<input type="text" id="audienceName" placeholder="例如：VIP客戶">' +
@@ -82,7 +83,7 @@ async function loadAudience() {
         '</div>' +
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeCreateModal()">取消</button>' +
-          '<button class="btn btn-primary" onclick="createAudience()">建立</button>' +
+          '<button class="btn btn-primary" id="audienceSaveBtn" onclick="saveAudience()">建立</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -106,18 +107,36 @@ async function loadAudience() {
 }
 
 // ===== 建立受眾 =====
+var audienceEditIndex = null;
+
 function openCreateModal() {
+  audienceEditIndex = null;
+  document.getElementById("audienceModalTitle").textContent = "建立受眾";
+  document.getElementById("audienceSaveBtn").textContent    = "建立";
+  document.getElementById("audienceName").value    = "";
+  document.getElementById("audienceKeyword").value = "";
+  document.getElementById("audienceRichMenu").value = "";
   document.getElementById("createModal").classList.add("show");
 }
 
 function closeCreateModal() {
   document.getElementById("createModal").classList.remove("show");
-  document.getElementById("audienceName").value    = "";
-  document.getElementById("audienceKeyword").value = "";
-  document.getElementById("audienceRichMenu").value = "";
+  audienceEditIndex = null;
 }
 
-async function createAudience() {
+function editAudience(index, rowJson) {
+  var row = JSON.parse(decodeURIComponent(rowJson));
+
+  audienceEditIndex = index;
+  document.getElementById("audienceModalTitle").textContent = "編輯受眾";
+  document.getElementById("audienceSaveBtn").textContent    = "儲存";
+  document.getElementById("audienceName").value     = row.name;
+  document.getElementById("audienceKeyword").value  = row.keyword || "";
+  document.getElementById("audienceRichMenu").value = row.rich_menu_id || "";
+  document.getElementById("createModal").classList.add("show");
+}
+
+async function saveAudience() {
   var name       = document.getElementById("audienceName").value.trim();
   var keyword    = document.getElementById("audienceKeyword").value.trim();
   var richMenuId = document.getElementById("audienceRichMenu").value;
@@ -127,16 +146,30 @@ async function createAudience() {
     return;
   }
 
-  var result = await apiCall({
-    action:        "createAudience",
-    name:          name,
-    keyword:       keyword,
-    rich_menu_id:  richMenuId
-  });
+  var result;
+
+  if (audienceEditIndex !== null) {
+    // 編輯模式 — 只更新 Sheet，不重建 LINE 受眾
+    result = await apiCall({
+      action:        "updateAudience",
+      index:         audienceEditIndex,
+      name:          name,
+      keyword:       keyword,
+      rich_menu_id:  richMenuId
+    });
+  } else {
+    // 新增模式
+    result = await apiCall({
+      action:        "createAudience",
+      name:          name,
+      keyword:       keyword,
+      rich_menu_id:  richMenuId
+    });
+  }
 
   if (result.success) {
     closeCreateModal();
-    showToast("受眾建立成功");
+    showToast(audienceEditIndex !== null ? "更新成功" : "受眾建立成功");
     loadAudience();
   } else {
     showToast(result.message, "error");
