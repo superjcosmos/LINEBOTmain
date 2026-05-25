@@ -8,60 +8,209 @@
 </head>
 <body>
 
-<!-- Toast 通知 -->
+<!-- ── Toast 通知 ── -->
 <div class="toast" id="toast"></div>
-  
-<!-- 全域 Loading -->
-<div id="global-loading" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9998;align-items:center;justify-content:center">
-  <div style="background:white;border-radius:16px;padding:32px 40px;display:flex;flex-direction:column;align-items:center;gap:16px;box-shadow:0 8px 32px rgba(0,0,0,0.15)">
-    <div style="width:40px;height:40px;border:4px solid #e0e0e0;border-top-color:#06C755;border-radius:50%;animation:spin 0.8s linear infinite"></div>
-    <div style="color:#444;font-size:14px;font-weight:500">處理中，請稍候...</div>
+
+<!-- ── 全域 Loading 遮罩 ── -->
+<div id="global-loading" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9998;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:32px 40px;display:flex;flex-direction:column;align-items:center;gap:16px;box-shadow:0 8px 32px rgba(0,0,0,0.15);">
+    <div style="width:40px;height:40px;border:4px solid #e0e0e0;border-top-color:#06C755;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+    <div style="color:#444;font-size:14px;font-weight:500;">處理中，請稍候...</div>
   </div>
 </div>
 
-<!-- 登入頁 -->
+<!-- ── 全域 Modal 容器（供各頁面動態插入 Modal 用） ── -->
+<div id="global-modal"></div>
+
+<!-- ================================================================
+     登入頁
+     ================================================================ -->
 <div id="loginPage">
   <div class="login-box">
     <div class="logo">
       <p>J Cosmos</p>
       <h1>LINE BOT API 管理後台</h1>
     </div>
+
     <div class="form-group">
       <label>電子信箱</label>
-      <input type="email" id="inputEmail" placeholder="your@email.com">
+      <input type="email" id="inputEmail" placeholder="your@email.com"
+             onkeydown="if(event.key==='Enter') document.getElementById('inputPassword').focus()">
     </div>
+
     <div class="form-group">
       <label>密碼</label>
-      <input type="password" id="inputPassword" placeholder="••••••••">
+      <input type="password" id="inputPassword" placeholder="••••••••"
+             onkeydown="if(event.key==='Enter') login()">
     </div>
+
     <button class="btn-login" id="btnLogin" onclick="login()">登入</button>
+
     <div class="error-msg" id="errorMsg"></div>
+
+    <!-- 忘記密碼連結 -->
+    <div style="text-align:center;margin-top:14px;font-size:14px;">
+      <a href="#" onclick="showForgotPassword();return false;"
+         style="color:#06C755;text-decoration:none;">
+        忘記密碼？
+      </a>
+    </div>
   </div>
 </div>
 
-<!-- 主介面 -->
-<div id="mainPage" style="display:none">
+<!-- ================================================================
+     忘記密碼頁（三步驟共用同一容器，切換內部 Step 顯示）
+     ================================================================ -->
+<div id="forgotPasswordPage" style="display:none;">
+  <div class="login-box">
+
+    <!-- ── Step 1：輸入 Email ── -->
+    <div id="forgotStep1">
+      <div class="logo">
+        <p>J Cosmos</p>
+        <h1>忘記密碼</h1>
+      </div>
+      <p style="color:#666;font-size:14px;margin-bottom:20px;text-align:center;">
+        輸入您的登入 Email，我們將寄送 6 位數驗證碼
+      </p>
+
+      <div class="form-group">
+        <label>電子信箱</label>
+        <input type="email" id="forgotEmail" placeholder="your@email.com"
+               onkeydown="if(event.key==='Enter') submitForgotPassword()">
+      </div>
+
+      <div class="error-msg" id="forgotStep1Error" style="display:none;"></div>
+
+      <button id="btnSendOtp" class="btn-login" onclick="submitForgotPassword()">
+        寄送驗證碼
+      </button>
+
+      <div style="text-align:center;margin-top:14px;font-size:14px;">
+        <a href="#" onclick="showLoginPage();return false;"
+           style="color:#06C755;text-decoration:none;">
+          ← 返回登入
+        </a>
+      </div>
+    </div>
+
+    <!-- ── Step 2：輸入 OTP 驗證碼 ── -->
+    <div id="forgotStep2" style="display:none;">
+      <div class="logo">
+        <p>J Cosmos</p>
+        <h1>輸入驗證碼</h1>
+      </div>
+      <p style="color:#666;font-size:14px;margin-bottom:4px;text-align:center;">
+        驗證碼已寄至 <strong id="otpEmailHint" style="color:#333;"></strong>
+      </p>
+      <p style="color:#f39c12;font-size:12px;margin-bottom:20px;text-align:center;">
+        ⏱ 請於 10 分鐘內完成驗證
+      </p>
+
+      <div class="form-group">
+        <label>6 位數驗證碼</label>
+        <input type="text" id="otpInput" placeholder="123456"
+               maxlength="6" inputmode="numeric" pattern="[0-9]*"
+               style="font-size:24px;letter-spacing:10px;text-align:center;"
+               oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+               onkeydown="if(event.key==='Enter') submitVerifyOtp()">
+      </div>
+
+      <div class="error-msg" id="forgotStep2Error" style="display:none;"></div>
+
+      <button id="btnVerifyOtp" class="btn-login" onclick="submitVerifyOtp()">
+        驗證
+      </button>
+
+      <div style="text-align:center;margin-top:14px;font-size:14px;display:flex;justify-content:center;gap:16px;">
+        <a href="#" onclick="resendOtp();return false;"
+           style="color:#06C755;text-decoration:none;">
+          重新寄送驗證碼
+        </a>
+        <span style="color:#ccc;">|</span>
+        <a href="#" onclick="showLoginPage();return false;"
+           style="color:#666;text-decoration:none;">
+          返回登入
+        </a>
+      </div>
+    </div>
+
+    <!-- ── Step 3：設定新密碼 ── -->
+    <div id="forgotStep3" style="display:none;">
+      <div class="logo">
+        <p>J Cosmos</p>
+        <h1>設定新密碼</h1>
+      </div>
+      <p style="color:#666;font-size:14px;margin-bottom:20px;text-align:center;">
+        請為您的帳號設定新密碼
+      </p>
+
+      <div class="form-group">
+        <label>新密碼</label>
+        <input type="password" id="newPassword" placeholder="至少 6 個字元"
+               oninput="updatePasswordStrength()"
+               onkeydown="if(event.key==='Enter') document.getElementById('confirmPassword').focus()">
+        <!-- 密碼強度提示 -->
+        <div id="passwordStrength"
+             style="font-size:12px;margin-top:4px;min-height:16px;"></div>
+      </div>
+
+      <div class="form-group">
+        <label>確認新密碼</label>
+        <input type="password" id="confirmPassword" placeholder="再輸入一次"
+               onkeydown="if(event.key==='Enter') submitResetPassword()">
+      </div>
+
+      <div class="error-msg" id="forgotStep3Error" style="display:none;"></div>
+
+      <button id="btnResetPassword" class="btn-login" onclick="submitResetPassword()">
+        確認重設密碼
+      </button>
+
+      <div style="text-align:center;margin-top:14px;font-size:14px;">
+        <a href="#" onclick="showLoginPage();return false;"
+           style="color:#666;text-decoration:none;">
+          返回登入
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ================================================================
+     主介面
+     ================================================================ -->
+<div id="mainPage" style="display:none;">
   <div class="sidebar">
     <div class="sidebar-logo">
-      <p style="color:#06C755;font-size:11px;font-weight:600;letter-spacing:1px;margin-bottom:4px">J Cosmos</p>
+      <p style="color:#06C755;font-size:11px;font-weight:600;letter-spacing:1px;margin-bottom:4px;">
+        J Cosmos
+      </p>
       <h2>LINE BOT API 管理後台</h2>
       <p class="email" id="sidebarEmail"></p>
       <span class="plan" id="sidebarPlan"></span>
     </div>
+
     <div class="sidebar-menu" id="sidebarMenu">
       <!-- 由 buildSidebarMenu() 動態產生 -->
     </div>
+
     <div class="sidebar-footer">
       <button class="btn-init" onclick="openChangePasswordModal()">🔑 修改密碼</button>
       <button class="btn-logout" onclick="logout()">登出</button>
-    </div> 
+    </div>
   </div>
+
   <div class="main-content" id="mainContent">
     <div class="loading">載入中...</div>
   </div>
 </div>
 
-<!-- JS 載入順序：pages 必須在 router 之後，auth 最後 -->
+<!-- ================================================================
+     JS 載入順序
+     pages/* → router.js → auth.js（auth 必須最後）
+     ================================================================ -->
 <script src="js/config.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/api.js"></script>
@@ -73,12 +222,10 @@
 <script src="js/pages/broadcast.js"></script>
 <script src="js/pages/dashboard.js"></script>
 <script src="js/pages/account.js"></script>
-<script src="js/pages/export.js"></script>  
+<script src="js/pages/export.js"></script>
 <script src="js/pages/blacklist.js"></script>
-<script src="js/pages/export.js"></script>  
 <script src="js/router.js"></script>
 <script src="js/auth.js"></script>
 
 </body>
-  <div id="global-modal"></div>
 </html>
