@@ -8,6 +8,7 @@ const PAGES = {
   richmenu:  { label: '圖文選單', icon: '🖼️', feature: 'richmenu',  load: loadRichMenu },
   lottery:   { label: '小遊戲',   icon: '🎰', feature: 'lottery',   load: loadLottery },
   broadcast: { label: '推播管理', icon: '📢', feature: 'broadcast', load: loadBroadcast },
+  export: { label: '資料匯出', icon: '📥', load: loadExport, feature: 'export' },
 };
 
 function navigateTo(page) {
@@ -48,3 +49,5 @@ function buildSidebarMenu() {
   });
   menuEl.innerHTML = html;
 }
+
+
