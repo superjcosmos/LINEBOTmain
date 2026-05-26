@@ -1,0 +1,172 @@
+/* ===== Card ===== */
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  margin-bottom: 20px;
+}
+
+/* ===== 表格 ===== */
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+
+th {
+  background: #f7f8fa;
+  padding: 12px 16px;
+  text-align: left;
+  color: #666;
+  font-weight: 600;
+  border-bottom: 1px solid #eee;
+}
+
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #333;
+}
+
+tr:hover td { background: #fafafa; }
+
+.uid-cell {
+  font-family: monospace;
+  font-size: 12px;
+  color: #888;
+}
+
+/* ===== 按鈕 ===== */
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-primary       { background: #06C755; color: white; }
+.btn-primary:hover { background: #05a847; }
+
+.btn-danger        { background: #fff0f0; color: #e53e3e; }
+.btn-danger:hover  { background: #ffe0e0; }
+
+.btn-edit          { background: #fff8e6; color: #d97706; }
+.btn-edit:hover    { background: #fef3c7; }
+
+.btn-sync          { background: #e8f4fd; color: #2b7bb9; }
+.btn-sync:hover    { background: #d1e9f7; }
+
+.btn-cancel {
+  padding: 10px 20px;
+  background: #f0f0f0;
+  color: #666;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-cancel:hover { background: #e0e0e0; }
+
+/* ===== Tag ===== */
+.tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tag-active   { background: #e6faf0; color: #06C755; }
+.tag-inactive { background: #f0f0f0; color: #888; }
+
+/* ===== Modal ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.show { display: flex; }
+
+.modal {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  width: 480px;
+  max-width: 90vw;
+}
+
+.modal h3 { font-size: 18px; margin-bottom: 20px; color: #1a1a2e; }
+
+.modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* ===== 表單元件 ===== */
+.form-group { margin-bottom: 16px; }
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus { border-color: #06C755; }
+
+.form-group textarea { height: 100px; resize: vertical; }
+
+.form-row { display: flex; gap: 12px; }
+
+.form-group.half { flex: 1; }
+
+/* ===== 星期選擇器 ===== */
+.week-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.week-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.week-item:has(input:checked) {
+  border-color: #06C755;
+  background: #e6faf0;
+  color: #06C755;
+}
+
+.week-item input { display: none; }
