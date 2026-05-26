@@ -1,0 +1,60 @@
+/* ===== 表單元件 ===== */
+.form-group { margin-bottom: 16px; }
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus { border-color: #06C755; }
+
+.form-group textarea { height: 100px; resize: vertical; }
+
+.form-row { display: flex; gap: 12px; }
+
+.form-group.half { flex: 1; }
+
+/* ===== 星期選擇器 ===== */
+.week-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.week-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.week-item:has(input:checked) {
+  border-color: #06C755;
+  background: #e6faf0;
+  color: #06C755;
+}
+
+.week-item input { display: none; }
