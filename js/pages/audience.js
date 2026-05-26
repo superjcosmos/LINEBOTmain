@@ -1,81 +1,89 @@
+// ============================================================
+// js/pages/audience.js
+// ============================================================
+
+// ── 狀態變數 ──
+var _audienceAll      = [];  // 完整資料
+var _audienceFiltered = [];  // 搜尋後資料
+var _audiencePage     = 1;
+var _audiencePageSize = 20;
+var _audienceRmOptions = '';
+var audienceEditIndex  = null;
+var currentAudienceId  = null;
+
+// ────────────────────────────────────────────────────────────
+// 載入受眾頁面
+// ────────────────────────────────────────────────────────────
 async function loadAudience() {
   setContent('<div class="loading">載入中...</div>');
 
-  // 先取得受眾列表
-  var audienceResult = await apiCall({ action: "getAudienceList" });
-  var richMenuResult = await apiCall({ action: "getRichMenuList" });
-
-  // 自動同步所有受眾人數
-  if (audienceResult.success && audienceResult.data.length > 0) {
-    await Promise.all(audienceResult.data.map(function(row) {
-      return apiCall({ action: "syncAudienceCount", audience_id: row.audience_id });
-    }));
-    // 同步完重新取得最新人數
-    audienceResult = await apiCall({ action: "getAudienceList" });
-  }
+  var audienceResult = await apiCall({ action: 'getAudienceList' });
+  var richMenuResult = await apiCall({ action: 'getRichMenuList' });
 
   if (!audienceResult.success) {
-    setContent('<div class="loading">載入失敗：' + audienceResult.message + '</div>');
+    setContent('<div class="empty">載入失敗：' + audienceResult.message + '</div>');
     return;
   }
 
-  // 建立圖文選單下拉選單選項
-  var rmOptions = '<option value="">不切換圖文選單</option>';
+  // 自動同步所有受眾人數
+  if (audienceResult.data.length > 0) {
+    await Promise.all(audienceResult.data.map(function(row) {
+      return apiCall({ action: 'syncAudienceCount', audience_id: row.audience_id });
+    }));
+    audienceResult = await apiCall({ action: 'getAudienceList' });
+  }
+
+  // 建立圖文選單下拉選項（供 Modal 用）
+  _audienceRmOptions = '<option value="">不切換圖文選單</option>';
   if (richMenuResult.success) {
     richMenuResult.data.forEach(function(rm) {
-      rmOptions += '<option value="' + rm.rich_menu_id + '">' + rm.name + '</option>';
+      _audienceRmOptions += '<option value="' + rm.rich_menu_id + '">' + rm.name + '</option>';
     });
   }
 
-  var rows = audienceResult.data.map(function(row) {
-    var rmName = "-";
-    if (row.rich_menu_id && richMenuResult.success) {
-      var found = richMenuResult.data.find(function(rm) {
-        return rm.rich_menu_id === row.rich_menu_id;
-      });
-      if (found) rmName = found.name;
-    }
+  // 存到全域，供搜尋和分頁用
+  _audienceAll      = audienceResult.data || [];
+  _audienceFiltered = _audienceAll.slice();
+  _audiencePage     = 1;
 
-    return '<tr>' +
-      '<td>' + row.name + '</td>' +
-      '<td>' + (row.keyword || "-") + '</td>' +
-      '<td>' + (row.count || 0) + ' 人</td>' +
-      '<td>' + rmName + '</td>' +
-      '<td>' +
-        '<button class="btn btn-edit" ' +
-          'onclick="editAudience(' + row.index + ',\'' +
-          encodeURIComponent(JSON.stringify(row)) + '\')">編輯</button> ' +
-        '<button class="btn btn-sync" ' +
-          'onclick="syncCount(\'' + row.audience_id + '\',' + row.index + ')">同步人數</button> ' +
-        '<button class="btn btn-primary" ' +
-          'onclick="openImportModal(\'' + row.audience_id + '\',\'' + row.name + '\')">匯入UID</button> ' +
-        '<button class="btn btn-danger" ' +
-          'onclick="deleteAudience(\'' + row.audience_id + '\',' + row.index + ')">刪除</button>' +
-      '</td>' +
-    '</tr>';
-  }).join("");
+  // 建立頁面骨架（搜尋列、表格容器、分頁容器、Modal）
+  setContent(_buildAudienceShell());
 
-  setContent(
+  // 渲染表格和分頁
+  _renderAudienceTable();
+  _renderAudiencePager();
+}
+
+// ────────────────────────────────────────────────────────────
+// 頁面骨架 HTML（Modal 也放在這裡，只建立一次）
+// ────────────────────────────────────────────────────────────
+function _buildAudienceShell() {
+  return '' +
     '<h2 class="page-title">受眾管理</h2>' +
     '<div class="card">' +
-      '<div class="toolbar">' +
+
+      // ── 工具列 ──
+      '<div class="toolbar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
         '<button class="btn btn-primary" onclick="openCreateModal()">＋ 建立受眾</button>' +
+        '<input type="text" id="audienceSearch"' +
+          ' placeholder="搜尋關鍵字或名稱..."' +
+          ' oninput="filterAudience()"' +
+          ' style="flex:1;min-width:180px;max-width:320px;' +
+                  'padding:8px 12px;border:1.5px solid #e0e0e0;' +
+                  'border-radius:8px;font-size:14px;outline:none;">' +
+        '<span id="audienceTotalHint" style="color:#888;font-size:13px;white-space:nowrap;"></span>' +
       '</div>' +
-      '<table>' +
-        '<thead><tr>' +
-          '<th>受眾名稱</th>' +
-          '<th>觸發關鍵字</th>' +
-          '<th>人數</th>' +
-          '<th>對應圖文選單</th>' +
-          '<th>操作</th>' +
-        '</tr></thead>' +
-        '<tbody>' +
-          (rows || '<tr><td colspan="5" class="empty">尚無受眾</td></tr>') +
-        '</tbody>' +
-      '</table>' +
+
+      // ── 表格 ──
+      '<div id="audienceTableWrap"></div>' +
+
+      // ── 分頁 ──
+      '<div id="audiencePager" style="display:flex;justify-content:center;' +
+           'gap:6px;margin-top:16px;flex-wrap:wrap;"></div>' +
+
     '</div>' +
 
-    // 建立受眾 Modal
+    // ── 建立 / 編輯受眾 Modal ──
     '<div class="modal-overlay" id="createModal">' +
       '<div class="modal">' +
         '<h3 id="audienceModalTitle">建立受眾</h3>' +
@@ -89,7 +97,7 @@ async function loadAudience() {
         '</div>' +
         '<div class="form-group">' +
           '<label>觸發後切換圖文選單（選填）</label>' +
-          '<select id="audienceRichMenu">' + rmOptions + '</select>' +
+          '<select id="audienceRichMenu">' + _audienceRmOptions + '</select>' +
         '</div>' +
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeCreateModal()">取消</button>' +
@@ -98,164 +106,320 @@ async function loadAudience() {
       '</div>' +
     '</div>' +
 
-    // 匯入 UID Modal
+    // ── 匯入 UID Modal ──
     '<div class="modal-overlay" id="importModal">' +
       '<div class="modal">' +
         '<h3>匯入 UID</h3>' +
-        '<p id="importModalTitle" style="color:#888;font-size:13px;margin-bottom:12px"></p>' +
+        '<p id="importModalTitle" style="color:#888;font-size:13px;margin-bottom:12px;"></p>' +
         '<div class="form-group">' +
           '<label>UID 清單（每行一個）</label>' +
-          '<textarea id="importUids" placeholder="Uxxxxxxxxxx\nUxxxxxxxxxx" style="height:160px"></textarea>' +
+          '<textarea id="importUids"' +
+            ' placeholder="Uxxxxxxxxxx&#10;Uxxxxxxxxxx"' +
+            ' style="height:160px;"></textarea>' +
         '</div>' +
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeImportModal()">取消</button>' +
-          '<button class="btn btn-primary" onclick="importAudience()">匯入</button>' +
+          '<button class="btn btn-primary" onclick="doImportAudience()">匯入</button>' +
         '</div>' +
       '</div>' +
-    '</div>'
-  );
+    '</div>';
 }
 
-// ===== 建立受眾 =====
-var audienceEditIndex = null;
+// ────────────────────────────────────────────────────────────
+// 搜尋過濾
+// ────────────────────────────────────────────────────────────
+function filterAudience() {
+  var keyword = (document.getElementById('audienceSearch').value || '').trim().toLowerCase();
 
+  if (!keyword) {
+    _audienceFiltered = _audienceAll.slice();
+  } else {
+    _audienceFiltered = _audienceAll.filter(function(row) {
+      return (row.name    || '').toLowerCase().includes(keyword) ||
+             (row.keyword || '').toLowerCase().includes(keyword);
+    });
+  }
+
+  _audiencePage = 1;
+  _renderAudienceTable();
+  _renderAudiencePager();
+}
+
+// ────────────────────────────────────────────────────────────
+// 渲染表格（依目前頁碼切片）
+// ────────────────────────────────────────────────────────────
+function _renderAudienceTable() {
+  var wrap = document.getElementById('audienceTableWrap');
+  var hint = document.getElementById('audienceTotalHint');
+  if (!wrap) return;
+
+  var total = _audienceFiltered.length;
+  if (hint) hint.textContent = '共 ' + total + ' 筆';
+
+  if (total === 0) {
+    wrap.innerHTML = '<p class="empty">沒有符合的受眾</p>';
+    return;
+  }
+
+  var start = (_audiencePage - 1) * _audiencePageSize;
+  var end   = Math.min(start + _audiencePageSize, total);
+  var page  = _audienceFiltered.slice(start, end);
+
+  // 找圖文選單名稱用（從 _audienceAll 裡取，因為沒有 richMenuResult 的引用）
+  // 改用 rich_menu_id 對照表（loadAudience 時已存）
+  var rows = page.map(function(row) {
+    // 找圖文選單名稱：從 select 選項裡取
+    var rmName = '-';
+    if (row.rich_menu_id) {
+      var sel = document.getElementById('audienceRichMenu');
+      if (sel) {
+        var opt = sel.querySelector('option[value="' + row.rich_menu_id + '"]');
+        if (opt) rmName = opt.textContent;
+      }
+      if (rmName === '-') rmName = row.rich_menu_id.substring(0, 12) + '...';
+    }
+
+    var rowJson = encodeURIComponent(JSON.stringify(row));
+    return '<tr>' +
+      '<td>' + _esc(row.name) + '</td>' +
+      '<td>' + (row.keyword ? _esc(row.keyword) : '-') + '</td>' +
+      '<td>' + (row.count || 0) + ' 人</td>' +
+      '<td>' + rmName + '</td>' +
+      '<td style="white-space:nowrap;">' +
+        '<button class="btn btn-edit" ' +
+          'onclick="editAudience(' + row.index + ',\'' + rowJson + '\')">編輯</button> ' +
+        '<button class="btn btn-sync" ' +
+          'onclick="syncCount(\'' + _esc(row.audience_id) + '\',' + row.index + ')">同步人數</button> ' +
+        '<button class="btn btn-primary" ' +
+          'onclick="openImportModal(\'' + _esc(row.audience_id) + '\',\'' + _esc(row.name) + '\')">匯入UID</button> ' +
+        '<button class="btn btn-danger" ' +
+          'onclick="doDeleteAudience(\'' + _esc(row.audience_id) + '\',' + row.index + ')">刪除</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+
+  wrap.innerHTML =
+    '<table>' +
+      '<thead><tr>' +
+        '<th>受眾名稱</th>' +
+        '<th>觸發關鍵字</th>' +
+        '<th>人數</th>' +
+        '<th>對應圖文選單</th>' +
+        '<th>操作</th>' +
+      '</tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table>';
+}
+
+// ────────────────────────────────────────────────────────────
+// 渲染分頁列
+// ────────────────────────────────────────────────────────────
+function _renderAudiencePager() {
+  var pager = document.getElementById('audiencePager');
+  if (!pager) return;
+
+  var total     = _audienceFiltered.length;
+  var totalPages = Math.ceil(total / _audiencePageSize);
+
+  if (totalPages <= 1) { pager.innerHTML = ''; return; }
+
+  var btnStyle = 'style="padding:6px 12px;border-radius:6px;border:1.5px solid #e0e0e0;' +
+                 'background:white;cursor:pointer;font-size:13px;"';
+  var activeBtnStyle = 'style="padding:6px 12px;border-radius:6px;border:none;' +
+                       'background:#06C755;color:white;cursor:pointer;font-size:13px;font-weight:600;"';
+
+  var html = '';
+
+  // 上一頁
+  html += '<button ' + (_audiencePage === 1 ? 'disabled ' : '') + btnStyle +
+          ' onclick="gotoAudiencePage(' + (_audiencePage - 1) + ')">上一頁</button>';
+
+  // 頁碼（最多顯示7個，超過用 ...）
+  var pages = _buildPageNumbers(totalPages, _audiencePage);
+  pages.forEach(function(p) {
+    if (p === '...') {
+      html += '<span style="padding:6px 4px;color:#aaa;">...</span>';
+    } else {
+      html += '<button ' + (p === _audiencePage ? activeBtnStyle : btnStyle) +
+              ' onclick="gotoAudiencePage(' + p + ')">' + p + '</button>';
+    }
+  });
+
+  // 下一頁
+  html += '<button ' + (_audiencePage === totalPages ? 'disabled ' : '') + btnStyle +
+          ' onclick="gotoAudiencePage(' + (_audiencePage + 1) + ')">下一頁</button>';
+
+  pager.innerHTML = html;
+}
+
+function _buildPageNumbers(total, current) {
+  if (total <= 7) {
+    var arr = [];
+    for (var i = 1; i <= total; i++) arr.push(i);
+    return arr;
+  }
+  var pages = [1];
+  if (current > 3)       pages.push('...');
+  for (var i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+    pages.push(i);
+  }
+  if (current < total - 2) pages.push('...');
+  pages.push(total);
+  return pages;
+}
+
+function gotoAudiencePage(page) {
+  var totalPages = Math.ceil(_audienceFiltered.length / _audiencePageSize);
+  if (page < 1 || page > totalPages) return;
+  _audiencePage = page;
+  _renderAudienceTable();
+  _renderAudiencePager();
+}
+
+// ────────────────────────────────────────────────────────────
+// 建立 / 編輯受眾 Modal
+// ────────────────────────────────────────────────────────────
 function openCreateModal() {
   audienceEditIndex = null;
-  document.getElementById("audienceModalTitle").textContent = "建立受眾";
-  document.getElementById("audienceSaveBtn").textContent    = "建立";
-  document.getElementById("audienceName").value    = "";
-  document.getElementById("audienceKeyword").value = "";
-  document.getElementById("audienceRichMenu").value = "";
-  document.getElementById("createModal").classList.add("show");
+  document.getElementById('audienceModalTitle').textContent = '建立受眾';
+  document.getElementById('audienceSaveBtn').textContent    = '建立';
+  document.getElementById('audienceName').value    = '';
+  document.getElementById('audienceKeyword').value = '';
+  document.getElementById('audienceRichMenu').value = '';
+  document.getElementById('createModal').classList.add('show');
 }
 
 function closeCreateModal() {
-  document.getElementById("createModal").classList.remove("show");
+  document.getElementById('createModal').classList.remove('show');
   audienceEditIndex = null;
 }
 
 function editAudience(index, rowJson) {
   var row = JSON.parse(decodeURIComponent(rowJson));
-
   audienceEditIndex = index;
-  document.getElementById("audienceModalTitle").textContent = "編輯受眾";
-  document.getElementById("audienceSaveBtn").textContent    = "儲存";
-  document.getElementById("audienceName").value     = row.name;
-  document.getElementById("audienceKeyword").value  = row.keyword || "";
-  document.getElementById("audienceRichMenu").value = row.rich_menu_id || "";
-  document.getElementById("createModal").classList.add("show");
+  document.getElementById('audienceModalTitle').textContent = '編輯受眾';
+  document.getElementById('audienceSaveBtn').textContent    = '儲存';
+  document.getElementById('audienceName').value     = row.name    || '';
+  document.getElementById('audienceKeyword').value  = row.keyword || '';
+  document.getElementById('audienceRichMenu').value = row.rich_menu_id || '';
+  document.getElementById('createModal').classList.add('show');
 }
 
 async function saveAudience() {
-  var name       = document.getElementById("audienceName").value.trim();
-  var keyword    = document.getElementById("audienceKeyword").value.trim();
-  var richMenuId = document.getElementById("audienceRichMenu").value;
+  var name       = document.getElementById('audienceName').value.trim();
+  var keyword    = document.getElementById('audienceKeyword').value.trim();
+  var richMenuId = document.getElementById('audienceRichMenu').value;
 
-  if (!name) {
-    showToast("請填入受眾名稱", "error");
-    return;
-  }
+  if (!name) { showToast('請填入受眾名稱', 'error'); return; }
 
   var result;
-
   if (audienceEditIndex !== null) {
-    // 編輯模式 — 只更新 Sheet，不重建 LINE 受眾
     result = await apiCall({
-      action:        "updateAudience",
-      index:         audienceEditIndex,
-      name:          name,
-      keyword:       keyword,
-      rich_menu_id:  richMenuId
+      action:       'updateAudience',
+      index:        audienceEditIndex,
+      name:         name,
+      keyword:      keyword,
+      rich_menu_id: richMenuId
     });
   } else {
-    // 新增模式
     result = await apiCall({
-      action:        "createAudience",
-      name:          name,
-      keyword:       keyword,
-      rich_menu_id:  richMenuId
+      action:       'createAudience',
+      name:         name,
+      keyword:      keyword,
+      rich_menu_id: richMenuId
     });
   }
 
   if (result.success) {
     closeCreateModal();
-    showToast(audienceEditIndex !== null ? "更新成功" : "受眾建立成功");
+    showToast(audienceEditIndex !== null ? '更新成功' : '受眾建立成功', 'success');
     loadAudience();
   } else {
-    showToast(result.message, "error");
+    showToast(result.message, 'error');
   }
 }
 
-// ===== 匯入 UID =====
-var currentAudienceId = null;
-
+// ────────────────────────────────────────────────────────────
+// 匯入 UID Modal
+// ────────────────────────────────────────────────────────────
 function openImportModal(audienceId, name) {
   currentAudienceId = audienceId;
-  document.getElementById("importModalTitle").textContent = "受眾：" + name;
-  document.getElementById("importModal").classList.add("show");
+  document.getElementById('importModalTitle').textContent = '受眾：' + name;
+  document.getElementById('importUids').value = '';
+  document.getElementById('importModal').classList.add('show');
 }
 
 function closeImportModal() {
-  document.getElementById("importModal").classList.remove("show");
-  document.getElementById("importUids").value = "";
+  document.getElementById('importModal').classList.remove('show');
+  document.getElementById('importUids').value = '';
   currentAudienceId = null;
 }
 
-async function importAudience() {
-  var raw  = document.getElementById("importUids").value.trim();
-  var uids = raw.split("\n").map(function(u) { return u.trim(); }).filter(Boolean);
+async function doImportAudience() {
+  var raw  = document.getElementById('importUids').value.trim();
+  var uids = raw.split('\n').map(function(u) { return u.trim(); }).filter(Boolean);
 
-  if (uids.length === 0) {
-    showToast("請填入至少一筆 UID", "error");
-    return;
-  }
+  if (uids.length === 0) { showToast('請填入至少一筆 UID', 'error'); return; }
 
   var result = await apiCall({
-    action:      "importAudience",
+    action:      'importAudience',
     audience_id: currentAudienceId,
     uids:        uids
   });
 
   if (result.success) {
     closeImportModal();
-    showToast(result.message);
+    showToast(result.message, 'success');
     loadAudience();
   } else {
-    showToast(result.message, "error");
+    showToast(result.message, 'error');
   }
 }
 
-// ===== 同步人數 =====
+// ────────────────────────────────────────────────────────────
+// 同步人數
+// ────────────────────────────────────────────────────────────
 async function syncCount(audienceId, index) {
-  showToast("同步中...");
-
-  var result = await apiCall({
-    action:      "syncAudienceCount",
-    audience_id: audienceId
-  });
-
+  showToast('同步中...');
+  var result = await apiCall({ action: 'syncAudienceCount', audience_id: audienceId });
   if (result.success) {
-    showToast("人數已更新：" + result.count + " 人");
+    showToast('人數已更新：' + result.data.count + ' 人', 'success');
     loadAudience();
   } else {
-    showToast(result.message, "error");
+    showToast(result.message, 'error');
   }
 }
 
-// ===== 刪除受眾 =====
-async function deleteAudience(audienceId, index) {
-  if (!confirmDialog("確定要刪除這個受眾嗎？此操作無法復原。")) return;
+// ────────────────────────────────────────────────────────────
+// 刪除受眾
+// ────────────────────────────────────────────────────────────
+async function doDeleteAudience(audienceId, index) {
+  var ok = await confirmDialog('確定要刪除這個受眾嗎？此操作無法復原。');
+  if (!ok) return;
 
   var result = await apiCall({
-    action:      "deleteAudience",
+    action:      'deleteAudience',
     audience_id: audienceId,
     index:       index
   });
 
   if (result.success) {
-    showToast("受眾已刪除");
+    showToast('受眾已刪除', 'success');
     loadAudience();
   } else {
-    showToast(result.message, "error");
+    showToast(result.message, 'error');
   }
+}
+
+// ────────────────────────────────────────────────────────────
+// 工具函式
+// ────────────────────────────────────────────────────────────
+function _esc(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
