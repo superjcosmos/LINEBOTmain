@@ -1,0 +1,32 @@
+/*
+  各頁面特有樣式放這裡
+  未來新增頁面的專屬 CSS 統一加在此檔
+  目前保留空白，視需求擴充
+*/
+
+/* 範例：儀表板 KPI 卡片 */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.kpi-label {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
