@@ -12,7 +12,10 @@
   <link rel="stylesheet" href="css/auth.css">
   <link rel="stylesheet" href="css/sidebar.css">
   <link rel="stylesheet" href="css/layout.css">
-  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/table.css">
+  <link rel="stylesheet" href="css/button.css">
+  <link rel="stylesheet" href="css/modal.css">
+  <link rel="stylesheet" href="css/form.css">
   <link rel="stylesheet" href="css/pages.css">
 </head>
 <body>
@@ -54,7 +57,6 @@
     </div>
 
     <button class="btn-login" id="btnLogin" onclick="login()">登入</button>
-
     <div class="error-msg" id="errorMsg"></div>
 
     <div style="text-align:center;margin-top:14px;font-size:14px;">
@@ -81,24 +83,18 @@
       <p style="color:#666;font-size:14px;margin-bottom:20px;text-align:center;">
         輸入您的登入 Email，我們將寄送 6 位數驗證碼
       </p>
-
       <div class="form-group">
         <label>電子信箱</label>
         <input type="email" id="forgotEmail" placeholder="your@email.com"
                onkeydown="if(event.key==='Enter') submitForgotPassword()">
       </div>
-
       <div class="error-msg" id="forgotStep1Error"></div>
-
       <button id="btnSendOtp" class="btn-login" onclick="submitForgotPassword()">
         寄送驗證碼
       </button>
-
       <div style="text-align:center;margin-top:14px;font-size:14px;">
         <a href="#" onclick="showLoginPage();return false;"
-           style="color:#06C755;text-decoration:none;">
-          ← 返回登入
-        </a>
+           style="color:#06C755;text-decoration:none;">← 返回登入</a>
       </div>
     </div>
 
@@ -114,7 +110,6 @@
       <p style="color:#f39c12;font-size:12px;margin-bottom:20px;text-align:center;">
         ⏱ 請於 10 分鐘內完成驗證
       </p>
-
       <div class="form-group">
         <label>6 位數驗證碼</label>
         <input type="text" id="otpInput" placeholder="123456"
@@ -123,24 +118,17 @@
                oninput="this.value=this.value.replace(/[^0-9]/g,'')"
                onkeydown="if(event.key==='Enter') submitVerifyOtp()">
       </div>
-
       <div class="error-msg" id="forgotStep2Error"></div>
-
       <button id="btnVerifyOtp" class="btn-login" onclick="submitVerifyOtp()">
         驗證
       </button>
-
       <div style="text-align:center;margin-top:14px;font-size:14px;
                   display:flex;justify-content:center;gap:16px;">
         <a href="#" onclick="resendOtp();return false;"
-           style="color:#06C755;text-decoration:none;">
-          重新寄送驗證碼
-        </a>
+           style="color:#06C755;text-decoration:none;">重新寄送驗證碼</a>
         <span style="color:#ccc;">|</span>
         <a href="#" onclick="showLoginPage();return false;"
-           style="color:#666;text-decoration:none;">
-          返回登入
-        </a>
+           style="color:#666;text-decoration:none;">返回登入</a>
       </div>
     </div>
 
@@ -153,33 +141,25 @@
       <p style="color:#666;font-size:14px;margin-bottom:20px;text-align:center;">
         請為您的帳號設定新密碼
       </p>
-
       <div class="form-group">
         <label>新密碼</label>
         <input type="password" id="newPassword" placeholder="至少 6 個字元"
                oninput="updatePasswordStrength()"
                onkeydown="if(event.key==='Enter') document.getElementById('confirmPassword').focus()">
-        <div id="passwordStrength"
-             style="font-size:12px;margin-top:4px;min-height:16px;"></div>
+        <div id="passwordStrength" style="font-size:12px;margin-top:4px;min-height:16px;"></div>
       </div>
-
       <div class="form-group">
         <label>確認新密碼</label>
         <input type="password" id="confirmPassword" placeholder="再輸入一次"
                onkeydown="if(event.key==='Enter') submitResetPassword()">
       </div>
-
       <div class="error-msg" id="forgotStep3Error"></div>
-
       <button id="btnResetPassword" class="btn-login" onclick="submitResetPassword()">
         確認重設密碼
       </button>
-
       <div style="text-align:center;margin-top:14px;font-size:14px;">
         <a href="#" onclick="showLoginPage();return false;"
-           style="color:#666;text-decoration:none;">
-          返回登入
-        </a>
+           style="color:#666;text-decoration:none;">返回登入</a>
       </div>
     </div>
 
@@ -199,27 +179,25 @@
       <p class="email" id="sidebarEmail"></p>
       <span class="plan" id="sidebarPlan"></span>
     </div>
-
-    <div class="sidebar-menu" id="sidebarMenu">
-      <!-- 由 buildSidebarMenu() 動態產生 -->
-    </div>
-
+    <div class="sidebar-menu" id="sidebarMenu"></div>
     <div class="sidebar-footer">
       <button class="btn-init" onclick="openChangePasswordModal()">🔑 修改密碼</button>
       <button class="btn-logout" onclick="logout()">登出</button>
     </div>
   </div>
-
   <div class="main-content" id="mainContent">
     <div class="loading">載入中...</div>
   </div>
 </div>
 
 <!-- ================================================================
-     JS 載入順序：pages/* → router.js → auth.js
+     JS 載入順序
+     utils/* → api → pages/* → router/* → auth
      ================================================================ -->
 <script src="js/config.js"></script>
-<script src="js/utils.js"></script>
+<script src="js/utils/format.js"></script>
+<script src="js/utils/toast.js"></script>
+<script src="js/utils/dom.js"></script>
 <script src="js/api.js"></script>
 <script src="js/pages/userlog.js"></script>
 <script src="js/pages/reply.js"></script>
@@ -231,7 +209,9 @@
 <script src="js/pages/account.js"></script>
 <script src="js/pages/export.js"></script>
 <script src="js/pages/blacklist.js"></script>
-<script src="js/router.js"></script>
+<script src="js/router/pages.js"></script>
+<script src="js/router/navigate.js"></script>
+<script src="js/router/sidebar.js"></script>
 <script src="js/auth.js"></script>
 
 </body>
