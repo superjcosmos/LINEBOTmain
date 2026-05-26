@@ -4,7 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LINE Bot 管理後台</title>
-  <link rel="stylesheet" href="css/style.css">
+
+  <!-- CSS 模組 -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/toast.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/sidebar.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
 </head>
 <body>
 
@@ -19,7 +28,7 @@
   </div>
 </div>
 
-<!-- ── 全域 Modal 容器（供各頁面動態插入 Modal 用） ── -->
+<!-- ── 全域 Modal 容器 ── -->
 <div id="global-modal"></div>
 
 <!-- ================================================================
@@ -48,7 +57,6 @@
 
     <div class="error-msg" id="errorMsg"></div>
 
-    <!-- 忘記密碼連結 -->
     <div style="text-align:center;margin-top:14px;font-size:14px;">
       <a href="#" onclick="showForgotPassword();return false;"
          style="color:#06C755;text-decoration:none;">
@@ -59,12 +67,12 @@
 </div>
 
 <!-- ================================================================
-     忘記密碼頁（三步驟共用同一容器，切換內部 Step 顯示）
+     忘記密碼頁
      ================================================================ -->
-<div id="forgotPasswordPage" style="display:none;">
+<div id="forgotPasswordPage">
   <div class="login-box">
 
-    <!-- ── Step 1：輸入 Email ── -->
+    <!-- Step 1：輸入 Email -->
     <div id="forgotStep1">
       <div class="logo">
         <p>J Cosmos</p>
@@ -80,7 +88,7 @@
                onkeydown="if(event.key==='Enter') submitForgotPassword()">
       </div>
 
-      <div class="error-msg" id="forgotStep1Error" style="display:none;"></div>
+      <div class="error-msg" id="forgotStep1Error"></div>
 
       <button id="btnSendOtp" class="btn-login" onclick="submitForgotPassword()">
         寄送驗證碼
@@ -94,7 +102,7 @@
       </div>
     </div>
 
-    <!-- ── Step 2：輸入 OTP 驗證碼 ── -->
+    <!-- Step 2：輸入 OTP -->
     <div id="forgotStep2" style="display:none;">
       <div class="logo">
         <p>J Cosmos</p>
@@ -116,13 +124,14 @@
                onkeydown="if(event.key==='Enter') submitVerifyOtp()">
       </div>
 
-      <div class="error-msg" id="forgotStep2Error" style="display:none;"></div>
+      <div class="error-msg" id="forgotStep2Error"></div>
 
       <button id="btnVerifyOtp" class="btn-login" onclick="submitVerifyOtp()">
         驗證
       </button>
 
-      <div style="text-align:center;margin-top:14px;font-size:14px;display:flex;justify-content:center;gap:16px;">
+      <div style="text-align:center;margin-top:14px;font-size:14px;
+                  display:flex;justify-content:center;gap:16px;">
         <a href="#" onclick="resendOtp();return false;"
            style="color:#06C755;text-decoration:none;">
           重新寄送驗證碼
@@ -135,7 +144,7 @@
       </div>
     </div>
 
-    <!-- ── Step 3：設定新密碼 ── -->
+    <!-- Step 3：設定新密碼 -->
     <div id="forgotStep3" style="display:none;">
       <div class="logo">
         <p>J Cosmos</p>
@@ -150,7 +159,6 @@
         <input type="password" id="newPassword" placeholder="至少 6 個字元"
                oninput="updatePasswordStrength()"
                onkeydown="if(event.key==='Enter') document.getElementById('confirmPassword').focus()">
-        <!-- 密碼強度提示 -->
         <div id="passwordStrength"
              style="font-size:12px;margin-top:4px;min-height:16px;"></div>
       </div>
@@ -161,7 +169,7 @@
                onkeydown="if(event.key==='Enter') submitResetPassword()">
       </div>
 
-      <div class="error-msg" id="forgotStep3Error" style="display:none;"></div>
+      <div class="error-msg" id="forgotStep3Error"></div>
 
       <button id="btnResetPassword" class="btn-login" onclick="submitResetPassword()">
         確認重設密碼
@@ -208,8 +216,7 @@
 </div>
 
 <!-- ================================================================
-     JS 載入順序
-     pages/* → router.js → auth.js（auth 必須最後）
+     JS 載入順序：pages/* → router.js → auth.js
      ================================================================ -->
 <script src="js/config.js"></script>
 <script src="js/utils.js"></script>
