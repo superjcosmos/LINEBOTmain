@@ -40,6 +40,15 @@ body {
   background: #f0f2f5;
 }
 
+/* ===== 忘記密碼頁（與登入頁相同佈局） ===== */
+#forgotPasswordPage {
+  min-height: 100vh;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: #f0f2f5;
+}
+
 .login-box {
   background: white;
   padding: 48px 40px;
