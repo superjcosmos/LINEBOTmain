@@ -1,0 +1,26 @@
+.main-content {
+  margin-left: 240px;
+  padding: 32px;
+  min-height: 100vh;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 24px;
+}
+
+.toolbar { margin-bottom: 16px; }
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #aaa;
+}
+
+.empty {
+  text-align: center;
+  color: #aaa;
+  padding: 40px;
+}
