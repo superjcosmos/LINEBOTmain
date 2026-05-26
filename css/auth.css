@@ -1,0 +1,55 @@
+/* ===== 登入頁 ===== */
+#loginPage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f2f5;
+}
+
+/* ===== 忘記密碼頁 ===== */
+#forgotPasswordPage {
+  min-height: 100vh;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: #f0f2f5;
+}
+
+.login-box {
+  background: white;
+  padding: 48px 40px;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  width: 100%;
+  max-width: 400px;
+}
+
+.logo { text-align: center; margin-bottom: 32px; }
+.logo p  { font-size: 13px; color: #06C755; font-weight: 600; letter-spacing: 1px; }
+.logo h1 { font-size: 22px; color: #1a1a2e; font-weight: 700; margin-top: 4px; }
+
+.error-msg {
+  color: #e53e3e;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 12px;
+  display: none;
+}
+
+.btn-login {
+  width: 100%;
+  padding: 14px;
+  background: #06C755;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.2s;
+}
+
+.btn-login:hover    { background: #05a847; }
+.btn-login:disabled { background: #aaa; cursor: not-allowed; }
