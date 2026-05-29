@@ -1,11 +1,10 @@
 // pages/export.js
 
-function loadExport() {
+async function loadExport() {
   const html = `
     <div class="page-header">
       <h2>匯出資料</h2>
     </div>
-
     <div class="card" style="margin-bottom:20px;">
       <div class="card-header"><h3>用戶記錄匯出</h3></div>
       <div class="card-body">
@@ -25,7 +24,6 @@ function loadExport() {
         </button>
       </div>
     </div>
-
     <div class="card">
       <div class="card-header"><h3>受眾 UID 名單匯出</h3></div>
       <div class="card-body">
@@ -43,20 +41,29 @@ function loadExport() {
     </div>`;
 
   setContent(html);
-  _loadAudienceOptions();
+  await _loadAudienceOptions();
 }
 
 async function _loadAudienceOptions() {
-  const res = await apiCall({ action: 'getAudienceList' });
-  if (!res.success) return;
   const select = document.getElementById('export-audience-id');
   if (!select) return;
-  (res.data.list || []).forEach(a => {
-    const opt = document.createElement('option');
-    opt.value = a.audience_id;
-    opt.textContent = `${a.audience_name}（${a.count} 人）`;
-    select.appendChild(opt);
-  });
+
+  try {
+    const res = await apiCall({ action: 'getAudienceList' });
+    if (!res.success) return;
+
+    const list = (res.data && res.data.list) ? res.data.list : (res.list || []);
+
+    list.forEach(a => {
+      const opt       = document.createElement('option');
+      opt.value       = a.audience_id;
+      opt.textContent = a.audience_name + '（' + (a.count || 0) + ' 人）';
+      select.appendChild(opt);
+    });
+
+  } catch(e) {
+    showToast('受眾清單載入失敗', 'error');
+  }
 }
 
 async function doExportUserLog() {
@@ -64,7 +71,7 @@ async function doExportUserLog() {
   const endDate   = document.getElementById('export-end').value;
 
   const res = await apiCall({
-    action: 'exportUserLog',
+    action:     'exportUserLog',
     start_date: startDate,
     end_date:   endDate
   });
@@ -72,15 +79,15 @@ async function doExportUserLog() {
   if (!res.success) { showToast(res.message || '匯出失敗', 'error'); return; }
   if (res.data.total === 0) { showToast('沒有符合條件的資料', 'warning'); return; }
 
-  _downloadCsv(res.data.csv, `userlog_${_today()}.csv`);
-  showToast(`已匯出 ${res.data.total} 筆記錄`, 'success');
+  _downloadCsv(res.data.csv, 'userlog_' + _today() + '.csv');
+  showToast('已匯出 ' + res.data.total + ' 筆記錄', 'success');
 }
 
 async function doExportAudienceUID() {
   const audienceId = document.getElementById('export-audience-id').value;
 
   const res = await apiCall({
-    action: 'exportAudienceUID',
+    action:      'exportAudienceUID',
     audience_id: audienceId
   });
 
@@ -88,16 +95,14 @@ async function doExportAudienceUID() {
   if (res.data.total === 0) { showToast('此受眾尚無成員', 'warning'); return; }
 
   const filename = audienceId
-    ? `audience_${audienceId}_${_today()}.csv`
-    : `audience_all_${_today()}.csv`;
+    ? 'audience_' + audienceId + '_' + _today() + '.csv'
+    : 'audience_all_' + _today() + '.csv';
 
   _downloadCsv(res.data.csv, filename);
-  showToast(`已匯出 ${res.data.total} 筆 UID`, 'success');
+  showToast('已匯出 ' + res.data.total + ' 筆 UID', 'success');
 }
 
-// ─── 下載 helper ───
 function _downloadCsv(csvContent, filename) {
-  // 加 BOM 讓 Excel 正確顯示中文
   const bom  = '\uFEFF';
   const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
