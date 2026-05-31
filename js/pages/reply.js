@@ -6,6 +6,7 @@ var _replyAll      = [];
 var _replyFiltered = [];
 var _replyPage     = 1;
 var _replyPageSize = 20;
+var _replyEditIndex = null;
 
 // ────────────────────────────────────────────────────────────
 // 載入頁面
@@ -173,17 +174,14 @@ function _renderReplyTable() {
 
   var rows = page.map(function(r) {
     var rowJson = encodeURIComponent(JSON.stringify(r));
+    var statusColor = r.status === '啟用' ? '#06C755' : '#aaa';
     return '<tr>' +
       '<td>' + _escR(r.keyword) + '</td>' +
       '<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
         _escR(r.content) + '</td>' +
       '<td>' + _escR(r.start_time) + ' ~ ' + _escR(r.end_time) + '</td>' +
       '<td>' + _escR(r.week) + '</td>' +
-      '<td>' +
-        '<span style="color:' + (r.status === '啟用' ? '#06C755' : '#aaa') + ';font-weight:600;">' +
-          _escR(r.status) +
-        '</span>' +
-      '</td>' +
+      '<td><span style="color:' + statusColor + ';font-weight:600;">' + _escR(r.status) + '</span></td>' +
       '<td style="white-space:nowrap;">' +
         '<button class="btn btn-edit" onclick="editReply(\'' + rowJson + '\')">編輯</button> ' +
         '<button class="btn btn-danger" onclick="deleteReply(' + r.index + ')">刪除</button>' +
@@ -201,7 +199,7 @@ function _renderReplyTable() {
 }
 
 // ────────────────────────────────────────────────────────────
-// 分頁
+// 渲染分頁
 // ────────────────────────────────────────────────────────────
 function _renderReplyPager() {
   var pager = document.getElementById('replyPager');
@@ -210,19 +208,22 @@ function _renderReplyPager() {
   var totalPages = Math.ceil(total / _replyPageSize);
   if (totalPages <= 1) { pager.innerHTML = ''; return; }
 
-  var btn = function(label, page, active, disabled) {
-    if (disabled) return '<button disabled style="padding:6px 12px;border-radius:6px;border:1.5px solid #e0e0e0;background:#f5f5f5;color:#ccc;cursor:not-allowed;font-size:13px;">' + label + '</button>';
-    var s = active
-      ? 'style="padding:6px 12px;border-radius:6px;border:none;background:#06C755;color:white;cursor:pointer;font-size:13px;font-weight:600;"'
-      : 'style="padding:6px 12px;border-radius:6px;border:1.5px solid #e0e0e0;background:white;cursor:pointer;font-size:13px;"';
-    return '<button ' + s + ' onclick="gotoReplyPage(' + page + ')">' + label + '</button>';
-  };
+  var btnStyle       = 'style="padding:6px 12px;border-radius:6px;border:1.5px solid #e0e0e0;background:white;cursor:pointer;font-size:13px;"';
+  var activeBtnStyle = 'style="padding:6px 12px;border-radius:6px;border:none;background:#06C755;color:white;cursor:pointer;font-size:13px;font-weight:600;"';
+  var disabledStyle  = 'style="padding:6px 12px;border-radius:6px;border:1.5px solid #e0e0e0;background:#f5f5f5;color:#ccc;cursor:not-allowed;font-size:13px;"';
 
-  var html = btn('上一頁', _replyPage - 1, false, _replyPage === 1);
+  var html = '';
+  html += '<button ' + (_replyPage === 1 ? 'disabled ' + disabledStyle : btnStyle) +
+          ' onclick="gotoReplyPage(' + (_replyPage - 1) + ')">上一頁</button>';
+
   for (var i = 1; i <= totalPages; i++) {
-    html += btn(i, i, i === _replyPage, false);
+    html += '<button ' + (i === _replyPage ? activeBtnStyle : btnStyle) +
+            ' onclick="gotoReplyPage(' + i + ')">' + i + '</button>';
   }
-  html += btn('下一頁', _replyPage + 1, false, _replyPage === totalPages);
+
+  html += '<button ' + (_replyPage === totalPages ? 'disabled ' + disabledStyle : btnStyle) +
+          ' onclick="gotoReplyPage(' + (_replyPage + 1) + ')">下一頁</button>';
+
   pager.innerHTML = html;
 }
 
@@ -237,8 +238,6 @@ function gotoReplyPage(page) {
 // ────────────────────────────────────────────────────────────
 // Modal 開關
 // ────────────────────────────────────────────────────────────
-var _replyEditIndex = null;
-
 function openReplyCreateModal() {
   _replyEditIndex = null;
   document.getElementById('replyModalTitle').textContent = '新增回覆';
@@ -251,9 +250,9 @@ function openReplyCreateModal() {
   // 全勾
   document.querySelectorAll('.replyWeek').forEach(function(cb) { cb.checked = true; });
   // 重置同步建立受眾
-  document.getElementById('replyCreateAud').checked      = false;
-  document.getElementById('replyAudName').value          = '';
-  document.getElementById('replyAudField').style.display = 'none';
+  document.getElementById('replyCreateAud').checked       = false;
+  document.getElementById('replyAudName').value           = '';
+  document.getElementById('replyAudField').style.display  = 'none';
   document.getElementById('replyAudSection').style.display = 'block';
   document.getElementById('replyModal').classList.add('show');
 }
@@ -263,11 +262,11 @@ function editReply(rowJson) {
   _replyEditIndex = r.index;
   document.getElementById('replyModalTitle').textContent = '編輯回覆';
   document.getElementById('replySaveBtn').textContent    = '儲存';
-  document.getElementById('replyKeyword').value   = r.keyword    || '';
-  document.getElementById('replyContent').value   = r.content    || '';
-  document.getElementById('replyStartTime').value = r.start_time || '00:00';
-  document.getElementById('replyEndTime').value   = r.end_time   || '23:59';
-  document.getElementById('replyStatus').value    = r.status     || '啟用';
+  document.getElementById('replyKeyword').value   = r.keyword || '';
+  document.getElementById('replyContent').value   = r.content || '';
+  document.getElementById('replyStartTime').value = _parseTimeValue(r.start_time);
+  document.getElementById('replyEndTime').value   = _parseTimeValue(r.end_time);
+  document.getElementById('replyStatus').value    = r.status  || '啟用';
   // 星期
   var checked = (r.week || '').split(',').map(function(d) { return d.trim(); });
   document.querySelectorAll('.replyWeek').forEach(function(cb) {
@@ -318,7 +317,6 @@ async function saveReply() {
     status:     status
   };
 
-  // 新增時才帶同步受眾參數
   if (_replyEditIndex !== null) {
     params.row_index = _replyEditIndex;
   } else {
@@ -351,8 +349,33 @@ async function deleteReply(index) {
 }
 
 // ────────────────────────────────────────────────────────────
-// 工具
+// 工具函式
 // ────────────────────────────────────────────────────────────
+
+/**
+ * 處理前端接收到的時間值
+ * 可能是 "HH:MM" 正常格式，或 "1899-12-29T16:00:00.000Z" 壞掉的格式
+ */
+function _parseTimeValue(val) {
+  if (!val) return '00:00';
+  var str = String(val).trim();
+  // 正常 HH:MM 格式
+  if (/^\d{1,2}:\d{2}$/.test(str)) {
+    var parts = str.split(':');
+    return ('0' + parts[0]).slice(-2) + ':' + ('0' + parts[1]).slice(-2);
+  }
+  // ISO Date 格式（GAS 存壞的時間）
+  try {
+    var d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      var h = (d.getUTCHours() + 8) % 24;
+      var m = d.getUTCMinutes();
+      return ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+    }
+  } catch(e) {}
+  return '00:00';
+}
+
 function _escR(str) {
   if (!str) return '';
   return String(str)
