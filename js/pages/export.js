@@ -49,16 +49,16 @@ async function _loadAudienceOptions() {
   if (!select) return;
 
   try {
-    const res = await apiCall({ action: 'getAudienceList' });
+    const res  = await apiCall({ action: 'getAudienceList' });
     if (!res.success) return;
 
-    // getAudienceList 回傳的是陣列，欄位名是 name 不是 audience_name
+    // res.data 是陣列，欄位是 name（不是 audience_name）
     const list = Array.isArray(res.data) ? res.data : [];
 
     list.forEach(a => {
       const opt       = document.createElement('option');
       opt.value       = a.audience_id;
-      opt.textContent = a.name + '（' + (a.count || 0) + ' 人）';  // ← name
+      opt.textContent = a.name + '（' + (a.count || 0) + ' 人）';
       select.appendChild(opt);
     });
 
