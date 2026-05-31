@@ -87,18 +87,42 @@ function _buildAudienceShell() {
     '<div class="modal-overlay" id="createModal">' +
       '<div class="modal">' +
         '<h3 id="audienceModalTitle">建立受眾</h3>' +
+
         '<div class="form-group">' +
           '<label>受眾名稱</label>' +
           '<input type="text" id="audienceName" placeholder="例如：VIP客戶">' +
         '</div>' +
+
         '<div class="form-group">' +
           '<label>觸發關鍵字（選填）</label>' +
           '<input type="text" id="audienceKeyword" placeholder="用戶輸入此關鍵字自動加入">' +
         '</div>' +
+
         '<div class="form-group">' +
           '<label>觸發後切換圖文選單（選填）</label>' +
           '<select id="audienceRichMenu">' + _audienceRmOptions + '</select>' +
         '</div>' +
+
+        // ── 同步建立自動回覆（僅建立時顯示）──
+        '<div id="autoReplySection" style="margin-top:4px;">' +
+          '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;' +
+                         'font-size:14px;color:#444;user-select:none;">' +
+            '<input type="checkbox" id="audAutoReply" onchange="toggleAudReplyField()" ' +
+                   'style="width:16px;height:16px;cursor:pointer;">' +
+            '同時新增自動回覆關鍵字' +
+          '</label>' +
+          '<div id="audReplyField" style="display:none;margin-top:10px;">' +
+            '<label style="font-size:13px;color:#666;display:block;margin-bottom:4px;">' +
+              '回覆內容（用戶加入後自動回覆）' +
+            '</label>' +
+            '<textarea id="audReplyContent" rows="3" ' +
+              'placeholder="例如：歡迎加入VIP，專屬優惠即將送上！"' +
+              ' style="width:100%;padding:8px 10px;border:1.5px solid #e0e0e0;' +
+                      'border-radius:8px;font-size:14px;resize:vertical;' +
+                      'box-sizing:border-box;outline:none;"></textarea>' +
+          '</div>' +
+        '</div>' +
+
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeCreateModal()">取消</button>' +
           '<button class="btn btn-primary" id="audienceSaveBtn" onclick="saveAudience()">建立</button>' +
@@ -123,6 +147,14 @@ function _buildAudienceShell() {
         '</div>' +
       '</div>' +
     '</div>';
+}
+
+// ────────────────────────────────────────────────────────────
+// 同步建立自動回覆：切換顯示
+// ────────────────────────────────────────────────────────────
+function toggleAudReplyField() {
+  var checked = document.getElementById('audAutoReply').checked;
+  document.getElementById('audReplyField').style.display = checked ? 'block' : 'none';
 }
 
 // ────────────────────────────────────────────────────────────
@@ -165,10 +197,7 @@ function _renderAudienceTable() {
   var end   = Math.min(start + _audiencePageSize, total);
   var page  = _audienceFiltered.slice(start, end);
 
-  // 找圖文選單名稱用（從 _audienceAll 裡取，因為沒有 richMenuResult 的引用）
-  // 改用 rich_menu_id 對照表（loadAudience 時已存）
   var rows = page.map(function(row) {
-    // 找圖文選單名稱：從 select 選項裡取
     var rmName = '-';
     if (row.rich_menu_id) {
       var sel = document.getElementById('audienceRichMenu');
@@ -218,7 +247,7 @@ function _renderAudiencePager() {
   var pager = document.getElementById('audiencePager');
   if (!pager) return;
 
-  var total     = _audienceFiltered.length;
+  var total      = _audienceFiltered.length;
   var totalPages = Math.ceil(total / _audiencePageSize);
 
   if (totalPages <= 1) { pager.innerHTML = ''; return; }
@@ -230,11 +259,9 @@ function _renderAudiencePager() {
 
   var html = '';
 
-  // 上一頁
   html += '<button ' + (_audiencePage === 1 ? 'disabled ' : '') + btnStyle +
           ' onclick="gotoAudiencePage(' + (_audiencePage - 1) + ')">上一頁</button>';
 
-  // 頁碼（最多顯示7個，超過用 ...）
   var pages = _buildPageNumbers(totalPages, _audiencePage);
   pages.forEach(function(p) {
     if (p === '...') {
@@ -245,7 +272,6 @@ function _renderAudiencePager() {
     }
   });
 
-  // 下一頁
   html += '<button ' + (_audiencePage === totalPages ? 'disabled ' : '') + btnStyle +
           ' onclick="gotoAudiencePage(' + (_audiencePage + 1) + ')">下一頁</button>';
 
@@ -283,9 +309,15 @@ function openCreateModal() {
   audienceEditIndex = null;
   document.getElementById('audienceModalTitle').textContent = '建立受眾';
   document.getElementById('audienceSaveBtn').textContent    = '建立';
-  document.getElementById('audienceName').value    = '';
-  document.getElementById('audienceKeyword').value = '';
+  document.getElementById('audienceName').value     = '';
+  document.getElementById('audienceKeyword').value  = '';
   document.getElementById('audienceRichMenu').value = '';
+  // 重置同步回覆欄位
+  document.getElementById('audAutoReply').checked       = false;
+  document.getElementById('audReplyContent').value      = '';
+  document.getElementById('audReplyField').style.display = 'none';
+  // 建立時才顯示同步回覆區塊
+  document.getElementById('autoReplySection').style.display = 'block';
   document.getElementById('createModal').classList.add('show');
 }
 
@@ -299,21 +331,32 @@ function editAudience(index, rowJson) {
   audienceEditIndex = index;
   document.getElementById('audienceModalTitle').textContent = '編輯受眾';
   document.getElementById('audienceSaveBtn').textContent    = '儲存';
-  document.getElementById('audienceName').value     = row.name    || '';
-  document.getElementById('audienceKeyword').value  = row.keyword || '';
+  document.getElementById('audienceName').value     = row.name         || '';
+  document.getElementById('audienceKeyword').value  = row.keyword      || '';
   document.getElementById('audienceRichMenu').value = row.rich_menu_id || '';
+  // 編輯時隱藏同步回覆區塊（已存在的受眾不重複建立）
+  document.getElementById('autoReplySection').style.display = 'none';
   document.getElementById('createModal').classList.add('show');
 }
 
 async function saveAudience() {
-  var name       = document.getElementById('audienceName').value.trim();
-  var keyword    = document.getElementById('audienceKeyword').value.trim();
-  var richMenuId = document.getElementById('audienceRichMenu').value;
+  var name         = document.getElementById('audienceName').value.trim();
+  var keyword      = document.getElementById('audienceKeyword').value.trim();
+  var richMenuId   = document.getElementById('audienceRichMenu').value;
+  var autoReply    = document.getElementById('audAutoReply')
+                       ? document.getElementById('audAutoReply').checked
+                       : false;
+  var replyContent = document.getElementById('audReplyContent')
+                       ? document.getElementById('audReplyContent').value.trim()
+                       : '';
 
   if (!name) { showToast('請填入受眾名稱', 'error'); return; }
+  if (autoReply && !keyword)      { showToast('要同步建立回覆，請先填入觸發關鍵字', 'error'); return; }
+  if (autoReply && !replyContent) { showToast('請填入回覆內容', 'error'); return; }
 
   var result;
   if (audienceEditIndex !== null) {
+    // 編輯：不帶 auto_reply 參數
     result = await apiCall({
       action:       'updateAudience',
       index:        audienceEditIndex,
@@ -322,17 +365,25 @@ async function saveAudience() {
       rich_menu_id: richMenuId
     });
   } else {
+    // 建立：帶入同步回覆參數
     result = await apiCall({
-      action:       'createAudience',
-      name:         name,
-      keyword:      keyword,
-      rich_menu_id: richMenuId
+      action:        'createAudience',
+      name:          name,
+      keyword:       keyword,
+      rich_menu_id:  richMenuId,
+      auto_reply:    autoReply,
+      reply_content: replyContent
     });
   }
 
   if (result.success) {
     closeCreateModal();
-    showToast(audienceEditIndex !== null ? '更新成功' : '受眾建立成功', 'success');
+    showToast(
+      audienceEditIndex !== null
+        ? '更新成功'
+        : (result.data && result.data.message ? result.data.message : '受眾建立成功'),
+      'success'
+    );
     loadAudience();
   } else {
     showToast(result.message, 'error');
