@@ -1,89 +1,85 @@
+// ============================================================
+// js/pages/reply.js
+// ============================================================
+
+var _replyAll      = [];
+var _replyFiltered = [];
+var _replyPage     = 1;
+var _replyPageSize = 20;
+
+// ────────────────────────────────────────────────────────────
+// 載入頁面
+// ────────────────────────────────────────────────────────────
 async function loadReply() {
   setContent('<div class="loading">載入中...</div>');
 
-  var result = await apiCall({ action: "getReplySettings" });
-
-  if (!result.success) {
-    setContent('<div class="loading">載入失敗：' + result.message + '</div>');
+  var res = await apiCall({ action: 'getReplySettings' });
+  if (!res.success) {
+    setContent('<div class="empty">載入失敗：' + res.message + '</div>');
     return;
   }
 
-  var rows = result.data.map(function(row) {
-    var tagClass  = (row.status === "啟用" || row.status === "開啟") ? "tag-active" : "tag-inactive";
-    var timeRange = (row.start && row.end) ? row.start + " ~ " + row.end : "全天";
-    var weekText  = row.week ? row.week : "每天";
-    return '<tr>' +
-      '<td>' + row.keyword + '</td>' +
-      '<td>' + (row.content || "-") + '</td>' +
-      '<td>' + timeRange + '</td>' +
-      '<td>' + weekText + '</td>' +
-      '<td><span class="tag ' + tagClass + '">' + row.status + '</span></td>' +
-      '<td>' +
-        '<button class="btn btn-edit" ' +
-          'onclick="editReply(' + row.index + ',\'' +
-          encodeURIComponent(JSON.stringify(row)) + '\')">編輯</button> ' +
-        '<button class="btn btn-danger" ' +
-          'onclick="deleteReply(' + row.index + ')">刪除</button>' +
-      '</td>' +
-    '</tr>';
-  }).join("");
+  _replyAll      = res.data || [];
+  _replyFiltered = _replyAll.slice();
+  _replyPage     = 1;
 
-  setContent(
+  setContent(_buildReplyShell());
+  _renderReplyTable();
+  _renderReplyPager();
+}
+
+// ────────────────────────────────────────────────────────────
+// 頁面骨架
+// ────────────────────────────────────────────────────────────
+function _buildReplyShell() {
+  return '' +
     '<h2 class="page-title">自動回覆設定</h2>' +
     '<div class="card">' +
-      '<div class="toolbar">' +
-        '<button class="btn btn-primary" onclick="openReplyModal()">＋ 新增回覆</button>' +
+      '<div class="toolbar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
+        '<button class="btn btn-primary" onclick="openReplyCreateModal()">＋ 新增回覆</button>' +
+        '<input type="text" id="replySearch" placeholder="搜尋關鍵字或內容..."' +
+          ' oninput="filterReply()"' +
+          ' style="flex:1;min-width:180px;max-width:320px;padding:8px 12px;' +
+                  'border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;">' +
+        '<span id="replyTotalHint" style="color:#888;font-size:13px;white-space:nowrap;"></span>' +
       '</div>' +
-      '<table>' +
-        '<thead><tr>' +
-          '<th>關鍵字</th>' +
-          '<th>回覆內容</th>' +
-          '<th>時段</th>' +
-          '<th>星期</th>' +
-          '<th>狀態</th>' +
-          '<th>操作</th>' +
-        '</tr></thead>' +
-        '<tbody>' +
-          (rows || '<tr><td colspan="6" class="empty">尚無資料</td></tr>') +
-        '</tbody>' +
-      '</table>' +
+      '<div id="replyTableWrap"></div>' +
+      '<div id="replyPager" style="display:flex;justify-content:center;gap:6px;margin-top:16px;flex-wrap:wrap;"></div>' +
     '</div>' +
 
+    // ── 新增 / 編輯 Modal ──
     '<div class="modal-overlay" id="replyModal">' +
-      '<div class="modal">' +
-        '<h3 id="modalTitle">新增自動回覆</h3>' +
+      '<div class="modal" style="max-width:520px;">' +
+        '<h3 id="replyModalTitle">新增回覆</h3>' +
 
         '<div class="form-group">' +
-          '<label>關鍵字</label>' +
+          '<label>觸發關鍵字</label>' +
           '<input type="text" id="replyKeyword" placeholder="例如：你好">' +
         '</div>' +
 
         '<div class="form-group">' +
           '<label>回覆內容</label>' +
-          '<textarea id="replyContent" placeholder="回覆的文字內容"></textarea>' +
+          '<textarea id="replyContent" rows="3" placeholder="例如：哈囉！感謝你的訊息"' +
+            ' style="width:100%;padding:8px 10px;border:1.5px solid #e0e0e0;' +
+                    'border-radius:8px;font-size:14px;resize:vertical;' +
+                    'box-sizing:border-box;outline:none;"></textarea>' +
         '</div>' +
 
-        '<div class="form-row">' +
-          '<div class="form-group half">' +
+        '<div class="form-group" style="display:flex;gap:12px;">' +
+          '<div style="flex:1;">' +
             '<label>開始時間</label>' +
-            '<input type="time" id="replyStart" value="00:00">' +
+            '<input type="time" id="replyStartTime" value="00:00">' +
           '</div>' +
-          '<div class="form-group half">' +
+          '<div style="flex:1;">' +
             '<label>結束時間</label>' +
-            '<input type="time" id="replyEnd" value="23:59">' +
+            '<input type="time" id="replyEndTime" value="23:59">' +
           '</div>' +
         '</div>' +
 
         '<div class="form-group">' +
-          '<label>星期</label>' +
-          '<div class="week-selector">' +
-            '<label class="week-item"><input type="checkbox" value="1" checked> 一</label>' +
-            '<label class="week-item"><input type="checkbox" value="2" checked> 二</label>' +
-            '<label class="week-item"><input type="checkbox" value="3" checked> 三</label>' +
-            '<label class="week-item"><input type="checkbox" value="4" checked> 四</label>' +
-            '<label class="week-item"><input type="checkbox" value="5" checked> 五</label>' +
-            '<label class="week-item"><input type="checkbox" value="6" checked> 六</label>' +
-            '<label class="week-item"><input type="checkbox" value="0" checked> 日</label>' +
+          '<label>適用星期</label>' +
+          '<div id="replyWeekWrap" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">' +
+            _buildWeekCheckboxes() +
           '</div>' +
         '</div>' +
 
@@ -95,112 +91,274 @@ async function loadReply() {
           '</select>' +
         '</div>' +
 
+        // ── 同步建立受眾（僅新增時顯示）──
+        '<div id="replyAudSection">' +
+          '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;' +
+                         'font-size:14px;color:#444;user-select:none;">' +
+            '<input type="checkbox" id="replyCreateAud" onchange="toggleReplyAudField()"' +
+                   ' style="width:16px;height:16px;cursor:pointer;">' +
+            '同時建立受眾（用此關鍵字觸發加入）' +
+          '</label>' +
+          '<div id="replyAudField" style="display:none;margin-top:10px;">' +
+            '<label style="font-size:13px;color:#666;display:block;margin-bottom:4px;">' +
+              '受眾名稱（留空則使用關鍵字作為名稱）' +
+            '</label>' +
+            '<input type="text" id="replyAudName"' +
+              ' placeholder="例如：VIP客戶（留空則用關鍵字）"' +
+              ' style="width:100%;padding:8px 10px;border:1.5px solid #e0e0e0;' +
+                      'border-radius:8px;font-size:14px;box-sizing:border-box;outline:none;">' +
+          '</div>' +
+        '</div>' +
+
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeReplyModal()">取消</button>' +
-          '<button class="btn btn-primary" onclick="saveReply()">儲存</button>' +
+          '<button class="btn btn-primary" id="replySaveBtn" onclick="saveReply()">新增</button>' +
         '</div>' +
       '</div>' +
-    '</div>'
-  );
+    '</div>';
 }
 
-function openReplyModal() {
-  document.getElementById("replyModal").classList.add("show");
+function _buildWeekCheckboxes() {
+  var days   = ['一','二','三','四','五','六','日'];
+  var values = ['1','2','3','4','5','6','0'];
+  return days.map(function(d, i) {
+    return '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;">' +
+      '<input type="checkbox" class="replyWeek" value="' + values[i] + '" checked> 週' + d +
+    '</label>';
+  }).join('');
+}
+
+// ────────────────────────────────────────────────────────────
+// 同步建立受眾切換
+// ────────────────────────────────────────────────────────────
+function toggleReplyAudField() {
+  var checked = document.getElementById('replyCreateAud').checked;
+  document.getElementById('replyAudField').style.display = checked ? 'block' : 'none';
+}
+
+// ────────────────────────────────────────────────────────────
+// 搜尋過濾
+// ────────────────────────────────────────────────────────────
+function filterReply() {
+  var kw = (document.getElementById('replySearch').value || '').trim().toLowerCase();
+  _replyFiltered = kw
+    ? _replyAll.filter(function(r) {
+        return (r.keyword || '').toLowerCase().includes(kw) ||
+               (r.content || '').toLowerCase().includes(kw);
+      })
+    : _replyAll.slice();
+  _replyPage = 1;
+  _renderReplyTable();
+  _renderReplyPager();
+}
+
+// ────────────────────────────────────────────────────────────
+// 渲染表格
+// ────────────────────────────────────────────────────────────
+function _renderReplyTable() {
+  var wrap = document.getElementById('replyTableWrap');
+  var hint = document.getElementById('replyTotalHint');
+  if (!wrap) return;
+
+  var total = _replyFiltered.length;
+  if (hint) hint.textContent = '共 ' + total + ' 筆';
+
+  if (total === 0) {
+    wrap.innerHTML = '<p class="empty">尚無自動回覆設定</p>';
+    return;
+  }
+
+  var start = (_replyPage - 1) * _replyPageSize;
+  var page  = _replyFiltered.slice(start, Math.min(start + _replyPageSize, total));
+
+  var rows = page.map(function(r) {
+    var rowJson = encodeURIComponent(JSON.stringify(r));
+    return '<tr>' +
+      '<td>' + _escR(r.keyword) + '</td>' +
+      '<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+        _escR(r.content) + '</td>' +
+      '<td>' + _escR(r.start_time) + ' ~ ' + _escR(r.end_time) + '</td>' +
+      '<td>' + _escR(r.week) + '</td>' +
+      '<td>' +
+        '<span style="color:' + (r.status === '啟用' ? '#06C755' : '#aaa') + ';font-weight:600;">' +
+          _escR(r.status) +
+        '</span>' +
+      '</td>' +
+      '<td style="white-space:nowrap;">' +
+        '<button class="btn btn-edit" onclick="editReply(\'' + rowJson + '\')">編輯</button> ' +
+        '<button class="btn btn-danger" onclick="deleteReply(' + r.index + ')">刪除</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+
+  wrap.innerHTML =
+    '<table>' +
+      '<thead><tr>' +
+        '<th>關鍵字</th><th>回覆內容</th><th>時段</th><th>星期</th><th>狀態</th><th>操作</th>' +
+      '</tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table>';
+}
+
+// ────────────────────────────────────────────────────────────
+// 分頁
+// ────────────────────────────────────────────────────────────
+function _renderReplyPager() {
+  var pager = document.getElementById('replyPager');
+  if (!pager) return;
+  var total      = _replyFiltered.length;
+  var totalPages = Math.ceil(total / _replyPageSize);
+  if (totalPages <= 1) { pager.innerHTML = ''; return; }
+
+  var btn = function(label, page, active, disabled) {
+    if (disabled) return '<button disabled style="padding:6px 12px;border-radius:6px;border:1.5px solid #e0e0e0;background:#f5f5f5;color:#ccc;cursor:not-allowed;font-size:13px;">' + label + '</button>';
+    var s = active
+      ? 'style="padding:6px 12px;border-radius:6px;border:none;background:#06C755;color:white;cursor:pointer;font-size:13px;font-weight:600;"'
+      : 'style="padding:6px 12px;border-radius:6px;border:1.5px solid #e0e0e0;background:white;cursor:pointer;font-size:13px;"';
+    return '<button ' + s + ' onclick="gotoReplyPage(' + page + ')">' + label + '</button>';
+  };
+
+  var html = btn('上一頁', _replyPage - 1, false, _replyPage === 1);
+  for (var i = 1; i <= totalPages; i++) {
+    html += btn(i, i, i === _replyPage, false);
+  }
+  html += btn('下一頁', _replyPage + 1, false, _replyPage === totalPages);
+  pager.innerHTML = html;
+}
+
+function gotoReplyPage(page) {
+  var totalPages = Math.ceil(_replyFiltered.length / _replyPageSize);
+  if (page < 1 || page > totalPages) return;
+  _replyPage = page;
+  _renderReplyTable();
+  _renderReplyPager();
+}
+
+// ────────────────────────────────────────────────────────────
+// Modal 開關
+// ────────────────────────────────────────────────────────────
+var _replyEditIndex = null;
+
+function openReplyCreateModal() {
+  _replyEditIndex = null;
+  document.getElementById('replyModalTitle').textContent = '新增回覆';
+  document.getElementById('replySaveBtn').textContent    = '新增';
+  document.getElementById('replyKeyword').value   = '';
+  document.getElementById('replyContent').value   = '';
+  document.getElementById('replyStartTime').value = '00:00';
+  document.getElementById('replyEndTime').value   = '23:59';
+  document.getElementById('replyStatus').value    = '啟用';
+  // 全勾
+  document.querySelectorAll('.replyWeek').forEach(function(cb) { cb.checked = true; });
+  // 重置同步建立受眾
+  document.getElementById('replyCreateAud').checked      = false;
+  document.getElementById('replyAudName').value          = '';
+  document.getElementById('replyAudField').style.display = 'none';
+  document.getElementById('replyAudSection').style.display = 'block';
+  document.getElementById('replyModal').classList.add('show');
+}
+
+function editReply(rowJson) {
+  var r = JSON.parse(decodeURIComponent(rowJson));
+  _replyEditIndex = r.index;
+  document.getElementById('replyModalTitle').textContent = '編輯回覆';
+  document.getElementById('replySaveBtn').textContent    = '儲存';
+  document.getElementById('replyKeyword').value   = r.keyword    || '';
+  document.getElementById('replyContent').value   = r.content    || '';
+  document.getElementById('replyStartTime').value = r.start_time || '00:00';
+  document.getElementById('replyEndTime').value   = r.end_time   || '23:59';
+  document.getElementById('replyStatus').value    = r.status     || '啟用';
+  // 星期
+  var checked = (r.week || '').split(',').map(function(d) { return d.trim(); });
+  document.querySelectorAll('.replyWeek').forEach(function(cb) {
+    cb.checked = checked.indexOf(cb.value) !== -1;
+  });
+  // 編輯時隱藏同步建立受眾
+  document.getElementById('replyAudSection').style.display = 'none';
+  document.getElementById('replyModal').classList.add('show');
 }
 
 function closeReplyModal() {
-  document.getElementById("replyModal").classList.remove("show");
-  document.getElementById("replyModal").dataset.editIndex = "";
-  document.getElementById("modalTitle").textContent       = "新增自動回覆";
-  document.getElementById("replyKeyword").value = "";
-  document.getElementById("replyContent").value = "";
-  document.getElementById("replyStart").value   = "00:00";
-  document.getElementById("replyEnd").value     = "23:59";
-  document.getElementById("replyStatus").value  = "啟用";
-  document.querySelectorAll(".week-item input").forEach(function(cb) {
-    cb.checked = true;
-  });
+  document.getElementById('replyModal').classList.remove('show');
+  _replyEditIndex = null;
 }
 
-function editReply(index, rowJson) {
-  var row = JSON.parse(decodeURIComponent(rowJson));
-
-  document.getElementById("replyKeyword").value = row.keyword;
-  document.getElementById("replyContent").value = row.content;
-  document.getElementById("replyStart").value   = row.start || "00:00";
-  document.getElementById("replyEnd").value     = row.end   || "23:59";
-  document.getElementById("replyStatus").value  = row.status;
-
-  var selectedDays = row.week ? row.week.split(",") : ["0","1","2","3","4","5","6"];
-  document.querySelectorAll(".week-item input").forEach(function(cb) {
-    cb.checked = selectedDays.indexOf(cb.value) !== -1;
-  });
-
-  document.getElementById("replyModal").dataset.editIndex = index;
-  document.getElementById("modalTitle").textContent       = "編輯自動回覆";
-
-  openReplyModal();
-}
-
+// ────────────────────────────────────────────────────────────
+// 儲存
+// ────────────────────────────────────────────────────────────
 async function saveReply() {
-  var keyword   = document.getElementById("replyKeyword").value.trim();
-  var content   = document.getElementById("replyContent").value.trim();
-  var start     = document.getElementById("replyStart").value;
-  var end       = document.getElementById("replyEnd").value;
-  var status    = document.getElementById("replyStatus").value;
-  var editIndex = document.getElementById("replyModal").dataset.editIndex;
+  var keyword      = document.getElementById('replyKeyword').value.trim();
+  var content      = document.getElementById('replyContent').value.trim();
+  var startTime    = document.getElementById('replyStartTime').value || '00:00';
+  var endTime      = document.getElementById('replyEndTime').value   || '23:59';
+  var status       = document.getElementById('replyStatus').value;
+  var createAud    = document.getElementById('replyCreateAud')
+                       ? document.getElementById('replyCreateAud').checked : false;
+  var audName      = document.getElementById('replyAudName')
+                       ? document.getElementById('replyAudName').value.trim() : '';
 
-  var weeks = [];
-  document.querySelectorAll(".week-item input:checked").forEach(function(cb) {
-    weeks.push(cb.value);
+  // 星期
+  var weekVals = [];
+  document.querySelectorAll('.replyWeek:checked').forEach(function(cb) {
+    weekVals.push(cb.value);
   });
-  var weekStr = weeks.join(",");
+  var week = weekVals.join(',') || '1,2,3,4,5,6,0';
 
-  if (!keyword || !content) {
-    showToast("請填入關鍵字和回覆內容", "error");
-    return;
-  }
+  if (!keyword) { showToast('請填入關鍵字', 'error'); return; }
+  if (!content) { showToast('請填入回覆內容', 'error'); return; }
 
-  if (weeks.length === 0) {
-    showToast("請至少選擇一個星期", "error");
-    return;
-  }
-
-  var payload = {
-    action:  "saveReply",
-    keyword: keyword,
-    content: content,
-    type:    "text",
-    start:   start,
-    end:     end,
-    week:    weekStr,
-    status:  status
+  var params = {
+    action:     'saveReply',
+    keyword:    keyword,
+    type:       'text',
+    content:    content,
+    start_time: startTime,
+    end_time:   endTime,
+    week:       week,
+    status:     status
   };
 
-  if (editIndex) {
-    payload.index = editIndex;
+  // 新增時才帶同步受眾參數
+  if (_replyEditIndex !== null) {
+    params.row_index = _replyEditIndex;
+  } else {
+    params.create_audience = createAud;
+    params.audience_name   = audName;
   }
 
-  var result = await apiCall(payload);
+  var res = await apiCall(params);
+  if (!res.success) { showToast(res.message || '儲存失敗', 'error'); return; }
 
-  if (result.success) {
-    closeReplyModal();
-    showToast(editIndex ? "更新成功" : "儲存成功");
+  closeReplyModal();
+  showToast(res.data && res.data.message ? res.data.message : '儲存成功', 'success');
+  loadReply();
+}
+
+// ────────────────────────────────────────────────────────────
+// 刪除
+// ────────────────────────────────────────────────────────────
+async function deleteReply(index) {
+  var ok = await confirmDialog('確定要刪除這筆回覆嗎？');
+  if (!ok) return;
+
+  var res = await apiCall({ action: 'deleteReply', index: index });
+  if (res.success) {
+    showToast('已刪除', 'success');
     loadReply();
   } else {
-    showToast(result.message, "error");
+    showToast(res.message || '刪除失敗', 'error');
   }
 }
 
-async function deleteReply(index) {
-  if (!confirmDialog("確定要刪除這筆回覆嗎？")) return;
-
-  var result = await apiCall({ action: "deleteReply", index: index });
-
-  if (result.success) {
-    showToast("刪除成功");
-    loadReply();
-  } else {
-    showToast(result.message, "error");
-  }
+// ────────────────────────────────────────────────────────────
+// 工具
+// ────────────────────────────────────────────────────────────
+function _escR(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
