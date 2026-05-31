@@ -173,8 +173,8 @@ function _renderReplyTable() {
   var page  = _replyFiltered.slice(start, Math.min(start + _replyPageSize, total));
 
   var rows = page.map(function(r) {
-    var rowJson = encodeURIComponent(JSON.stringify(r));
     var statusColor = r.status === '啟用' ? '#06C755' : '#aaa';
+    // ← 改成傳 r.index（數字），不傳 JSON，避免引號問題
     return '<tr>' +
       '<td>' + _escR(r.keyword) + '</td>' +
       '<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
@@ -183,7 +183,7 @@ function _renderReplyTable() {
       '<td>' + _escR(r.week) + '</td>' +
       '<td><span style="color:' + statusColor + ';font-weight:600;">' + _escR(r.status) + '</span></td>' +
       '<td style="white-space:nowrap;">' +
-        '<button class="btn btn-edit" onclick="editReply(\'' + rowJson + '\')">編輯</button> ' +
+        '<button class="btn btn-edit" onclick="editReply(' + r.index + ')">編輯</button> ' +
         '<button class="btn btn-danger" onclick="deleteReply(' + r.index + ')">刪除</button>' +
       '</td>' +
     '</tr>';
@@ -208,19 +208,17 @@ function _renderReplyPager() {
   var totalPages = Math.ceil(total / _replyPageSize);
   if (totalPages <= 1) { pager.innerHTML = ''; return; }
 
-  var btnStyle       = 'style="padding:6px 12px;border-radius:6px;border:1.5px solid #e0e0e0;background:white;cursor:pointer;font-size:13px;"';
-  var activeBtnStyle = 'style="padding:6px 12px;border-radius:6px;border:none;background:#06C755;color:white;cursor:pointer;font-size:13px;font-weight:600;"';
-  var disabledStyle  = 'style="padding:6px 12px;border-radius:6px;border:1.5px solid #e0e0e0;background:#f5f5f5;color:#ccc;cursor:not-allowed;font-size:13px;"';
+  var btnStyle      = 'style="padding:6px 12px;border-radius:6px;border:1.5px solid #e0e0e0;background:white;cursor:pointer;font-size:13px;"';
+  var activeStyle   = 'style="padding:6px 12px;border-radius:6px;border:none;background:#06C755;color:white;cursor:pointer;font-size:13px;font-weight:600;"';
+  var disabledStyle = 'style="padding:6px 12px;border-radius:6px;border:1.5px solid #e0e0e0;background:#f5f5f5;color:#ccc;cursor:not-allowed;font-size:13px;"';
 
   var html = '';
   html += '<button ' + (_replyPage === 1 ? 'disabled ' + disabledStyle : btnStyle) +
           ' onclick="gotoReplyPage(' + (_replyPage - 1) + ')">上一頁</button>';
-
   for (var i = 1; i <= totalPages; i++) {
-    html += '<button ' + (i === _replyPage ? activeBtnStyle : btnStyle) +
+    html += '<button ' + (i === _replyPage ? activeStyle : btnStyle) +
             ' onclick="gotoReplyPage(' + i + ')">' + i + '</button>';
   }
-
   html += '<button ' + (_replyPage === totalPages ? 'disabled ' + disabledStyle : btnStyle) +
           ' onclick="gotoReplyPage(' + (_replyPage + 1) + ')">下一頁</button>';
 
@@ -247,9 +245,7 @@ function openReplyCreateModal() {
   document.getElementById('replyStartTime').value = '00:00';
   document.getElementById('replyEndTime').value   = '23:59';
   document.getElementById('replyStatus').value    = '啟用';
-  // 全勾
   document.querySelectorAll('.replyWeek').forEach(function(cb) { cb.checked = true; });
-  // 重置同步建立受眾
   document.getElementById('replyCreateAud').checked       = false;
   document.getElementById('replyAudName').value           = '';
   document.getElementById('replyAudField').style.display  = 'none';
@@ -257,8 +253,11 @@ function openReplyCreateModal() {
   document.getElementById('replyModal').classList.add('show');
 }
 
-function editReply(rowJson) {
-  var r = JSON.parse(decodeURIComponent(rowJson));
+function editReply(index) {
+  // ← 改成從全域陣列用 index 找資料，不用傳 JSON
+  var r = _replyAll.find(function(item) { return item.index === index; });
+  if (!r) { showToast('找不到資料', 'error'); return; }
+
   _replyEditIndex = r.index;
   document.getElementById('replyModalTitle').textContent = '編輯回覆';
   document.getElementById('replySaveBtn').textContent    = '儲存';
@@ -267,11 +266,12 @@ function editReply(rowJson) {
   document.getElementById('replyStartTime').value = _parseTimeValue(r.start_time);
   document.getElementById('replyEndTime').value   = _parseTimeValue(r.end_time);
   document.getElementById('replyStatus').value    = r.status  || '啟用';
-  // 星期
+
   var checked = (r.week || '').split(',').map(function(d) { return d.trim(); });
   document.querySelectorAll('.replyWeek').forEach(function(cb) {
     cb.checked = checked.indexOf(cb.value) !== -1;
   });
+
   // 編輯時隱藏同步建立受眾
   document.getElementById('replyAudSection').style.display = 'none';
   document.getElementById('replyModal').classList.add('show');
@@ -286,17 +286,16 @@ function closeReplyModal() {
 // 儲存
 // ────────────────────────────────────────────────────────────
 async function saveReply() {
-  var keyword      = document.getElementById('replyKeyword').value.trim();
-  var content      = document.getElementById('replyContent').value.trim();
-  var startTime    = document.getElementById('replyStartTime').value || '00:00';
-  var endTime      = document.getElementById('replyEndTime').value   || '23:59';
-  var status       = document.getElementById('replyStatus').value;
-  var createAud    = document.getElementById('replyCreateAud')
-                       ? document.getElementById('replyCreateAud').checked : false;
-  var audName      = document.getElementById('replyAudName')
-                       ? document.getElementById('replyAudName').value.trim() : '';
+  var keyword   = document.getElementById('replyKeyword').value.trim();
+  var content   = document.getElementById('replyContent').value.trim();
+  var startTime = document.getElementById('replyStartTime').value || '00:00';
+  var endTime   = document.getElementById('replyEndTime').value   || '23:59';
+  var status    = document.getElementById('replyStatus').value;
+  var createAud = document.getElementById('replyCreateAud')
+                    ? document.getElementById('replyCreateAud').checked : false;
+  var audName   = document.getElementById('replyAudName')
+                    ? document.getElementById('replyAudName').value.trim() : '';
 
-  // 星期
   var weekVals = [];
   document.querySelectorAll('.replyWeek:checked').forEach(function(cb) {
     weekVals.push(cb.value);
@@ -351,20 +350,13 @@ async function deleteReply(index) {
 // ────────────────────────────────────────────────────────────
 // 工具函式
 // ────────────────────────────────────────────────────────────
-
-/**
- * 處理前端接收到的時間值
- * 可能是 "HH:MM" 正常格式，或 "1899-12-29T16:00:00.000Z" 壞掉的格式
- */
 function _parseTimeValue(val) {
   if (!val) return '00:00';
   var str = String(val).trim();
-  // 正常 HH:MM 格式
   if (/^\d{1,2}:\d{2}$/.test(str)) {
     var parts = str.split(':');
     return ('0' + parts[0]).slice(-2) + ':' + ('0' + parts[1]).slice(-2);
   }
-  // ISO Date 格式（GAS 存壞的時間）
   try {
     var d = new Date(str);
     if (!isNaN(d.getTime())) {
