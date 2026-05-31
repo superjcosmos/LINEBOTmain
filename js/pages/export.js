@@ -52,12 +52,13 @@ async function _loadAudienceOptions() {
     const res = await apiCall({ action: 'getAudienceList' });
     if (!res.success) return;
 
-    const list = (res.data && res.data.list) ? res.data.list : (res.list || []);
+    // getAudienceList 回傳的是陣列，欄位名是 name 不是 audience_name
+    const list = Array.isArray(res.data) ? res.data : [];
 
     list.forEach(a => {
       const opt       = document.createElement('option');
       opt.value       = a.audience_id;
-      opt.textContent = a.audience_name + '（' + (a.count || 0) + ' 人）';
+      opt.textContent = a.name + '（' + (a.count || 0) + ' 人）';  // ← name
       select.appendChild(opt);
     });
 
