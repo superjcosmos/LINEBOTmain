@@ -5,7 +5,6 @@ let _selectedAudience = null;
 let _bcMessages = [];
 const BC_MAX_MESSAGES = 5;
 
-// Flex Message Simulator 連結
 const FLEX_SIMULATOR_URL = 'https://developers.line.biz/flex-simulator/';
 
 // ── 常用 Flex 範本 ──────────────────────────────────────
@@ -17,21 +16,17 @@ const FLEX_TEMPLATES = [
       hero: {
         type: 'image',
         url: 'https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png',
-        size: 'full',
-        aspectRatio: '20:13',
-        aspectMode: 'cover'
+        size: 'full', aspectRatio: '20:13', aspectMode: 'cover'
       },
       body: {
-        type: 'box',
-        layout: 'vertical',
+        type: 'box', layout: 'vertical',
         contents: [
           { type: 'text', text: '🎉 限時優惠', weight: 'bold', size: 'xl' },
           { type: 'text', text: '點擊下方按鈕查看詳情', size: 'sm', color: '#888888', margin: 'md' }
         ]
       },
       footer: {
-        type: 'box',
-        layout: 'vertical',
+        type: 'box', layout: 'vertical',
         contents: [
           { type: 'button', style: 'primary', action: { type: 'uri', label: '立即查看', uri: 'https://example.com' } }
         ]
@@ -43,8 +38,7 @@ const FLEX_TEMPLATES = [
     json: JSON.stringify({
       type: 'bubble',
       body: {
-        type: 'box',
-        layout: 'vertical',
+        type: 'box', layout: 'vertical',
         contents: [
           { type: 'text', text: '📋 活動報名', weight: 'bold', size: 'xl' },
           { type: 'text', text: '活動日期：2026/07/01', size: 'sm', color: '#888888', margin: 'md' },
@@ -52,8 +46,7 @@ const FLEX_TEMPLATES = [
         ]
       },
       footer: {
-        type: 'box',
-        layout: 'vertical',
+        type: 'box', layout: 'vertical',
         contents: [
           { type: 'button', style: 'primary', color: '#00B900', action: { type: 'uri', label: '立即報名', uri: 'https://example.com' } }
         ]
@@ -65,8 +58,7 @@ const FLEX_TEMPLATES = [
     json: JSON.stringify({
       type: 'bubble',
       body: {
-        type: 'box',
-        layout: 'vertical',
+        type: 'box', layout: 'vertical',
         contents: [
           { type: 'text', text: '📦 訂單狀態更新', weight: 'bold', size: 'lg' },
           {
@@ -117,7 +109,7 @@ async function loadBroadcast() {
 
         <button class="btn btn-secondary btn-sm" onclick="addBcMessage()" id="add-msg-btn"
           style="margin-top:8px">
-          ＋ 新增訊息（最多 ${BC_MAX_MESSAGES} 則）
+          ＋ 新增訊息（最多 5 則）
         </button>
 
         <div class="bc-target-info" id="bc-target-info">
@@ -139,227 +131,157 @@ async function loadBroadcast() {
       <div id="bc-log-table">載入中…</div>
     </div>
 
-    <!-- Flex 範本 Modal -->
-    <div id="flex-template-modal" class="modal-overlay" style="display:none" onclick="closeFlexTemplateModal(event)">
-      <div class="modal-box" style="max-width:560px">
-        <div class="modal-header">
-          <h3>Flex 範本</h3>
-          <button class="modal-close" onclick="closeFlexTemplateModalDirect()">✕</button>
+    <!-- Flex 範本 Modal（自帶完整樣式，不依賴全域 CSS） -->
+    <div id="flex-template-modal" onclick="closeFlexTemplateModal(event)" style="
+      display:none;
+      position:fixed; inset:0; z-index:9999;
+      background:rgba(0,0,0,.5);
+      align-items:center; justify-content:center;
+    ">
+      <div onclick="event.stopPropagation()" style="
+        background:#fff; border-radius:14px;
+        width:90%; max-width:520px;
+        box-shadow:0 8px 32px rgba(0,0,0,.18);
+        overflow:hidden;
+      ">
+        <!-- Modal Header -->
+        <div style="
+          display:flex; align-items:center; justify-content:space-between;
+          padding:16px 20px; border-bottom:1px solid #f0f0f0;
+        ">
+          <h3 style="margin:0;font-size:16px">📋 Flex 範本</h3>
+          <button onclick="closeFlexTemplateModalDirect()" style="
+            background:none; border:none; font-size:18px;
+            color:#aaa; cursor:pointer; line-height:1; padding:2px 6px;
+          ">✕</button>
         </div>
-        <div class="modal-body">
-          <p style="font-size:13px;color:#888;margin-bottom:12px">
+        <!-- Modal Body -->
+        <div style="padding:20px">
+          <p style="font-size:13px;color:#888;margin:0 0 14px">
             選擇範本後可在編輯區繼續修改，或前往
-            <a href="${FLEX_SIMULATOR_URL}" target="_blank" style="color:#06c755">LINE Flex Simulator</a>
+            <a href="https://developers.line.biz/flex-simulator/" target="_blank"
+               style="color:#06c755;text-decoration:none;font-weight:500">LINE Flex Simulator</a>
             設計完整版面。
           </p>
           <div id="flex-template-list">
-            ${FLEX_TEMPLATES.map((t, i) => `
-              <div class="flex-template-item" onclick="applyFlexTemplate(${i})">
-                <span class="flex-template-label">${t.label}</span>
-                <span class="flex-template-arrow">套用 →</span>
-              </div>
-            `).join('')}
+            <div onclick="applyFlexTemplate(0)" class="bc-tpl-item">
+              <span>🎉 促銷公告</span><span class="bc-tpl-arrow">套用 →</span>
+            </div>
+            <div onclick="applyFlexTemplate(1)" class="bc-tpl-item">
+              <span>📋 活動報名</span><span class="bc-tpl-arrow">套用 →</span>
+            </div>
+            <div onclick="applyFlexTemplate(2)" class="bc-tpl-item">
+              <span>📦 訂單通知</span><span class="bc-tpl-arrow">套用 →</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <style>
-      /* ── 受眾列表 ── */
       .bc-audience-list {
-        margin-top: 10px;
-        max-height: 400px;
-        overflow-y: auto;
+        margin-top:10px; max-height:400px; overflow-y:auto;
       }
       .bc-audience-item {
-        padding: 12px 14px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: background .15s;
-        margin-bottom: 4px;
-        border: 1px solid transparent;
+        padding:12px 14px; border-radius:8px; cursor:pointer;
+        transition:background .15s; margin-bottom:4px;
+        border:1px solid transparent;
       }
-      .bc-audience-item:hover { background: #f5f5f5; }
-      .bc-audience-item.selected {
-        background: #f0fff4;
-        border-color: #06c755;
-      }
-      .bc-aud-name {
-        font-size: 15px;
-        font-weight: 600;
-        color: #222;
-        margin-bottom: 4px;
-      }
-      .bc-aud-meta {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 12px;
-        color: #888;
-      }
-      .bc-aud-count { color: #555; }
+      .bc-audience-item:hover { background:#f5f5f5; }
+      .bc-audience-item.selected { background:#f0fff4; border-color:#06c755; }
+      .bc-aud-name { font-size:15px; font-weight:600; color:#222; margin-bottom:4px; }
+      .bc-aud-meta { display:flex; align-items:center; gap:8px; font-size:12px; color:#888; }
 
-      /* ── 訊息區塊 ── */
       .bc-msg-block {
-        border: 1px solid #e5e5e5;
-        border-radius: 10px;
-        margin-bottom: 12px;
-        overflow: hidden;
+        border:1px solid #e5e5e5; border-radius:10px;
+        margin-bottom:12px; overflow:hidden;
       }
       .bc-msg-header {
-        display: flex;
-        align-items: center;
-        padding: 8px 12px;
-        background: #fafafa;
-        border-bottom: 1px solid #ebebeb;
-        gap: 8px;
+        display:flex; align-items:center; padding:8px 12px;
+        background:#fafafa; border-bottom:1px solid #ebebeb; gap:8px;
       }
-      .bc-msg-index {
-        font-size: 13px;
-        font-weight: 600;
-        color: #444;
-        flex: 1;
-      }
-      /* 截圖風格：右側小 tab（圖片 | Flex | ✕） */
-      .bc-msg-type-tabs {
-        display: flex;
-        gap: 4px;
-      }
+      .bc-msg-index { font-size:13px; font-weight:600; color:#444; flex:1; }
+      .bc-msg-type-tabs { display:flex; gap:4px; }
       .type-tab {
-        font-size: 12px;
-        padding: 3px 10px;
-        border-radius: 20px;
-        border: 1px solid #ddd;
-        background: #fff;
-        color: #666;
-        cursor: pointer;
-        transition: all .15s;
+        font-size:12px; padding:3px 10px; border-radius:20px;
+        border:1px solid #ddd; background:#fff; color:#666;
+        cursor:pointer; transition:all .15s;
       }
-      .type-tab:hover { background: #f0f0f0; }
-      .type-tab.active {
-        background: #06c755;
-        color: #fff;
-        border-color: #06c755;
-      }
+      .type-tab:hover { background:#f0f0f0; }
+      .type-tab.active { background:#06c755; color:#fff; border-color:#06c755; }
       .bc-msg-remove {
-        background: none;
-        border: none;
-        color: #bbb;
-        font-size: 16px;
-        cursor: pointer;
-        padding: 0 2px;
-        line-height: 1;
-        transition: color .15s;
+        background:none; border:none; color:#bbb; font-size:16px;
+        cursor:pointer; padding:0 2px; line-height:1; transition:color .15s;
       }
-      .bc-msg-remove:hover { color: #e53e3e; }
-      .bc-msg-body { padding: 12px; }
+      .bc-msg-remove:hover { color:#e53e3e; }
+      .bc-msg-body { padding:12px; }
       .bc-textarea {
-        width: 100%;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 10px;
-        font-size: 14px;
-        resize: vertical;
-        box-sizing: border-box;
-        font-family: inherit;
-        transition: border-color .15s;
-        line-height: 1.6;
+        width:100%; border:1px solid #ddd; border-radius:8px;
+        padding:10px; font-size:14px; resize:vertical;
+        box-sizing:border-box; font-family:inherit;
+        transition:border-color .15s; line-height:1.6;
       }
-      .bc-textarea:focus { outline: none; border-color: #06c755; }
-      .bc-textarea-mono { font-family: 'Courier New', monospace; font-size: 12px; }
-      .bc-input-group { margin-bottom: 10px; }
-      .bc-input-group label { font-size: 12px; color: #666; display: block; margin-bottom: 4px; }
+      .bc-textarea:focus { outline:none; border-color:#06c755; }
+      .bc-textarea-mono { font-family:'Courier New',monospace; font-size:12px; }
+      .bc-input-group { margin-bottom:10px; }
+      .bc-input-group label { font-size:12px; color:#666; display:block; margin-bottom:4px; }
       .bc-input {
-        width: 100%;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 8px 10px;
-        font-size: 14px;
-        box-sizing: border-box;
+        width:100%; border:1px solid #ddd; border-radius:8px;
+        padding:8px 10px; font-size:14px; box-sizing:border-box;
       }
-      .bc-input:focus { outline: none; border-color: #06c755; }
+      .bc-input:focus { outline:none; border-color:#06c755; }
 
-      /* Flex 輔助工具列 */
-      .flex-toolbar {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 8px;
-      }
+      .flex-toolbar { display:flex; gap:8px; margin-bottom:8px; }
       .flex-toolbar a, .flex-toolbar button {
-        font-size: 12px;
-        padding: 4px 12px;
-        border-radius: 20px;
-        border: 1px solid #06c755;
-        color: #06c755;
-        background: #fff;
-        cursor: pointer;
-        text-decoration: none;
-        transition: all .15s;
+        font-size:12px; padding:4px 12px; border-radius:20px;
+        border:1px solid #06c755; color:#06c755; background:#fff;
+        cursor:pointer; text-decoration:none; transition:all .15s;
       }
       .flex-toolbar a:hover, .flex-toolbar button:hover {
-        background: #06c755;
-        color: #fff;
+        background:#06c755; color:#fff;
       }
-      .flex-hint { font-size: 11px; color: #aaa; margin-top: 4px; }
+      .flex-hint { font-size:11px; color:#aaa; margin-top:4px; }
 
-      /* ── 目標資訊 ── */
       .bc-target-info {
-        margin: 14px 0 10px;
-        padding: 10px 14px;
-        border-radius: 8px;
-        background: #f5f5f5;
-        font-size: 13px;
-        color: #888;
+        margin:14px 0 10px; padding:10px 14px; border-radius:8px;
+        background:#f5f5f5; font-size:13px; color:#888;
       }
       .bc-target-info.selected {
-        background: #f0fff4;
-        color: #333;
-        border: 1px solid #c3f0d0;
+        background:#f0fff4; color:#333; border:1px solid #c3f0d0;
       }
-      .target-label { color: #888; margin-right: 4px; }
-      .target-count { margin-left: 6px; color: #555; }
+      .target-label { color:#888; margin-right:4px; }
+      .target-count { margin-left:6px; color:#555; }
 
-      /* ── Flex 範本 Modal ── */
-      .flex-template-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 16px;
-        border-radius: 8px;
-        border: 1px solid #eee;
-        margin-bottom: 8px;
-        cursor: pointer;
-        transition: all .15s;
+      /* 範本清單項目 */
+      .bc-tpl-item {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:12px 16px; border-radius:8px; border:1px solid #eee;
+        margin-bottom:8px; cursor:pointer; transition:all .15s;
+        font-size:14px; font-weight:500;
       }
-      .flex-template-item:hover {
-        border-color: #06c755;
-        background: #f0fff4;
-      }
-      .flex-template-label { font-size: 14px; font-weight: 500; }
-      .flex-template-arrow { font-size: 12px; color: #06c755; }
+      .bc-tpl-item:hover { border-color:#06c755; background:#f0fff4; }
+      .bc-tpl-arrow { font-size:12px; color:#06c755; }
 
-      /* ── 推播 layout ── */
       .broadcast-layout {
-        display: grid;
-        grid-template-columns: 300px 1fr;
-        gap: 16px;
-        align-items: start;
+        display:grid; grid-template-columns:300px 1fr;
+        gap:16px; align-items:start;
       }
-      @media (max-width: 768px) {
-        .broadcast-layout { grid-template-columns: 1fr; }
+      @media (max-width:768px) {
+        .broadcast-layout { grid-template-columns:1fr; }
       }
     </style>
   `);
 
-  // 初始化狀態
   _selectedAudience = null;
   _bcMessages = [];
   addBcMessage();
 
-  // 載入受眾列表
-  const res = await apiCall({ action: 'getAudienceForBroadcast' });
+  // ── 修正：改用 getAudienceList（讀 AudienceSettings），與 audience.js 一致 ──
+  const res = await apiCall({ action: 'getAudienceList' });
   if (res.success) {
-    _broadcastAudienceData = res.data.list;
+    // getAudienceList 回傳欄位：audience_id, audience_name, keyword, count, status
+    // 過濾掉 disabled 的受眾
+    _broadcastAudienceData = (res.data.list || []).filter(a => a.status !== 'disabled');
     renderBcAudienceList(_broadcastAudienceData);
   } else {
     document.getElementById('bc-audience-list').innerHTML = '<p class="empty-tip">載入受眾失敗</p>';
@@ -381,10 +303,10 @@ function renderBcAudienceList(list) {
     <div class="bc-audience-item${_selectedAudience && _selectedAudience.audience_id === a.audience_id ? ' selected' : ''}"
          id="bc-aud-${a.audience_id}"
          onclick="selectBcAudience('${a.audience_id}')">
-      <div class="bc-aud-name">${a.keyword || '（無關鍵字）'}</div>
+      <div class="bc-aud-name">${a.audience_name || a.keyword || '（無名稱）'}</div>
       <div class="bc-aud-meta">
         <span class="badge">${a.audience_id}</span>
-        <span class="bc-aud-count">👥 ${a.count} 人</span>
+        <span class="bc-aud-count">👥 ${a.count || 0} 人</span>
       </div>
     </div>
   `).join('');
@@ -393,6 +315,7 @@ function renderBcAudienceList(list) {
 function filterBcAudience() {
   const q = (document.getElementById('bc-search').value || '').trim().toLowerCase();
   const filtered = _broadcastAudienceData.filter(a =>
+    (a.audience_name || '').toLowerCase().includes(q) ||
     (a.keyword || '').toLowerCase().includes(q) ||
     (a.audience_id || '').includes(q)
   );
@@ -403,18 +326,17 @@ function selectBcAudience(audience_id) {
   _selectedAudience = _broadcastAudienceData.find(a => a.audience_id === audience_id);
   if (!_selectedAudience) return;
 
-  // 高亮選中（重新 render 列表以更新 selected class）
   document.querySelectorAll('.bc-audience-item').forEach(el => el.classList.remove('selected'));
   const item = document.getElementById('bc-aud-' + audience_id);
   if (item) item.classList.add('selected');
 
-  // 更新目標資訊
   const info = document.getElementById('bc-target-info');
   if (info) {
+    const name = _selectedAudience.audience_name || _selectedAudience.keyword || audience_id;
     info.innerHTML = `
       <span class="target-label">目標受眾：</span>
-      <strong>${_selectedAudience.keyword || audience_id}</strong>
-      <span class="target-count">（預計推播 <strong>${_selectedAudience.count}</strong> 人）</span>
+      <strong>${name}</strong>
+      <span class="target-count">（預計推播 <strong>${_selectedAudience.count || 0}</strong> 人）</span>
     `;
     info.className = 'bc-target-info selected';
   }
@@ -469,7 +391,6 @@ function renderBcMessages() {
 }
 
 function renderMsgInput(m) {
-  // 文字（預設，tab 不顯示 active，點圖片/Flex才切換）
   if (m.type === 'text') {
     const escaped = (m.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `<textarea class="bc-textarea" rows="4"
@@ -477,7 +398,6 @@ function renderMsgInput(m) {
       oninput="saveBcMsgValue(${m.id},'text',this.value)"
     >${escaped}</textarea>`;
   }
-
   if (m.type === 'image') {
     return `
       <div class="bc-input-group">
@@ -495,7 +415,6 @@ function renderMsgInput(m) {
           oninput="saveBcMsgValue(${m.id},'previewImageUrl',this.value)">
       </div>`;
   }
-
   if (m.type === 'flex') {
     const escaped = (m.flexJson || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `
@@ -516,8 +435,7 @@ function renderMsgInput(m) {
 function setBcMsgType(id, type) {
   const m = _bcMessages.find(m => m.id === id);
   if (!m) return;
-  // 若點已 active 的 tab → 切回文字
-  m.type = (m.type === type) ? 'text' : type;
+  m.type = (m.type === type) ? 'text' : type; // 再點一次切回文字
   renderBcMessages();
 }
 
@@ -543,18 +461,16 @@ function closeFlexTemplateModalDirect() {
 }
 
 function closeFlexTemplateModal(event) {
-  // 點遮罩關閉
   if (event.target.id === 'flex-template-modal') closeFlexTemplateModalDirect();
 }
 
 function applyFlexTemplate(templateIdx) {
   const tpl = FLEX_TEMPLATES[templateIdx];
   if (!tpl || _flexTemplateTargetId === null) return;
-
   const m = _bcMessages.find(m => m.id === _flexTemplateTargetId);
   if (m) {
     m.flexJson = tpl.json;
-    renderBcMessages(); // 重新渲染，textarea 會填入新值
+    renderBcMessages();
   }
   closeFlexTemplateModalDirect();
   showToast('已套用範本「' + tpl.label + '」，可繼續修改', 'success');
@@ -582,23 +498,17 @@ async function submitBroadcast() {
       messages.push({ type: 'image', originalContentUrl: orig, previewImageUrl: prev });
     } else if (m.type === 'flex') {
       let contents;
-      try {
-        contents = JSON.parse(m.flexJson || '');
-      } catch (e) {
-        showToast('第 ' + (i + 1) + ' 則 Flex JSON 格式錯誤', 'error');
-        return;
-      }
+      try { contents = JSON.parse(m.flexJson || ''); }
+      catch (e) { showToast('第 ' + (i + 1) + ' 則 Flex JSON 格式錯誤', 'error'); return; }
       messages.push({ type: 'flex', altText: '推播訊息', contents });
     }
   }
 
-  if (!messages.length) {
-    showToast('請至少編輯一則訊息', 'warning');
-    return;
-  }
+  if (!messages.length) { showToast('請至少編輯一則訊息', 'warning'); return; }
 
+  const name = _selectedAudience.audience_name || _selectedAudience.keyword || _selectedAudience.audience_id;
   const confirmed = await confirmDialog(
-    '確定要推播給「' + (_selectedAudience.keyword || _selectedAudience.audience_id) + '」受眾嗎？\n預計發送 ' + _selectedAudience.count + ' 人。'
+    '確定要推播給「' + name + '」受眾嗎？\n預計發送 ' + (_selectedAudience.count || 0) + ' 人。'
   );
   if (!confirmed) return;
 
@@ -620,7 +530,6 @@ async function submitBroadcast() {
 async function loadBroadcastLog() {
   const el = document.getElementById('bc-log-table');
   if (!el) return;
-
   el.innerHTML = '載入中…';
 
   const res = await apiCall({ action: 'getBroadcastLog' });
@@ -633,12 +542,8 @@ async function loadBroadcastLog() {
     <table class="data-table">
       <thead>
         <tr>
-          <th>時間</th>
-          <th>受眾ID</th>
-          <th>訊息摘要</th>
-          <th>總人數</th>
-          <th>成功</th>
-          <th>失敗</th>
+          <th>時間</th><th>受眾ID</th><th>訊息摘要</th>
+          <th>總人數</th><th>成功</th><th>失敗</th>
         </tr>
       </thead>
       <tbody>
