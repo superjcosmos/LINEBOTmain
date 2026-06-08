@@ -281,7 +281,9 @@ async function loadBroadcast() {
   if (res.success) {
     // getAudienceList 回傳欄位：audience_id, audience_name, keyword, count, status
     // 過濾掉 disabled 的受眾
-    _broadcastAudienceData = (res.data.list || []).filter(a => a.status !== 'disabled');
+    // getAudienceList 直接回傳 array（不是 {list:[...]}），欄位用 name 不是 audience_name
+    const raw = Array.isArray(res.data) ? res.data : (res.data.list || []);
+    _broadcastAudienceData = raw.filter(a => a.status !== 'disabled');
     renderBcAudienceList(_broadcastAudienceData);
   } else {
     document.getElementById('bc-audience-list').innerHTML = '<p class="empty-tip">載入受眾失敗</p>';
@@ -303,7 +305,7 @@ function renderBcAudienceList(list) {
     <div class="bc-audience-item${_selectedAudience && _selectedAudience.audience_id === a.audience_id ? ' selected' : ''}"
          id="bc-aud-${a.audience_id}"
          onclick="selectBcAudience('${a.audience_id}')">
-      <div class="bc-aud-name">${a.audience_name || a.keyword || '（無名稱）'}</div>
+      <div class="bc-aud-name">${a.name || a.keyword || '（無名稱）'}</div>
       <div class="bc-aud-meta">
         <span class="badge">${a.audience_id}</span>
         <span class="bc-aud-count">👥 ${a.count || 0} 人</span>
@@ -315,7 +317,7 @@ function renderBcAudienceList(list) {
 function filterBcAudience() {
   const q = (document.getElementById('bc-search').value || '').trim().toLowerCase();
   const filtered = _broadcastAudienceData.filter(a =>
-    (a.audience_name || '').toLowerCase().includes(q) ||
+    (a.name || '').toLowerCase().includes(q) ||
     (a.keyword || '').toLowerCase().includes(q) ||
     (a.audience_id || '').includes(q)
   );
@@ -332,7 +334,7 @@ function selectBcAudience(audience_id) {
 
   const info = document.getElementById('bc-target-info');
   if (info) {
-    const name = _selectedAudience.audience_name || _selectedAudience.keyword || audience_id;
+    const name = _selectedAudience.name || _selectedAudience.keyword || audience_id;
     info.innerHTML = `
       <span class="target-label">目標受眾：</span>
       <strong>${name}</strong>
@@ -506,7 +508,7 @@ async function submitBroadcast() {
 
   if (!messages.length) { showToast('請至少編輯一則訊息', 'warning'); return; }
 
-  const name = _selectedAudience.audience_name || _selectedAudience.keyword || _selectedAudience.audience_id;
+  const name = _selectedAudience.name || _selectedAudience.keyword || _selectedAudience.audience_id;
   const confirmed = await confirmDialog(
     '確定要推播給「' + name + '」受眾嗎？\n預計發送 ' + (_selectedAudience.count || 0) + ' 人。'
   );
