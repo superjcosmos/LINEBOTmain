@@ -302,7 +302,7 @@ function renderBcAudienceList(list) {
     return;
   }
   el.innerHTML = list.map(a => `
-    <div class="bc-audience-item${_selectedAudience && _selectedAudience.audience_id === a.audience_id ? ' selected' : ''}"
+    <div class="bc-audience-item${_selectedAudience && String(_selectedAudience.audience_id) === String(a.audience_id) ? ' selected' : ''}"
          id="bc-aud-${a.audience_id}"
          onclick="selectBcAudience('${a.audience_id}')">
       <div class="bc-aud-name">${a.name || a.keyword || '（無名稱）'}</div>
@@ -325,7 +325,8 @@ function filterBcAudience() {
 }
 
 function selectBcAudience(audience_id) {
-  _selectedAudience = _broadcastAudienceData.find(a => a.audience_id === audience_id);
+  // audience_id 從 onclick 傳入是字串，資料裡可能是數字，String() 統一比對
+  _selectedAudience = _broadcastAudienceData.find(a => String(a.audience_id) === String(audience_id));
   if (!_selectedAudience) return;
 
   document.querySelectorAll('.bc-audience-item').forEach(el => el.classList.remove('selected'));
