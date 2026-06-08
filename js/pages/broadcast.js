@@ -1,286 +1,658 @@
-// pages/broadcast.js
+// js/pages/broadcast.js
 
-let audienceListForBroadcast = [];
+let _broadcastAudienceData = [];
+let _selectedAudience = null;
+let _bcMessages = [];
+const BC_MAX_MESSAGES = 5;
 
-async function loadBroadcast() {
-  const aRes = await apiCall({ action: 'getAudienceList' });
-  audienceListForBroadcast = aRes.data || [];
+// Flex Message Simulator 連結
+const FLEX_SIMULATOR_URL = 'https://developers.line.biz/flex-simulator/';
 
-  const logRes = await apiCall({ action: 'getBroadcastLog' });
-  renderBroadcastPage(logRes.data || []);
-}
-
-function renderBroadcastPage(logs) {
-  const rows = logs.map(l => `
-    <tr>
-      <td>${formatDate(l.time)}</td>
-      <td>${l.target}</td>
-      <td>${l.message_type}</td>
-      <td>${String(l.content_preview).slice(0, 30)}</td>
-      <td>${l.total}</td>
-      <td>${l.success}</td>
-    </tr>
-  `).join('');
-
-  setContent('mainContent', `
-    <div class="page-title">推播管理</div>
-    <div class="card">
-      <div class="toolbar">
-        <button class="btn btn-primary" onclick="openBroadcastModal()">＋ 新增推播</button>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>時間</th>
-            <th>目標</th>
-            <th>類型</th>
-            <th>內容預覽</th>
-            <th>總數</th>
-            <th>成功</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows || '<tr><td colspan="6" class="empty">尚無推播記錄</td></tr>'}
-        </tbody>
-      </table>
-    </div>
-    <div id="broadcast-modal"></div>
-  `);
-}
-
-function openBroadcastModal() {
-  const audienceOptions = audienceListForBroadcast
-    .map(a => `<option value="${a.audience_id}">${a.audience_name}（${a.count || 0}人）</option>`)
-    .join('');
-
-  setContent('broadcast-modal', `
-    <div class="modal-overlay show">
-      <div class="modal">
-        <h3>新增推播訊息</h3>
-        <div class="form-group">
-          <label>推播對象</label>
-          <select id="bc-target" onchange="toggleAudienceSelect()">
-            <option value="all">全部用戶</option>
-            <option value="audience">指定受眾</option>
-          </select>
-        </div>
-        <div id="bc-audience-select" style="display:none">
-          <div class="form-group">
-            <label>選擇受眾</label>
-            <select id="bc-audience-id">${audienceOptions || '<option>尚無受眾</option>'}</select>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>訊息類型</label>
-          <select id="bc-type" onchange="toggleMessageFields()">
-            <option value="text">純文字</option>
-            <option value="image">圖片</option>
-            <option value="flex">Flex Message</option>
-          </select>
-        </div>
-        <div id="bc-text-fields">
-          <div class="form-group">
-            <label>訊息內容</label>
-            <textarea id="bc-text" rows="4" placeholder="輸入推播文字..."></textarea>
-          </div>
-        </div>
-        <div id="bc-image-fields" style="display:none">
-          <div class="form-group">
-            <label>圖片網址（需為公開 https）</label>
-            <input id="bc-image-url" type="url" placeholder="https://...">
-          </div>
-        </div>
-        <div id="bc-flex-fields" style="display:none">
-          <div class="form-group">
-            <label>快速範本</label>
-            <div style="display:flex;gap:8px;margin-bottom:12px">
-              <button class="btn btn-edit" onclick="fillFlexTemplate('announce')">📢 公告</button>
-              <button class="btn btn-edit" onclick="fillFlexTemplate('coupon')">🎫 優惠券</button>
-              <button class="btn btn-edit" onclick="fillFlexTemplate('event')">🎉 活動</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Alt Text（通知列顯示文字）</label>
-            <input id="bc-alt-text" type="text" placeholder="例：最新公告">
-          </div>
-          <div class="form-group">
-            <label>
-              Flex JSON
-              <a href="https://developers.line.biz/flex-simulator/" target="_blank"
-                 style="font-size:12px;color:#06C755;margin-left:8px">
-                ✏️ 開啟 LINE Flex 編輯器
-              </a>
-            </label>
-            <textarea id="bc-flex-json" rows="8" placeholder="貼上 Flex JSON..."></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-cancel" onclick="closeBroadcastModal()">取消</button>
-          <button class="btn btn-primary" onclick="submitBroadcast()">確認推播</button>
-        </div>
-      </div>
-    </div>
-  `);
-}
-
-function fillFlexTemplate(type) {
-  const templates = {
-    announce: {
-      altText: '最新公告',
-      json: JSON.stringify({
-        type: 'bubble',
-        header: {
-          type: 'box', layout: 'vertical',
-          backgroundColor: '#1a1a2e',
-          contents: [{ type: 'text', text: '📢 最新公告', color: '#ffffff', size: 'lg', weight: 'bold' }]
-        },
-        body: {
-          type: 'box', layout: 'vertical', spacing: 'md',
-          contents: [
-            { type: 'text', text: '公告標題', size: 'lg', weight: 'bold', wrap: true },
-            { type: 'text', text: '請在此填入公告內容，可以換行顯示。', size: 'sm', color: '#666666', wrap: true }
-          ]
-        },
-        footer: {
-          type: 'box', layout: 'vertical',
-          contents: [{
-            type: 'button', style: 'primary', color: '#06C755',
-            action: { type: 'uri', label: '了解更多', uri: 'https://line.me' }
-          }]
-        }
-      }, null, 2)
-    },
-    coupon: {
-      altText: '專屬優惠券',
-      json: JSON.stringify({
-        type: 'bubble',
-        body: {
-          type: 'box', layout: 'vertical', spacing: 'md',
-          contents: [
-            { type: 'text', text: '🎫 專屬優惠', weight: 'bold', size: 'xl', color: '#06C755' },
-            { type: 'separator' },
-            { type: 'text', text: '優惠內容說明', size: 'md', wrap: true },
-            { type: 'text', text: '折扣碼：SAVE2026', size: 'lg', weight: 'bold', color: '#e53e3e' },
-            { type: 'separator' },
-            { type: 'text', text: '有效期限：2026/12/31', size: 'xs', color: '#999999' }
-          ]
-        },
-        footer: {
-          type: 'box', layout: 'vertical',
-          contents: [{
-            type: 'button', style: 'primary', color: '#06C755',
-            action: { type: 'message', label: '立即使用', text: '使用優惠券' }
-          }]
-        }
-      }, null, 2)
-    },
-    event: {
-      altText: '活動通知',
-      json: JSON.stringify({
-        type: 'bubble',
-        header: {
-          type: 'box', layout: 'vertical',
-          backgroundColor: '#06C755',
-          contents: [{ type: 'text', text: '🎉 活動通知', color: '#ffffff', weight: 'bold', size: 'lg' }]
-        },
-        body: {
-          type: 'box', layout: 'vertical', spacing: 'md',
-          contents: [
-            { type: 'text', text: '活動名稱', weight: 'bold', size: 'xl', wrap: true },
-            { type: 'box', layout: 'vertical', spacing: 'sm', contents: [
+// ── 常用 Flex 範本 ──────────────────────────────────────
+const FLEX_TEMPLATES = [
+  {
+    label: '🎉 促銷公告',
+    json: JSON.stringify({
+      type: 'bubble',
+      hero: {
+        type: 'image',
+        url: 'https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png',
+        size: 'full',
+        aspectRatio: '20:13',
+        aspectMode: 'cover'
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          { type: 'text', text: '🎉 限時優惠', weight: 'bold', size: 'xl' },
+          { type: 'text', text: '點擊下方按鈕查看詳情', size: 'sm', color: '#888888', margin: 'md' }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          { type: 'button', style: 'primary', action: { type: 'uri', label: '立即查看', uri: 'https://example.com' } }
+        ]
+      }
+    }, null, 2)
+  },
+  {
+    label: '📋 活動報名',
+    json: JSON.stringify({
+      type: 'bubble',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          { type: 'text', text: '📋 活動報名', weight: 'bold', size: 'xl' },
+          { type: 'text', text: '活動日期：2026/07/01', size: 'sm', color: '#888888', margin: 'md' },
+          { type: 'text', text: '地點：台北市中正區', size: 'sm', color: '#888888' }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          { type: 'button', style: 'primary', color: '#00B900', action: { type: 'uri', label: '立即報名', uri: 'https://example.com' } }
+        ]
+      }
+    }, null, 2)
+  },
+  {
+    label: '📦 訂單通知',
+    json: JSON.stringify({
+      type: 'bubble',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          { type: 'text', text: '📦 訂單狀態更新', weight: 'bold', size: 'lg' },
+          {
+            type: 'box', layout: 'vertical', margin: 'md', spacing: 'sm',
+            contents: [
               { type: 'box', layout: 'baseline', contents: [
-                { type: 'text', text: '時間', size: 'sm', color: '#999999', flex: 2 },
-                { type: 'text', text: '2026/06/01 14:00', size: 'sm', flex: 5, wrap: true }
+                { type: 'text', text: '訂單編號', color: '#aaaaaa', size: 'sm', flex: 1 },
+                { type: 'text', text: '#123456', wrap: true, color: '#666666', size: 'sm', flex: 3 }
               ]},
               { type: 'box', layout: 'baseline', contents: [
-                { type: 'text', text: '地點', size: 'sm', color: '#999999', flex: 2 },
-                { type: 'text', text: '台北市信義區', size: 'sm', flex: 5, wrap: true }
+                { type: 'text', text: '出貨狀態', color: '#aaaaaa', size: 'sm', flex: 1 },
+                { type: 'text', text: '已出貨', wrap: true, color: '#00B900', size: 'sm', flex: 3 }
               ]}
-            ]}
-          ]
-        },
-        footer: {
-          type: 'box', layout: 'vertical',
-          contents: [{
-            type: 'button', style: 'primary', color: '#06C755',
-            action: { type: 'message', label: '我要報名', text: '報名活動' }
-          }]
-        }
-      }, null, 2)
-    }
-  };
+            ]
+          }
+        ]
+      }
+    }, null, 2)
+  }
+];
 
-  const t = templates[type];
-  if (!t) return;
-  document.getElementById('bc-alt-text').value  = t.altText;
-  document.getElementById('bc-flex-json').value = t.json;
-}
+// ── 主載入函式 ──────────────────────────────────────
 
-function toggleAudienceSelect() {
-  const target = document.getElementById('bc-target').value;
-  document.getElementById('bc-audience-select').style.display = target === 'audience' ? '' : 'none';
-}
+async function loadBroadcast() {
+  setContent('mainContent', `
+    <div class="page-header">
+      <h2>📢 推播管理</h2>
+      <p class="page-desc">選擇受眾，編輯訊息，批次推播給所有用戶</p>
+    </div>
 
-function toggleMessageFields() {
-  const type = document.getElementById('bc-type').value;
-  document.getElementById('bc-text-fields').style.display  = type === 'text'  ? '' : 'none';
-  document.getElementById('bc-image-fields').style.display = type === 'image' ? '' : 'none';
-  document.getElementById('bc-flex-fields').style.display  = type === 'flex'  ? '' : 'none';
-}
+    <div class="broadcast-layout">
+      <!-- 左：受眾選擇 -->
+      <div class="card" id="audience-select-card">
+        <h3>① 選擇受眾</h3>
+        <div class="search-bar">
+          <input type="text" id="bc-search" placeholder="搜尋關鍵字或受眾ID…" oninput="filterBcAudience()">
+        </div>
+        <div id="bc-audience-list" class="bc-audience-list">
+          <div class="loading-placeholder">載入中…</div>
+        </div>
+      </div>
 
-async function submitBroadcast() {
-  const target = document.getElementById('bc-target').value;
-  const type   = document.getElementById('bc-type').value;
+      <!-- 右：訊息編輯 + 發送 -->
+      <div class="card" id="message-compose-card">
+        <h3>② 編輯訊息</h3>
 
-  let content = {};
-  if (type === 'text')  content.text      = document.getElementById('bc-text').value;
-  if (type === 'image') content.image_url = document.getElementById('bc-image-url').value;
-  if (type === 'flex') {
-    content.alt_text  = document.getElementById('bc-alt-text').value;
-    content.flex_json = document.getElementById('bc-flex-json').value;
+        <div id="bc-messages-container"></div>
+
+        <button class="btn btn-secondary btn-sm" onclick="addBcMessage()" id="add-msg-btn"
+          style="margin-top:8px">
+          ＋ 新增訊息（最多 ${BC_MAX_MESSAGES} 則）
+        </button>
+
+        <div class="bc-target-info" id="bc-target-info">
+          請先從左側選擇受眾
+        </div>
+
+        <button class="btn btn-primary btn-block" onclick="submitBroadcast()" id="bc-send-btn" disabled>
+          🚀 確認推播
+        </button>
+      </div>
+    </div>
+
+    <!-- 推播紀錄 -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-header-row">
+        <h3>📋 推播紀錄</h3>
+        <button class="btn btn-secondary btn-sm" onclick="loadBroadcastLog()">重新整理</button>
+      </div>
+      <div id="bc-log-table">載入中…</div>
+    </div>
+
+    <!-- Flex 範本 Modal -->
+    <div id="flex-template-modal" class="modal-overlay" style="display:none" onclick="closeFlexTemplateModal(event)">
+      <div class="modal-box" style="max-width:560px">
+        <div class="modal-header">
+          <h3>Flex 範本</h3>
+          <button class="modal-close" onclick="closeFlexTemplateModalDirect()">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:13px;color:#888;margin-bottom:12px">
+            選擇範本後可在編輯區繼續修改，或前往
+            <a href="${FLEX_SIMULATOR_URL}" target="_blank" style="color:#06c755">LINE Flex Simulator</a>
+            設計完整版面。
+          </p>
+          <div id="flex-template-list">
+            ${FLEX_TEMPLATES.map((t, i) => `
+              <div class="flex-template-item" onclick="applyFlexTemplate(${i})">
+                <span class="flex-template-label">${t.label}</span>
+                <span class="flex-template-arrow">套用 →</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      /* ── 受眾列表 ── */
+      .bc-audience-list {
+        margin-top: 10px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .bc-audience-item {
+        padding: 12px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background .15s;
+        margin-bottom: 4px;
+        border: 1px solid transparent;
+      }
+      .bc-audience-item:hover { background: #f5f5f5; }
+      .bc-audience-item.selected {
+        background: #f0fff4;
+        border-color: #06c755;
+      }
+      .bc-aud-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: #222;
+        margin-bottom: 4px;
+      }
+      .bc-aud-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #888;
+      }
+      .bc-aud-count { color: #555; }
+
+      /* ── 訊息區塊 ── */
+      .bc-msg-block {
+        border: 1px solid #e5e5e5;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        overflow: hidden;
+      }
+      .bc-msg-header {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        background: #fafafa;
+        border-bottom: 1px solid #ebebeb;
+        gap: 8px;
+      }
+      .bc-msg-index {
+        font-size: 13px;
+        font-weight: 600;
+        color: #444;
+        flex: 1;
+      }
+      /* 截圖風格：右側小 tab（圖片 | Flex | ✕） */
+      .bc-msg-type-tabs {
+        display: flex;
+        gap: 4px;
+      }
+      .type-tab {
+        font-size: 12px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        border: 1px solid #ddd;
+        background: #fff;
+        color: #666;
+        cursor: pointer;
+        transition: all .15s;
+      }
+      .type-tab:hover { background: #f0f0f0; }
+      .type-tab.active {
+        background: #06c755;
+        color: #fff;
+        border-color: #06c755;
+      }
+      .bc-msg-remove {
+        background: none;
+        border: none;
+        color: #bbb;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 0 2px;
+        line-height: 1;
+        transition: color .15s;
+      }
+      .bc-msg-remove:hover { color: #e53e3e; }
+      .bc-msg-body { padding: 12px; }
+      .bc-textarea {
+        width: 100%;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 14px;
+        resize: vertical;
+        box-sizing: border-box;
+        font-family: inherit;
+        transition: border-color .15s;
+        line-height: 1.6;
+      }
+      .bc-textarea:focus { outline: none; border-color: #06c755; }
+      .bc-textarea-mono { font-family: 'Courier New', monospace; font-size: 12px; }
+      .bc-input-group { margin-bottom: 10px; }
+      .bc-input-group label { font-size: 12px; color: #666; display: block; margin-bottom: 4px; }
+      .bc-input {
+        width: 100%;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 14px;
+        box-sizing: border-box;
+      }
+      .bc-input:focus { outline: none; border-color: #06c755; }
+
+      /* Flex 輔助工具列 */
+      .flex-toolbar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .flex-toolbar a, .flex-toolbar button {
+        font-size: 12px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        border: 1px solid #06c755;
+        color: #06c755;
+        background: #fff;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all .15s;
+      }
+      .flex-toolbar a:hover, .flex-toolbar button:hover {
+        background: #06c755;
+        color: #fff;
+      }
+      .flex-hint { font-size: 11px; color: #aaa; margin-top: 4px; }
+
+      /* ── 目標資訊 ── */
+      .bc-target-info {
+        margin: 14px 0 10px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        background: #f5f5f5;
+        font-size: 13px;
+        color: #888;
+      }
+      .bc-target-info.selected {
+        background: #f0fff4;
+        color: #333;
+        border: 1px solid #c3f0d0;
+      }
+      .target-label { color: #888; margin-right: 4px; }
+      .target-count { margin-left: 6px; color: #555; }
+
+      /* ── Flex 範本 Modal ── */
+      .flex-template-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-radius: 8px;
+        border: 1px solid #eee;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: all .15s;
+      }
+      .flex-template-item:hover {
+        border-color: #06c755;
+        background: #f0fff4;
+      }
+      .flex-template-label { font-size: 14px; font-weight: 500; }
+      .flex-template-arrow { font-size: 12px; color: #06c755; }
+
+      /* ── 推播 layout ── */
+      .broadcast-layout {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 16px;
+        align-items: start;
+      }
+      @media (max-width: 768px) {
+        .broadcast-layout { grid-template-columns: 1fr; }
+      }
+    </style>
+  `);
+
+  // 初始化狀態
+  _selectedAudience = null;
+  _bcMessages = [];
+  addBcMessage();
+
+  // 載入受眾列表
+  const res = await apiCall({ action: 'getAudienceForBroadcast' });
+  if (res.success) {
+    _broadcastAudienceData = res.data.list;
+    renderBcAudienceList(_broadcastAudienceData);
+  } else {
+    document.getElementById('bc-audience-list').innerHTML = '<p class="empty-tip">載入受眾失敗</p>';
   }
 
-  if (!content.text && !content.image_url && !content.flex_json) {
-    return showToast('請填寫訊息內容', 'error');
+  loadBroadcastLog();
+}
+
+// ── 受眾選擇 ──────────────────────────────────────
+
+function renderBcAudienceList(list) {
+  const el = document.getElementById('bc-audience-list');
+  if (!el) return;
+  if (!list || !list.length) {
+    el.innerHTML = '<p class="empty-tip">沒有受眾資料</p>';
+    return;
+  }
+  el.innerHTML = list.map(a => `
+    <div class="bc-audience-item${_selectedAudience && _selectedAudience.audience_id === a.audience_id ? ' selected' : ''}"
+         id="bc-aud-${a.audience_id}"
+         onclick="selectBcAudience('${a.audience_id}')">
+      <div class="bc-aud-name">${a.keyword || '（無關鍵字）'}</div>
+      <div class="bc-aud-meta">
+        <span class="badge">${a.audience_id}</span>
+        <span class="bc-aud-count">👥 ${a.count} 人</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterBcAudience() {
+  const q = (document.getElementById('bc-search').value || '').trim().toLowerCase();
+  const filtered = _broadcastAudienceData.filter(a =>
+    (a.keyword || '').toLowerCase().includes(q) ||
+    (a.audience_id || '').includes(q)
+  );
+  renderBcAudienceList(filtered);
+}
+
+function selectBcAudience(audience_id) {
+  _selectedAudience = _broadcastAudienceData.find(a => a.audience_id === audience_id);
+  if (!_selectedAudience) return;
+
+  // 高亮選中（重新 render 列表以更新 selected class）
+  document.querySelectorAll('.bc-audience-item').forEach(el => el.classList.remove('selected'));
+  const item = document.getElementById('bc-aud-' + audience_id);
+  if (item) item.classList.add('selected');
+
+  // 更新目標資訊
+  const info = document.getElementById('bc-target-info');
+  if (info) {
+    info.innerHTML = `
+      <span class="target-label">目標受眾：</span>
+      <strong>${_selectedAudience.keyword || audience_id}</strong>
+      <span class="target-count">（預計推播 <strong>${_selectedAudience.count}</strong> 人）</span>
+    `;
+    info.className = 'bc-target-info selected';
+  }
+
+  const sendBtn = document.getElementById('bc-send-btn');
+  if (sendBtn) sendBtn.disabled = false;
+}
+
+// ── 訊息編輯 ──────────────────────────────────────
+
+function addBcMessage() {
+  if (_bcMessages.length >= BC_MAX_MESSAGES) {
+    showToast('最多只能加 ' + BC_MAX_MESSAGES + ' 則訊息', 'warning');
+    return;
+  }
+  const id = Date.now();
+  _bcMessages.push({ id, type: 'text', text: '', originalContentUrl: '', previewImageUrl: '', flexJson: '' });
+  renderBcMessages();
+}
+
+function removeBcMessage(id) {
+  if (_bcMessages.length <= 1) {
+    showToast('至少需要 1 則訊息', 'warning');
+    return;
+  }
+  _bcMessages = _bcMessages.filter(m => m.id !== id);
+  renderBcMessages();
+}
+
+function renderBcMessages() {
+  const container = document.getElementById('bc-messages-container');
+  if (!container) return;
+
+  container.innerHTML = _bcMessages.map((m, idx) => `
+    <div class="bc-msg-block" id="bc-msg-${m.id}">
+      <div class="bc-msg-header">
+        <span class="bc-msg-index">訊息 ${idx + 1}</span>
+        <div class="bc-msg-type-tabs">
+          <button class="type-tab${m.type === 'image' ? ' active' : ''}" onclick="setBcMsgType(${m.id},'image')">圖片</button>
+          <button class="type-tab${m.type === 'flex'  ? ' active' : ''}" onclick="setBcMsgType(${m.id},'flex')">Flex</button>
+        </div>
+        <button class="bc-msg-remove" onclick="removeBcMessage(${m.id})" title="移除此訊息">✕</button>
+      </div>
+      <div class="bc-msg-body">
+        ${renderMsgInput(m)}
+      </div>
+    </div>
+  `).join('');
+
+  const addBtn = document.getElementById('add-msg-btn');
+  if (addBtn) addBtn.disabled = _bcMessages.length >= BC_MAX_MESSAGES;
+}
+
+function renderMsgInput(m) {
+  // 文字（預設，tab 不顯示 active，點圖片/Flex才切換）
+  if (m.type === 'text') {
+    const escaped = (m.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<textarea class="bc-textarea" rows="4"
+      placeholder="輸入文字訊息…"
+      oninput="saveBcMsgValue(${m.id},'text',this.value)"
+    >${escaped}</textarea>`;
+  }
+
+  if (m.type === 'image') {
+    return `
+      <div class="bc-input-group">
+        <label>原始圖片 URL（需為公開 https）</label>
+        <input type="text" class="bc-input"
+          placeholder="https://…/image.jpg"
+          value="${m.originalContentUrl || ''}"
+          oninput="saveBcMsgValue(${m.id},'originalContentUrl',this.value)">
+      </div>
+      <div class="bc-input-group">
+        <label>縮圖 URL（可與原始相同）</label>
+        <input type="text" class="bc-input"
+          placeholder="https://…/thumb.jpg"
+          value="${m.previewImageUrl || ''}"
+          oninput="saveBcMsgValue(${m.id},'previewImageUrl',this.value)">
+      </div>`;
+  }
+
+  if (m.type === 'flex') {
+    const escaped = (m.flexJson || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `
+      <div class="flex-toolbar">
+        <a href="${FLEX_SIMULATOR_URL}" target="_blank">🔗 LINE Flex Simulator</a>
+        <button onclick="openFlexTemplateModal(${m.id})">📋 套用範本</button>
+      </div>
+      <textarea class="bc-textarea bc-textarea-mono" rows="10"
+        id="flex-textarea-${m.id}"
+        placeholder='{"type":"bubble","body":{…}}'
+        oninput="saveBcMsgValue(${m.id},'flexJson',this.value)"
+      >${escaped}</textarea>
+      <div class="flex-hint">貼上 Flex Message Simulator 產生的 JSON，或套用上方範本後修改</div>`;
+  }
+  return '';
+}
+
+function setBcMsgType(id, type) {
+  const m = _bcMessages.find(m => m.id === id);
+  if (!m) return;
+  // 若點已 active 的 tab → 切回文字
+  m.type = (m.type === type) ? 'text' : type;
+  renderBcMessages();
+}
+
+function saveBcMsgValue(id, key, value) {
+  const m = _bcMessages.find(m => m.id === id);
+  if (m) m[key] = value;
+}
+
+// ── Flex 範本 Modal ──────────────────────────────────────
+
+let _flexTemplateTargetId = null;
+
+function openFlexTemplateModal(msgId) {
+  _flexTemplateTargetId = msgId;
+  const modal = document.getElementById('flex-template-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeFlexTemplateModalDirect() {
+  const modal = document.getElementById('flex-template-modal');
+  if (modal) modal.style.display = 'none';
+  _flexTemplateTargetId = null;
+}
+
+function closeFlexTemplateModal(event) {
+  // 點遮罩關閉
+  if (event.target.id === 'flex-template-modal') closeFlexTemplateModalDirect();
+}
+
+function applyFlexTemplate(templateIdx) {
+  const tpl = FLEX_TEMPLATES[templateIdx];
+  if (!tpl || _flexTemplateTargetId === null) return;
+
+  const m = _bcMessages.find(m => m.id === _flexTemplateTargetId);
+  if (m) {
+    m.flexJson = tpl.json;
+    renderBcMessages(); // 重新渲染，textarea 會填入新值
+  }
+  closeFlexTemplateModalDirect();
+  showToast('已套用範本「' + tpl.label + '」，可繼續修改', 'success');
+}
+
+// ── 發送推播 ──────────────────────────────────────
+
+async function submitBroadcast() {
+  if (!_selectedAudience) {
+    showToast('請先選擇受眾', 'warning');
+    return;
+  }
+
+  const messages = [];
+  for (let i = 0; i < _bcMessages.length; i++) {
+    const m = _bcMessages[i];
+    if (m.type === 'text') {
+      const text = (m.text || '').trim();
+      if (!text) { showToast('第 ' + (i + 1) + ' 則文字訊息不能為空', 'warning'); return; }
+      messages.push({ type: 'text', text });
+    } else if (m.type === 'image') {
+      const orig = (m.originalContentUrl || '').trim();
+      const prev = (m.previewImageUrl || '').trim();
+      if (!orig || !prev) { showToast('第 ' + (i + 1) + ' 則圖片 URL 不能為空', 'warning'); return; }
+      messages.push({ type: 'image', originalContentUrl: orig, previewImageUrl: prev });
+    } else if (m.type === 'flex') {
+      let contents;
+      try {
+        contents = JSON.parse(m.flexJson || '');
+      } catch (e) {
+        showToast('第 ' + (i + 1) + ' 則 Flex JSON 格式錯誤', 'error');
+        return;
+      }
+      messages.push({ type: 'flex', altText: '推播訊息', contents });
+    }
+  }
+
+  if (!messages.length) {
+    showToast('請至少編輯一則訊息', 'warning');
+    return;
   }
 
   const confirmed = await confirmDialog(
-    target === 'all'
-      ? '確定要推播給所有用戶？此操作不可復原。'
-      : '確定要推播給指定受眾？'
+    '確定要推播給「' + (_selectedAudience.keyword || _selectedAudience.audience_id) + '」受眾嗎？\n預計發送 ' + _selectedAudience.count + ' 人。'
   );
   if (!confirmed) return;
 
-  showToast('推播中，請稍候...');
-
-  let res;
-  if (target === 'all') {
-    res = await apiCall({
-      action:       'broadcastToAll',
-      message_type: type,
-      content:      content,
-      target:       'all'
-    });
-  } else {
-    const audienceId = document.getElementById('bc-audience-id').value;
-    res = await apiCall({
-      action:       'broadcastToAudience',
-      audience_id:  audienceId,
-      message_type: type,
-      content:      content,
-      target:       'audience'
-    });
-  }
+  const res = await apiCall({
+    action: 'broadcastToAudience',
+    audience_id: _selectedAudience.audience_id,
+    messages
+  });
 
   if (res.success) {
-    showToast(`推播完成！成功 ${res.data.success} / 總計 ${res.data.total}`);
-    closeBroadcastModal();
-    loadBroadcast();
-  } else {
-    showToast(res.message || '推播失敗', 'error');
+    const d = res.data;
+    showToast('✅ 推播完成！成功 ' + d.success + ' 人，失敗 ' + d.fail + ' 人', 'success');
+    loadBroadcastLog();
   }
 }
 
-function closeBroadcastModal() {
-  setContent('broadcast-modal', '');
+// ── 推播紀錄 ──────────────────────────────────────
+
+async function loadBroadcastLog() {
+  const el = document.getElementById('bc-log-table');
+  if (!el) return;
+
+  el.innerHTML = '載入中…';
+
+  const res = await apiCall({ action: 'getBroadcastLog' });
+  if (!res.success || !res.data.list || !res.data.list.length) {
+    el.innerHTML = '<p class="empty-tip">尚無推播紀錄</p>';
+    return;
+  }
+
+  el.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>時間</th>
+          <th>受眾ID</th>
+          <th>訊息摘要</th>
+          <th>總人數</th>
+          <th>成功</th>
+          <th>失敗</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${res.data.list.map(r => `
+          <tr>
+            <td>${r.time}</td>
+            <td><span class="badge">${r.audience_id}</span></td>
+            <td>${r.msg_summary}</td>
+            <td>${r.total}</td>
+            <td class="text-success">${r.success}</td>
+            <td class="${r.fail > 0 ? 'text-danger' : ''}">${r.fail}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
 }
