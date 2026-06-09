@@ -1,4 +1,4 @@
-// api.js
+// js/api.js
 
 function showLoading() {
   var el = document.getElementById('global-loading');
