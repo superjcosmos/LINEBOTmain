@@ -31,9 +31,19 @@ function navigateTo(pageKey) {
   }
 }
 
+// js/router/navigate.js 的 hasFeature 函式更新：
 function hasFeature(pageKey) {
   if (!PAGES[pageKey]) return false;
-  var feature = PAGES[pageKey].feature;
+  var page = PAGES[pageKey];
+
+  // adminOnly 頁面：只有 admin 可見
+  if (page.adminOnly) return authState.role === 'admin';
+
+  // admin 登入後不顯示一般客戶頁面
+  if (authState.role === 'admin') return false;
+
+  // 一般方案控管
+  var feature = page.feature;
   if (!feature) return true;
   return authState.features[feature] === true;
 }
