@@ -1,4 +1,4 @@
-// pages/export.js
+// js/pages/export.js
 
 async function loadExport() {
   const html = `
