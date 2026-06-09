@@ -1,4 +1,4 @@
-// pages/account.js
+// js/pages/account.js
 
 function openChangePasswordModal() {
   var modal = document.getElementById('global-modal');
