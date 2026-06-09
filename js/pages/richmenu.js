@@ -1,3 +1,5 @@
+// js/pages/richmenu.js
+
 async function loadRichMenu() {
   setContent('<div class="loading">載入中...</div>');
 
