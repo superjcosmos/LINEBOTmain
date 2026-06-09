@@ -1,5 +1,8 @@
 // ============================================================
-// js/auth.js
+// 檔案：js/auth.js
+// 路徑：js/auth.js
+// 功能：登入/登出/Session、忘記密碼三步驟、role 分流
+// ⚠️ 更新：authState 加入 role / company_name，enterMainPage 依 role 分流
 // ============================================================
 
 var authState = {
@@ -7,6 +10,8 @@ var authState = {
   clientId:     localStorage.getItem("clientId")     || null,
   plan:         localStorage.getItem("plan")          || null,
   email:        localStorage.getItem("email")         || null,
+  role:         localStorage.getItem("role")          || "client",         // ← 新增
+  company_name: localStorage.getItem("company_name")  || "",               // ← 新增
   features:     JSON.parse(localStorage.getItem("features") || "{}")
 };
 
@@ -28,34 +33,34 @@ async function login() {
   var btn      = document.getElementById("btnLogin");
   var errMsg   = document.getElementById("errorMsg");
 
-  if (!email || !password) {
-    showLoginError("請填入帳號和密碼");
-    return;
-  }
+  if (!email || !password) { showLoginError("請填入帳號和密碼"); return; }
 
   btn.disabled    = true;
   btn.textContent = "登入中...";
   errMsg.style.display = "none";
 
   try {
-    var result = await apiCall({
-      action:   "login",
-      email:    email,
-      password: password
-    });
+    var result = await apiCall({ action: "login", email: email, password: password });
 
     if (result.success) {
-      localStorage.setItem("sessionToken", result.sessionToken);
-      localStorage.setItem("clientId",     result.clientId);
-      localStorage.setItem("plan",         result.plan);
-      localStorage.setItem("email",        email);
-      localStorage.setItem("features",     JSON.stringify(result.features || {}));
+      // ── ⚠️ 你的 API 回傳在 result.data 裡 ──
+      var d = result.data || result; // 相容舊版（直接在 result 上）和新版（在 result.data 上）
 
-      authState.sessionToken = result.sessionToken;
-      authState.clientId     = result.clientId;
-      authState.plan         = result.plan;
+      localStorage.setItem("sessionToken", d.sessionToken  || "");
+      localStorage.setItem("clientId",     d.clientId      || "");
+      localStorage.setItem("plan",         d.plan          || "");
+      localStorage.setItem("email",        email);
+      localStorage.setItem("role",         d.role          || "client"); // ← 新增
+      localStorage.setItem("company_name", d.company_name  || "");       // ← 新增
+      localStorage.setItem("features",     JSON.stringify(d.features || {}));
+
+      authState.sessionToken = d.sessionToken  || "";
+      authState.clientId     = d.clientId      || "";
+      authState.plan         = d.plan          || "";
       authState.email        = email;
-      authState.features     = result.features || {};
+      authState.role         = d.role          || "client"; // ← 新增
+      authState.company_name = d.company_name  || "";       // ← 新增
+      authState.features     = d.features      || {};
 
       enterMainPage();
     } else {
@@ -103,6 +108,8 @@ function clearSession() {
   authState.clientId     = null;
   authState.plan         = null;
   authState.email        = null;
+  authState.role         = "client"; // ← 新增
+  authState.company_name = "";       // ← 新增
   authState.features     = {};
 }
 
@@ -116,50 +123,66 @@ function showLoginError(msg) {
 }
 
 // ────────────────────────────────────────────────────────────
-// 切換到登入頁（隱藏忘記密碼 Panel）
+// 切換到登入頁
 // ────────────────────────────────────────────────────────────
 function showLoginPage() {
-  document.getElementById("loginPage").style.display        = "flex";
-  document.getElementById("mainPage").style.display         = "none";
+  document.getElementById("loginPage").style.display          = "flex";
+  document.getElementById("mainPage").style.display           = "none";
   document.getElementById("forgotPasswordPage").style.display = "none";
-
-  // 重設忘記密碼流程狀態
   _resetForgotFlow();
 }
 
 // ────────────────────────────────────────────────────────────
-// 進入主畫面
+// 進入主畫面（依 role 分流）
 // ────────────────────────────────────────────────────────────
 function enterMainPage() {
   document.getElementById("loginPage").style.display          = "none";
   document.getElementById("forgotPasswordPage").style.display = "none";
-  document.getElementById("mainPage").style.display           = "block";
+  document.getElementById("mainPage").style.display           = "block";  // 你原本是 "block"，保留
 
-  document.getElementById("sidebarEmail").textContent = authState.email;
+  // 側邊欄顯示名稱：admin 顯示公司名稱或 email，client 顯示 email
+  var sidebarEmailEl = document.getElementById("sidebarEmail");
+  if (sidebarEmailEl) {
+    sidebarEmailEl.textContent = authState.company_name || authState.email || "";
+  }
 
+  // 方案標籤：admin 顯示特殊標記
   var planEl = document.getElementById("sidebarPlan");
-  planEl.textContent = authState.plan;
-  planEl.className   = "plan plan-" + authState.plan;
+  if (planEl) {
+    if (authState.role === "admin") {
+      planEl.textContent = "🛡 系統管理者";
+      planEl.className   = "plan";
+    } else {
+      planEl.textContent = authState.plan || "";
+      planEl.className   = "plan plan-" + (authState.plan || "");
+    }
+  }
 
   buildSidebarMenu();
 
-  var firstPage = null;
-  Object.keys(PAGES).forEach(function (key) {
-    if (!firstPage && hasFeature(key)) firstPage = key;
-  });
-  if (firstPage) navigateTo(firstPage);
+  // ── role 分流 ──
+  if (authState.role === "admin") {
+    navigateTo("admin");
+  } else if (authState.role === "client_preview") {
+    // 切換視角模式（admin 預覽某客戶）
+    navigateTo("dashboard");
+  } else {
+    // 一般客戶：進第一個有權限的頁面（你原本邏輯）
+    var firstPage = null;
+    Object.keys(PAGES).forEach(function (key) {
+      if (!firstPage && hasFeature(key)) firstPage = key;
+    });
+    if (firstPage) navigateTo(firstPage);
+  }
 }
 
-
 // ============================================================
-// 忘記密碼流程
-// 三個步驟都在同一個 #forgotPasswordPage 容器內切換
+// 忘記密碼流程（完整保留原版）
 // Step 1：輸入 Email → 寄 OTP
 // Step 2：輸入 OTP 驗證碼
 // Step 3：設定新密碼
 // ============================================================
 
-// 流程暫存（不需要 localStorage，整個流程都在同一 session）
 var _forgotState = {
   email:      "",
   resetToken: ""
@@ -176,27 +199,20 @@ function _resetForgotFlow() {
 function showForgotPassword() {
   document.getElementById("loginPage").style.display          = "none";
   document.getElementById("forgotPasswordPage").style.display = "flex";
-
   _resetForgotFlow();
   _showForgotStep(1);
 }
 
 // ────────────────────────────────────────────────────────────
-// 切換步驟（內部用）
+// 切換步驟
 // ────────────────────────────────────────────────────────────
 function _showForgotStep(step) {
   [1, 2, 3].forEach(function (n) {
     var el = document.getElementById("forgotStep" + n);
     if (el) el.style.display = (n === step) ? "block" : "none";
   });
-
-  // 自動 focus
-  var focusMap = {
-    1: "forgotEmail",
-    2: "otpInput",
-    3: "newPassword"
-  };
-  var focusEl = document.getElementById(focusMap[step]);
+  var focusMap = { 1: "forgotEmail", 2: "otpInput", 3: "newPassword" };
+  var focusEl  = document.getElementById(focusMap[step]);
   if (focusEl) setTimeout(function () { focusEl.focus(); }, 50);
 }
 
@@ -207,32 +223,20 @@ async function submitForgotPassword() {
   var emailEl = document.getElementById("forgotEmail");
   var email   = emailEl ? emailEl.value.trim() : "";
   var errEl   = document.getElementById("forgotStep1Error");
-
-  // 清除舊錯誤
   if (errEl) errEl.style.display = "none";
 
-  if (!email) {
-    _showForgotError(1, "請輸入 Email");
-    return;
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    _showForgotError(1, "Email 格式不正確");
-    return;
-  }
+  if (!email) { _showForgotError(1, "請輸入 Email"); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { _showForgotError(1, "Email 格式不正確"); return; }
 
   var btn = document.getElementById("btnSendOtp");
   if (btn) { btn.disabled = true; btn.textContent = "寄送中..."; }
 
   try {
     var res = await apiCall({ action: "forgotPassword", email: email });
-
-    // 無論 email 存不存在都顯示相同訊息（防帳號枚舉攻擊）
     if (res.success) {
       _forgotState.email = email;
-      // 顯示 email 讓用戶確認
       var emailHintEl = document.getElementById("otpEmailHint");
       if (emailHintEl) emailHintEl.textContent = email;
-
       showToast(res.data ? res.data.message : "驗證碼已寄出，請查收 Email", "success");
       _showForgotStep(2);
     } else {
@@ -246,13 +250,10 @@ async function submitForgotPassword() {
 }
 
 // ────────────────────────────────────────────────────────────
-// Step 2：重新寄送 OTP（不跳回 Step1）
+// Step 2：重新寄送 OTP
 // ────────────────────────────────────────────────────────────
 async function resendOtp() {
-  if (!_forgotState.email) {
-    _showForgotError(2, "找不到 Email，請重新操作");
-    return;
-  }
+  if (!_forgotState.email) { _showForgotError(2, "找不到 Email，請重新操作"); return; }
 
   var btn = document.getElementById("btnResendOtp");
   if (btn) { btn.disabled = true; btn.textContent = "寄送中..."; }
@@ -261,7 +262,6 @@ async function resendOtp() {
     var res = await apiCall({ action: "forgotPassword", email: _forgotState.email });
     if (res.success) {
       showToast("驗證碼已重新寄出", "success");
-      // 清空輸入框
       var otpEl = document.getElementById("otpInput");
       if (otpEl) { otpEl.value = ""; otpEl.focus(); }
     } else {
@@ -288,12 +288,7 @@ async function submitVerifyOtp() {
   if (btn) { btn.disabled = true; btn.textContent = "驗證中..."; }
 
   try {
-    var res = await apiCall({
-      action: "verifyOtp",
-      email:  _forgotState.email,
-      otp:    otp
-    });
-
+    var res = await apiCall({ action: "verifyOtp", email: _forgotState.email, otp: otp });
     if (res.success) {
       _forgotState.resetToken = res.data.reset_token;
       showToast("驗證成功！請設定新密碼", "success");
@@ -318,12 +313,8 @@ async function submitResetPassword() {
   var newPass       = newPassEl     ? newPassEl.value     : "";
   var confirmPass   = confirmPassEl ? confirmPassEl.value : "";
 
-  if (!newPass) {
-    _showForgotError(3, "請輸入新密碼"); return;
-  }
-  if (newPass.length < 6) {
-    _showForgotError(3, "密碼至少需要 6 個字元"); return;
-  }
+  if (!newPass)                { _showForgotError(3, "請輸入新密碼");       return; }
+  if (newPass.length < 6)      { _showForgotError(3, "密碼至少需要 6 個字元"); return; }
   if (newPass !== confirmPass) {
     _showForgotError(3, "兩次密碼輸入不一致");
     if (confirmPassEl) { confirmPassEl.value = ""; confirmPassEl.focus(); }
@@ -340,14 +331,9 @@ async function submitResetPassword() {
       reset_token:  _forgotState.resetToken,
       new_password: newPass
     });
-
     if (res.success) {
-      showToast(
-        (res.data && res.data.message) ? res.data.message : "密碼已重設成功，請重新登入",
-        "success"
-      );
+      showToast((res.data && res.data.message) ? res.data.message : "密碼已重設成功，請重新登入", "success");
       _resetForgotFlow();
-      // 1.5 秒後跳回登入頁
       setTimeout(function () { showLoginPage(); }, 1500);
     } else {
       _showForgotError(3, res.message || "重設失敗，請重新申請");
@@ -360,21 +346,20 @@ async function submitResetPassword() {
 }
 
 // ────────────────────────────────────────────────────────────
-// 密碼強度即時提示（Step 3 用）
+// 密碼強度即時提示
 // ────────────────────────────────────────────────────────────
 function updatePasswordStrength() {
   var password = document.getElementById("newPassword").value;
   var el       = document.getElementById("passwordStrength");
   if (!el) return;
-
   if (!password) { el.textContent = ""; return; }
 
   var score = 0;
-  if (password.length >= 6)            score++;
-  if (password.length >= 10)           score++;
-  if (/[A-Z]/.test(password))          score++;
-  if (/[0-9]/.test(password))          score++;
-  if (/[^A-Za-z0-9]/.test(password))  score++;
+  if (password.length >= 6)           score++;
+  if (password.length >= 10)          score++;
+  if (/[A-Z]/.test(password))         score++;
+  if (/[0-9]/.test(password))         score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
 
   var levels = [
     { text: "太短",   color: "#e74c3c" },
