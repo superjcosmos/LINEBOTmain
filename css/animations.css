@@ -1,4 +1,4 @@
-<!-- ── animations.css ── -->
+/* ── animations.css ── */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
