@@ -1,3 +1,5 @@
+// js/pages/userlog.js
+
 async function loadUserLog() {
   setContent('<div class="loading">載入中...</div>');
 
