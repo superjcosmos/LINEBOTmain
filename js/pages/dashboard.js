@@ -1,4 +1,4 @@
-// pages/dashboard.js
+// js/pages/dashboard.js
 
 async function loadDashboard() {
   setContent('mainContent', '<div class="loading">載入儀表板...</div>');
