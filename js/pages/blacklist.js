@@ -1,4 +1,4 @@
-// pages/blacklist.js
+// js/pages/blacklist.js
 
 let _blacklistData = [];
 
