@@ -156,6 +156,7 @@ function enterMainPage() {
     } else {
       planEl.textContent = authState.plan || "";
       planEl.className   = "plan plan-" + (authState.plan || "");
+      planEl.style.color = "";  // 恢復預設
     }
   }
 
