@@ -45,6 +45,15 @@ var PAGES = {
     load:    function() { loadBroadcast(); },
     feature: 'broadcast'
   },
+
+  referral:  { 
+    label: '推薦碼',   
+    icon: '🎫', 
+    load: function() { loadReferral();  }, 
+    feature: 'referral'
+  },
+
+  
   export: {
     label:   '資料匯出',
     icon:    '📥',
