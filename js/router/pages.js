@@ -3,6 +3,9 @@
 // 新增頁面只需在這裡加一筆，其他不用動
 
 var PAGES = {
+  // ── 管理者專屬（前面，只有 admin role 會顯示）──
+  admin:     { label: '系統管理',  icon: '🛡️', load: function() { loadAdmin();     }, feature: null, adminOnly: true },  
+  
   dashboard: {
     label:   '儀表板',
     icon:    '📊',
