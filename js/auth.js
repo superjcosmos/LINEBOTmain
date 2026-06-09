@@ -152,6 +152,7 @@ function enterMainPage() {
     if (authState.role === "admin") {
       planEl.textContent = "🛡 系統管理者";
       planEl.className   = "plan";
+      planEl.style.color = "#ffffff";  // ← 加這行
     } else {
       planEl.textContent = authState.plan || "";
       planEl.className   = "plan plan-" + (authState.plan || "");
