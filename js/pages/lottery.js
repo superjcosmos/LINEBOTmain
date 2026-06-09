@@ -1,4 +1,4 @@
-// pages/lottery.js
+// js/pages/lottery.js
 
 let lotteryList = [];
 let lotteryLogData = [];
