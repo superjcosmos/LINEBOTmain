@@ -1,31 +1,30 @@
 // === admin.js ===
 // 路徑：js/pages/admin.js
 // 功能：系統管理者後台
-//   - 全系統統計 KPI
-//   - 所有客戶清單（搜尋、狀態燈號、到期警示）
-//   - 點擊客戶查看詳情 + 編輯 Modal
-//   - 以客戶身份切換視角（impersonate）
+// ⚠️ 更新：側邊欄文字修正、方案首字大寫、加入管理者推薦計畫
 
-var _adminClients   = [];
-var _adminFiltered  = [];
-var _adminPage      = 1;
-var _adminPageSize  = 15;
+var _adminClients    = [];
+var _adminFiltered   = [];
+var _adminPage       = 1;
+var _adminPageSize   = 15;
 var _editingClientId = null;
+var _adminTab        = 'clients'; // 'clients' | 'referral'
 
-// ────────────────────────────────────────────────────────────
-// 主入口
-// ────────────────────────────────────────────────────────────
 async function loadAdmin() {
   setContent('<div class="loading">載入管理後台...</div>');
   var statsRes  = await apiCall({ action: 'adminGetOverallStats' });
   var clientRes = await apiCall({ action: 'adminGetClientList'  });
 
-  if (!clientRes.success) { setContent('<div class="loading">載入失敗：' + (clientRes.message || '') + '</div>'); return; }
+  if (!clientRes.success) {
+    setContent('<div class="loading">載入失敗：' + (clientRes.message || '') + '</div>');
+    return;
+  }
 
-  var stats   = statsRes.success  ? (statsRes.data  || {}) : {};
+  var stats = statsRes.success ? (statsRes.data || {}) : {};
   _adminClients  = Array.isArray(clientRes.data) ? clientRes.data : [];
   _adminFiltered = _adminClients.slice();
   _adminPage     = 1;
+  _adminTab      = 'clients';
 
   setContent(_buildAdminPage(stats));
   _renderAdminTable();
@@ -38,29 +37,73 @@ async function loadAdmin() {
 function _buildAdminPage(stats) {
   var planBreakdown = stats.plan_breakdown || {};
   var planText = Object.keys(planBreakdown).map(function(k) {
-    return k + '：' + planBreakdown[k] + ' 位';
+    return _capitalize(k) + '：' + planBreakdown[k] + ' 位';
   }).join('　|　') || '-';
 
   return '' +
+  // 頁面標題 + Tab
   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
     '<h2 class="page-title" style="margin-bottom:0">🛡️ 系統管理後台</h2>' +
+    '<div style="display:flex;gap:8px">' +
+      '<button id="tabClients" onclick="switchAdminTab(\'clients\')" ' +
+        'style="padding:8px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#1a1a2e;color:#fff">客戶管理</button>' +
+      '<button id="tabReferral" onclick="switchAdminTab(\'referral\')" ' +
+        'style="padding:8px 18px;border-radius:8px;border:1.5px solid #e0e0e0;cursor:pointer;font-size:13px;font-weight:600;background:#fff;color:#444">推薦計畫</button>' +
+    '</div>' +
   '</div>' +
 
-  // ── KPI 卡片 ──
+  // KPI 卡片
   '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">' +
-    _adminCard('總客戶數',    stats.total_clients  || 0, '🏢', '#1a1a2e') +
-    _adminCard('使用中',      stats.active_clients || 0, '✅', '#06C755') +
-    _adminCard('已到期',      stats.expired_count  || 0, '⏰', '#e74c3c') +
-    _adminCard('合計 LINE 用戶', stats.total_users || 0, '👥', '#3498db') +
+    _adminCard('總客戶數',      stats.total_clients  || 0, '🏢', '#1a1a2e') +
+    _adminCard('使用中',        stats.active_clients || 0, '✅', '#06C755') +
+    _adminCard('已到期',        stats.expired_count  || 0, '⏰', '#e74c3c') +
+    _adminCard('合計 LINE 用戶', stats.total_users   || 0, '👥', '#3498db') +
   '</div>' +
 
-  // ── 方案分佈 ──
+  // 方案分佈
   '<div class="card" style="padding:12px 16px;margin-bottom:20px;font-size:13px;color:#555">' +
     '<strong>方案分佈：</strong>' + _esc(planText) +
   '</div>' +
 
-  // ── 客戶清單 ──
-  '<div class="card">' +
+  // Tab 內容容器
+  '<div id="adminTabContent">' +
+    _buildClientsTab() +
+  '</div>' +
+
+  // 編輯 Modal
+  _buildAdminModal();
+}
+
+// ── Tab 切換 ──
+function switchAdminTab(tab) {
+  _adminTab = tab;
+  var tabContent = document.getElementById('adminTabContent');
+  if (!tabContent) return;
+
+  // 更新按鈕樣式
+  var btnClients  = document.getElementById('tabClients');
+  var btnReferral = document.getElementById('tabReferral');
+  if (btnClients && btnReferral) {
+    if (tab === 'clients') {
+      btnClients.style.cssText  = 'padding:8px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#1a1a2e;color:#fff';
+      btnReferral.style.cssText = 'padding:8px 18px;border-radius:8px;border:1.5px solid #e0e0e0;cursor:pointer;font-size:13px;font-weight:600;background:#fff;color:#444';
+      tabContent.innerHTML = _buildClientsTab();
+      _renderAdminTable();
+      _renderAdminPager();
+    } else {
+      btnReferral.style.cssText = 'padding:8px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#1a1a2e;color:#fff';
+      btnClients.style.cssText  = 'padding:8px 18px;border-radius:8px;border:1.5px solid #e0e0e0;cursor:pointer;font-size:13px;font-weight:600;background:#fff;color:#444';
+      tabContent.innerHTML = '<div class="loading">載入推薦計畫...</div>';
+      _loadAdminReferral();
+    }
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// Tab 1：客戶清單
+// ────────────────────────────────────────────────────────────
+function _buildClientsTab() {
+  return '<div class="card">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
       '<div style="font-weight:600;font-size:15px">📋 客戶清單</div>' +
       '<input type="text" id="adminSearch" placeholder="搜尋客戶ID / Email / 公司名稱"' +
@@ -70,60 +113,88 @@ function _buildAdminPage(stats) {
     '<span id="adminTotalHint" style="color:#888;font-size:12px;display:block;margin-bottom:8px"></span>' +
     '<div id="adminTableWrap"></div>' +
     '<div id="adminPager" style="display:flex;justify-content:center;gap:6px;margin-top:12px;flex-wrap:wrap"></div>' +
-  '</div>' +
-
-  // ── 詳情 / 編輯 Modal ──
-  '<div class="modal-overlay" id="adminEditModal">' +
-    '<div class="modal" style="max-width:500px">' +
-      '<h3 id="adminModalTitle">客戶詳情</h3>' +
-
-      '<div id="adminDetailStats" style="background:#f8f9fa;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:#555;display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>' +
-
-      '<div class="form-group">' +
-        '<label>公司名稱</label>' +
-        '<input type="text" id="adminCompanyName" placeholder="例如：JCosmos 股份有限公司">' +
-      '</div>' +
-      '<div class="form-group">' +
-        '<label>方案</label>' +
-        '<select id="adminPlan">' +
-          '<option value="basic">basic</option>' +
-          '<option value="pro">pro</option>' +
-          '<option value="enterprise">enterprise</option>' +
-        '</select>' +
-      '</div>' +
-      '<div class="form-group">' +
-        '<label>到期日</label>' +
-        '<input type="date" id="adminExpireDate">' +
-      '</div>' +
-      '<div class="form-group">' +
-        '<label>狀態</label>' +
-        '<select id="adminStatus">' +
-          '<option value="active">active（正常）</option>' +
-          '<option value="inactive">inactive（停用）</option>' +
-        '</select>' +
-      '</div>' +
-
-      '<div class="modal-footer" style="justify-content:space-between">' +
-        '<button class="btn" style="background:#3498db;color:#fff" onclick="impersonateClient()">👁 切換視角</button>' +
-        '<div style="display:flex;gap:8px">' +
-          '<button class="btn-cancel" onclick="closeAdminModal()">取消</button>' +
-          '<button class="btn btn-primary" onclick="saveAdminClient()">儲存</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-  '</div>';
-}
-
-function _adminCard(label, value, icon, color) {
-  return '<div class="card" style="text-align:center;padding:16px 12px">' +
-    '<div style="font-size:24px;margin-bottom:6px">' + icon + '</div>' +
-    '<div style="font-size:26px;font-weight:700;color:' + color + '">' + value + '</div>' +
-    '<div style="font-size:12px;color:#888;margin-top:4px">' + label + '</div>' +
   '</div>';
 }
 
 // ────────────────────────────────────────────────────────────
-// 表格渲染
+// Tab 2：管理者推薦計畫（你推薦客戶使用你的 SaaS 產品）
+// ────────────────────────────────────────────────────────────
+async function _loadAdminReferral() {
+  var tabContent = document.getElementById('adminTabContent');
+  if (!tabContent) return;
+
+  // 統計：每位客戶的來源（referral_source 欄位，L+1欄，未來可擴充）
+  // 目前先用客戶清單直接呈現，並提供推薦連結產生功能
+  var totalClients = _adminClients.filter(function(c) { return c.role !== 'admin'; }).length;
+
+  tabContent.innerHTML =
+    '<div class="card" style="margin-bottom:20px">' +
+      '<div style="font-weight:600;font-size:15px;margin-bottom:16px">🎯 我的 SaaS 推薦計畫</div>' +
+
+      // 說明
+      '<div style="background:#f0f9f4;border-radius:8px;padding:14px;margin-bottom:20px;font-size:13px;color:#2d6a4f;border-left:4px solid #06C755">' +
+        '<strong>運作方式：</strong>為每位客戶產生一組推薦連結，當他們推薦新客戶成功開通，' +
+        '雙方皆可獲得你設定的獎勵（例如：延長使用期限、折扣、額外功能等）。' +
+      '</div>' +
+
+      // 統計卡片
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">' +
+        _adminCard('目前客戶數', totalClients,                               '🏢', '#1a1a2e') +
+        _adminCard('推薦成功數', 0,                                          '🎉', '#06C755') +
+        _adminCard('待開通',     0,                                          '⏳', '#f39c12') +
+      '</div>' +
+
+      // 客戶推薦碼管理表格
+      '<div style="font-weight:600;font-size:14px;margin-bottom:12px">📋 客戶推薦連結管理</div>' +
+      '<table class="table"><thead><tr>' +
+        '<th>客戶ID</th><th>公司名稱</th><th>方案</th>' +
+        '<th style="text-align:center">推薦連結</th><th style="text-align:center">操作</th>' +
+      '</tr></thead><tbody>' +
+      _adminClients.filter(function(c) { return c.role !== 'admin'; }).map(function(c) {
+        // 推薦連結：帶入 ref 參數，未來可串接自動開通流程
+        var refUrl = 'https://superjcosmos.github.io/LINEBOTmain/?ref=' + encodeURIComponent(c.client_id);
+        return '<tr>' +
+          '<td>' + _esc(c.client_id) + '</td>' +
+          '<td>' + _esc(c.company_name || '-') + '</td>' +
+          '<td><span style="background:' + _planColor(c.plan) + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' +
+            _capitalize(c.plan) + '</span></td>' +
+          '<td style="text-align:center">' +
+            '<span style="font-size:11px;color:#888;font-family:monospace">?ref=' + _esc(c.client_id) + '</span>' +
+          '</td>' +
+          '<td style="text-align:center">' +
+            '<button onclick="copyRefLink(\'' + _esc(refUrl) + '\')" ' +
+              'style="background:#06C755;color:#fff;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px">' +
+              '複製連結' +
+            '</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table>' +
+
+      // 未來擴充說明
+      '<div style="margin-top:20px;padding:14px;background:#f8f9fa;border-radius:8px;font-size:12px;color:#888">' +
+        '💡 <strong>未來可擴充：</strong>自動偵測 ?ref= 參數 → 記錄推薦來源 → 開通後自動給予推薦獎勵（延長天數 / 方案升級）' +
+      '</div>' +
+    '</div>';
+}
+
+function copyRefLink(url) {
+  navigator.clipboard.writeText(url).then(function() {
+    showToast('推薦連結已複製！', 'success');
+  }).catch(function() {
+    // fallback
+    var ta = document.createElement('textarea');
+    ta.value = url;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('推薦連結已複製！', 'success');
+  });
+}
+
+// ────────────────────────────────────────────────────────────
+// 客戶清單表格渲染
 // ────────────────────────────────────────────────────────────
 function _renderAdminTable() {
   var wrap = document.getElementById('adminTableWrap');
@@ -139,27 +210,17 @@ function _renderAdminTable() {
 
   var rows = page.map(function(c, li) {
     var absIdx = start + li;
-
-    // 狀態燈號
     var statusDot = c.status === 'active'
       ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#06C755;margin-right:5px"></span>'
       : '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#e74c3c;margin-right:5px"></span>';
-
-    // 到期警示
-    var expireText = c.expire_date || '-';
     var expireStyle = c.is_expired ? 'color:#e74c3c;font-weight:600' : '';
-
-    // 方案標籤色
-    var planColors = { basic: '#95a5a6', pro: '#3498db', enterprise: '#9b59b6' };
-    var planColor  = planColors[c.plan] || '#95a5a6';
-
     return '<tr onclick="openAdminDetail(' + absIdx + ')" style="cursor:pointer">' +
       '<td>' + statusDot + _esc(c.client_id) + '</td>' +
       '<td>' + _esc(c.company_name || '-') + '</td>' +
       '<td style="font-size:12px;color:#888">' + _esc(c.email) + '</td>' +
-      '<td><span style="background:' + planColor + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' +
-        _esc(c.plan) + '</span></td>' +
-      '<td style="' + expireStyle + '">' + expireText + '</td>' +
+      '<td><span style="background:' + _planColor(c.plan) + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' +
+        _capitalize(c.plan) + '</span></td>' +
+      '<td style="' + expireStyle + '">' + (c.expire_date || '-') + '</td>' +
       '<td style="text-align:center;font-weight:600;color:#06C755">' + (c.user_count || 0) + '</td>' +
       '<td style="font-size:11px;color:#aaa">' + (c.last_activity || '-') + '</td>' +
     '</tr>';
@@ -179,12 +240,8 @@ function _renderAdminPager() {
   if (totalPages <= 1) { pager.innerHTML = ''; return; }
   var btns = '';
   for (var p = 1; p <= totalPages; p++) {
-    var active = p === _adminPage
-      ? 'background:#1a1a2e;color:#fff;'
-      : 'background:#f0f0f0;color:#444;';
-    btns += '<button onclick="goAdminPage(' + p + ')" ' +
-      'style="' + active + 'border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px">' +
-      p + '</button>';
+    var active = p === _adminPage ? 'background:#1a1a2e;color:#fff;' : 'background:#f0f0f0;color:#444;';
+    btns += '<button onclick="goAdminPage(' + p + ')" style="' + active + 'border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px">' + p + '</button>';
   }
   pager.innerHTML = btns;
 }
@@ -206,21 +263,52 @@ function filterAdmin() {
 }
 
 // ────────────────────────────────────────────────────────────
-// 詳情 Modal
+// 詳情 Modal HTML
 // ────────────────────────────────────────────────────────────
+function _buildAdminModal() {
+  return '<div class="modal-overlay" id="adminEditModal">' +
+    '<div class="modal" style="max-width:500px">' +
+      '<h3 id="adminModalTitle">客戶詳情</h3>' +
+      '<div id="adminDetailStats" style="background:#f8f9fa;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:#555;display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>' +
+      '<div class="form-group"><label>公司名稱</label><input type="text" id="adminCompanyName"></div>' +
+      '<div class="form-group">' +
+        '<label>方案</label>' +
+        '<select id="adminPlan">' +
+          '<option value="basic">Basic</option>' +
+          '<option value="pro">Pro</option>' +
+          '<option value="enterprise">Enterprise</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="form-group"><label>到期日</label><input type="date" id="adminExpireDate"></div>' +
+      '<div class="form-group">' +
+        '<label>狀態</label>' +
+        '<select id="adminStatus">' +
+          '<option value="active">Active（正常）</option>' +
+          '<option value="inactive">Inactive（停用）</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="modal-footer" style="justify-content:space-between">' +
+        '<button class="btn" style="background:#3498db;color:#fff" onclick="impersonateClient()">👁 切換視角</button>' +
+        '<div style="display:flex;gap:8px">' +
+          '<button class="btn-cancel" onclick="closeAdminModal()">取消</button>' +
+          '<button class="btn btn-primary" onclick="saveAdminClient()">儲存</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
 async function openAdminDetail(idx) {
   var c = _adminFiltered[idx];
   if (!c) return;
   _editingClientId = c.client_id;
 
-  // 填入基本欄位
   document.getElementById('adminModalTitle').textContent = '客戶：' + (c.company_name || c.client_id);
   document.getElementById('adminCompanyName').value = c.company_name || '';
   document.getElementById('adminPlan').value        = c.plan         || 'basic';
   document.getElementById('adminExpireDate').value  = (c.expire_date || '').replace(/\//g, '-');
   document.getElementById('adminStatus').value      = c.status       || 'active';
 
-  // 載入詳細統計
   var detailBox = document.getElementById('adminDetailStats');
   detailBox.innerHTML = '<div style="color:#aaa">載入中...</div>';
   document.getElementById('adminEditModal').style.display = 'flex';
@@ -244,47 +332,42 @@ function closeAdminModal() {
   _editingClientId = null;
 }
 
-// ────────────────────────────────────────────────────────────
-// 儲存客戶修改
-// ────────────────────────────────────────────────────────────
 async function saveAdminClient() {
   if (!_editingClientId) return;
   var res = await apiCall({
-    action:            'adminUpdateClient',
-    target_client_id:  _editingClientId,
-    company_name:      document.getElementById('adminCompanyName').value.trim(),
-    plan:              document.getElementById('adminPlan').value,
-    expire_date:       document.getElementById('adminExpireDate').value,
-    status:            document.getElementById('adminStatus').value
+    action:           'adminUpdateClient',
+    target_client_id: _editingClientId,
+    company_name:     document.getElementById('adminCompanyName').value.trim(),
+    plan:             document.getElementById('adminPlan').value,
+    expire_date:      document.getElementById('adminExpireDate').value,
+    status:           document.getElementById('adminStatus').value
   });
   if (res.success) {
     showToast('客戶資料已更新', 'success');
     closeAdminModal();
-    loadAdmin(); // 重新整理清單
+    loadAdmin();
   } else {
     showToast(res.message || '更新失敗', 'error');
   }
 }
 
 // ────────────────────────────────────────────────────────────
-// 切換視角：以該客戶身份進入後台瀏覽
+// 切換視角
 // ────────────────────────────────────────────────────────────
 function impersonateClient() {
   if (!_editingClientId) return;
   var c = _adminClients.find(function(x) { return x.client_id === _editingClientId; });
   if (!c) return;
 
-  // 暫存原 admin 資訊，以便還原
-  localStorage.setItem('adminBackup_token',   authState.sessionToken);
+  localStorage.setItem('adminBackup_token',    authState.sessionToken);
   localStorage.setItem('adminBackup_clientId', authState.clientId);
   localStorage.setItem('adminBackup_email',    authState.email);
   localStorage.setItem('adminBackup_role',     authState.role);
 
-  // 切換為目標客戶身份（前端視角）
   authState.clientId     = c.client_id;
   authState.email        = c.email;
   authState.plan         = c.plan;
-  authState.role         = 'client_preview'; // 特殊 role，表示預覽模式
+  authState.role         = 'client_preview';
   authState.company_name = c.company_name || c.client_id;
   localStorage.setItem('clientId',     c.client_id);
   localStorage.setItem('email',        c.email);
@@ -293,20 +376,14 @@ function impersonateClient() {
   localStorage.setItem('company_name', c.company_name || c.client_id);
 
   closeAdminModal();
-
-  // 顯示「返回管理後台」按鈕
   _showImpersonateBar(c.company_name || c.client_id);
-
-  // 重建側邊欄（顯示客戶頁面），進入儀表板
   buildSidebarMenu();
   navigateTo('dashboard');
 }
 
-// ── 預覽模式頂部提示條 ──
 function _showImpersonateBar(name) {
   var existing = document.getElementById('impersonateBar');
   if (existing) existing.remove();
-
   var bar = document.createElement('div');
   bar.id  = 'impersonateBar';
   bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;' +
@@ -322,7 +399,6 @@ function _showImpersonateBar(name) {
 }
 
 function exitImpersonate() {
-  // 還原 admin 身份
   authState.sessionToken = localStorage.getItem('adminBackup_token')    || authState.sessionToken;
   authState.clientId     = localStorage.getItem('adminBackup_clientId') || authState.clientId;
   authState.email        = localStorage.getItem('adminBackup_email')    || authState.email;
@@ -339,9 +415,29 @@ function exitImpersonate() {
 
   var bar = document.getElementById('impersonateBar');
   if (bar) bar.remove();
-
   buildSidebarMenu();
   navigateTo('admin');
+}
+
+// ────────────────────────────────────────────────────────────
+// 工具函式
+// ────────────────────────────────────────────────────────────
+function _capitalize(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
+function _planColor(plan) {
+  var colors = { basic: '#95a5a6', pro: '#3498db', enterprise: '#9b59b6', trial: '#e67e22' };
+  return colors[(plan || '').toLowerCase()] || '#95a5a6';
+}
+
+function _adminCard(label, value, icon, color) {
+  return '<div class="card" style="text-align:center;padding:16px 12px">' +
+    '<div style="font-size:24px;margin-bottom:6px">' + icon + '</div>' +
+    '<div style="font-size:26px;font-weight:700;color:' + color + '">' + value + '</div>' +
+    '<div style="font-size:12px;color:#888;margin-top:4px">' + label + '</div>' +
+  '</div>';
 }
 
 function _esc(s) {
