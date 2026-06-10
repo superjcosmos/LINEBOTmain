@@ -162,6 +162,9 @@ function enterMainPage() {
 
   buildSidebarMenu();
 
+  var versionEl = document.getElementById('sidebarVersion');
+  if (versionEl) versionEl.textContent = CONFIG.VERSION;
+
   // ── role 分流 ──
   if (authState.role === "admin") {
     navigateTo("admin");
