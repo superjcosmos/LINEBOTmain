@@ -360,6 +360,7 @@ function _buildAdminModal() {
           '<option value="basic">Basic</option>' +
           '<option value="pro">Pro</option>' +
           '<option value="enterprise">Enterprise</option>' +
+          '<option value="trial">Trial</option>' +
         '</select></div>' +
       '<div class="form-group"><label>到期日</label><input type="date" id="adminExpireDate"></div>' +
       '<div class="form-group"><label>狀態</label>' +
