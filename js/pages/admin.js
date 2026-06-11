@@ -453,6 +453,9 @@ function impersonateClient() {
   closeAdminModal();
   _showImpersonateBar(c.company_name || c.client_id);
   buildSidebarMenu();
+  // impersonateClient() 裡，buildSidebarMenu() 之後加入
+  var supportBtn = document.getElementById('sidebarSupportBtn');
+  if (supportBtn) supportBtn.style.display = 'block';
   navigateTo('dashboard');
 }
 
