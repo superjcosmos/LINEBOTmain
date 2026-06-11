@@ -8,7 +8,7 @@ var PAGES = {
   
   // admin_support：只有 admin 看到，加在 admin 之後
   admin_support: {
-    label:     '客服留言',
+    label:     '聯絡我們',
     icon:      '💬',
     load:      function() { loadAdminSupport(); },
     feature:   null,
