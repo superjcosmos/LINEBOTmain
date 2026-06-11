@@ -77,13 +77,6 @@ var PAGES = {
     icon:    '🚫',
     load:    function() { loadBlacklist(); },
     feature: 'blacklist'
-  },
-
-  // 在 PAGES 物件加入（blacklist 之後）
-  support: {
-    label:   '聯絡我們',
-    icon:    '💬',
-    load:    function() { loadSupport(); },
-    feature: 'support'
   }
+
 };
