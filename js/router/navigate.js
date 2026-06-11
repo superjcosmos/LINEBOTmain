@@ -10,6 +10,30 @@ function navigateTo(pageKey) {
     return;
   }
 
+  // ── 切換視角時，確保提示條還在 ──
+  if (authState.role === 'client_preview') {
+    var bar = document.getElementById('impersonateBar');
+    if (!bar) {
+      // bar 不見了，重新補回
+      _showImpersonateBar(authState.company_name || authState.clientId);
+    }
+  }
+
+  _currentPage = pageKey;
+  document.querySelectorAll('.menu-item').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.page === pageKey);
+  });
+  var mainContent = document.getElementById('mainContent');
+  if (mainContent) mainContent.innerHTML = '<div class="loading">載入中...</div>';
+  try {
+    PAGES[pageKey].load();
+  } catch(e) {
+    if (mainContent) {
+      mainContent.innerHTML = '<div class="empty">頁面載入失敗：' + e.message + '</div>';
+    }
+  }
+}
+
   _currentPage = pageKey;
 
   // 更新側邊欄 active 狀態
