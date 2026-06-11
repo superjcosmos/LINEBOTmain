@@ -185,23 +185,6 @@ async function _loadAdminSettings() {
 
   tabContent.innerHTML =
 
-    // ── 客服留言管理 ──
-    '<div class="card" style="margin-bottom:20px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
-        '<div style="font-weight:600;font-size:15px">💬 客服留言管理' +
-          (pending > 0
-            ? ' <span style="background:#e74c3c;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;margin-left:6px">' + pending + ' 則待回覆</span>'
-            : '') +
-        '</div>' +
-        '<div style="display:flex;gap:6px">' +
-          '<button onclick="_filterSupport(\'all\')"     id="sfAll"     style="padding:5px 12px;border-radius:6px;border:1.5px solid #e0e0e0;cursor:pointer;font-size:12px;background:#1a1a2e;color:#fff">全部</button>' +
-          '<button onclick="_filterSupport(\'pending\')" id="sfPending" style="padding:5px 12px;border-radius:6px;border:1.5px solid #e0e0e0;cursor:pointer;font-size:12px;background:#fff;color:#444">待回覆</button>' +
-          '<button onclick="_filterSupport(\'replied\')" id="sfReplied" style="padding:5px 12px;border-radius:6px;border:1.5px solid #e0e0e0;cursor:pointer;font-size:12px;background:#fff;color:#444">已回覆</button>' +
-        '</div>' +
-      '</div>' +
-      '<div id="supportTicketList">' + _renderTickets(tickets) + '</div>' +
-    '</div>' +
-
     // ── 聯絡資訊設定 ──
     '<div class="card">' +
       '<div style="font-weight:600;font-size:15px;margin-bottom:8px">📬 登入頁聯絡資訊</div>' +
