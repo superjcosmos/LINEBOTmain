@@ -12,6 +12,7 @@ function buildSidebarMenu() {
   Object.keys(PAGES).forEach(function(key) {
     if (!hasFeature(key)) return;
     var page = PAGES[key];
+    if (page.hideFromSidebar) return;  // ← 加這行，過濾掉不顯示在選單的頁面
     var item = document.createElement('div');
     item.className    = 'menu-item';
     item.dataset.page = key;
