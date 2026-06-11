@@ -163,6 +163,13 @@ function enterMainPage() {
 
   buildSidebarMenu();
 
+  // enterMainPage() 裡，buildSidebarMenu() 之後加入：
+  var supportBtn = document.getElementById('sidebarSupportBtn');
+  if (supportBtn) {
+    supportBtn.style.display = authState.role === 'admin' ? 'none' : 'block';
+  }
+  
+
   var versionEl = document.getElementById('sidebarVersion');
   if (versionEl) versionEl.textContent = CONFIG.VERSION;
 
