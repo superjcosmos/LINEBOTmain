@@ -77,6 +77,13 @@ var PAGES = {
     icon:    '🚫',
     load:    function() { loadBlacklist(); },
     feature: 'blacklist'
+  },
+
+    support: {
+    label:   '聯絡我們',
+    icon:    '📬',
+    load:    function() { loadSupport(); },
+    feature: 'support'
   }
 
 };
