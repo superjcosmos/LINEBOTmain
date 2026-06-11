@@ -388,3 +388,26 @@ function _showForgotError(step, msg) {
   el.textContent   = msg;
   el.style.display = "block";
 }
+
+// ── 密碼顯示切換 ──
+function togglePassword() {
+  var input = document.getElementById('inputPassword');
+  var btn   = document.getElementById('btnTogglePwd');
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type      = 'text';
+    btn.textContent = '🙈';
+  } else {
+    input.type      = 'password';
+    btn.textContent = '👁';
+  }
+  input.focus();
+}
+
+// ── CapsLock 偵測 ──
+function checkCapsLock(event) {
+  var warning = document.getElementById('capsLockWarning');
+  if (!warning) return;
+  warning.style.display =
+    (event.getModifierState && event.getModifierState('CapsLock')) ? 'block' : 'none';
+}
