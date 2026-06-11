@@ -154,7 +154,8 @@ function enterMainPage() {
       planEl.className   = "plan";
       planEl.style.color = "#ffffff";  // ← 加這行
     } else {
-      planEl.textContent = _capitalize(authState.plan || "");  // ← 加 _capitalize
+      planEl.textContent = (authState.plan || '').charAt(0).toUpperCase() +
+                     (authState.plan || '').slice(1).toLowerCase();
       planEl.className   = "plan plan-" + (authState.plan || "");
       planEl.style.color = "";  // 恢復預設
     }
