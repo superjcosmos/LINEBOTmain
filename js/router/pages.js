@@ -83,7 +83,8 @@ var PAGES = {
     label:   '聯絡我們',
     icon:    '📬',
     load:    function() { loadSupport(); },
-    feature: 'support'
+    feature: 'support',
+    hideFromSidebar:  true    // ← 加這行  
   }
 
 };
