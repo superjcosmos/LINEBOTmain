@@ -489,6 +489,9 @@ function exitImpersonate() {
   var bar = document.getElementById('impersonateBar');
   if (bar) bar.remove();
   buildSidebarMenu();
+  // exitImpersonate() 裡，buildSidebarMenu() 之後加入
+  var supportBtn = document.getElementById('sidebarSupportBtn');
+  if (supportBtn) supportBtn.style.display = 'none';
   navigateTo('admin');
 }
 
