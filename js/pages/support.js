@@ -41,7 +41,7 @@ function _buildSupportPage(history) {
       }).join('');
 
   return '' +
-  '<h2 class="page-title">💬 客服留言</h2>' +
+  '<h2 class="page-title">💬 聯絡我們</h2>' +
 
   // 留言表單
   '<div class="card" style="margin-bottom:24px">' +
