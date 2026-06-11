@@ -7,13 +7,13 @@ var PAGES = {
   admin:     { label: '系統管理',  icon: '🛡️', load: function() { loadAdmin();     }, feature: null, adminOnly: true },  
   
   // admin_support：只有 admin 看到，加在 admin 之後
-admin_support: {
-  label:     '客服留言',
-  icon:      '💬',
-  load:      function() { loadAdminSupport(); },
-  feature:   null,
-  adminOnly: true
-},
+  admin_support: {
+    label:     '客服留言',
+    icon:      '💬',
+    load:      function() { loadAdminSupport(); },
+    feature:   null,
+    adminOnly: true
+  },
   
   dashboard: {
     label:   '儀表板',
