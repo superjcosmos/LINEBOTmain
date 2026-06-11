@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J Cosmos — LINE Bot API 管理平台</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:Arial,sans-serif}
+body{background:#0d1117;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+
+/* ── 星空背景 ── */
+.starfield{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.starfield span{position:absolute;border-radius:50%;background:#c8eedd;animation:twinkle var(--d) ease-in-out infinite alternate}
+@keyframes twinkle{0%{opacity:.15}100%{opacity:.7}}
+
+/* ── 場景 ── */
+.scene{width:420px;max-width:100%;perspective:1200px;position:relative;z-index:1;cursor:pointer}
+.card-inner{width:100%;aspect-ratio:420/240;position:relative;transform-style:preserve-3d;transition:transform .75s cubic-bezier(.4,0,.2,1)}
+.scene.flipped .card-inner{transform:rotateY(180deg)}
+
+.face{position:absolute;inset:0;border-radius:20px;backface-visibility:hidden;overflow:hidden}
+.front{background:#1a1a2e}
+.back{background:#111827;transform:rotateY(180deg)}
+
+/* ── 正面裝飾 ── */
+.orbit{position:absolute;border-radius:50%;border:1px solid rgba(200,237,221,.22)}
+.orbit-a{width:340px;height:116px;top:62px;left:40px;transform:rotate(-32deg)}
+.orbit-b{width:340px;height:116px;top:62px;left:40px;transform:rotate(32deg)}
+.orbit-c{width:210px;height:210px;top:15px;left:105px}
+.star-pt{position:absolute;clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);background:#c8eedd}
+
+/* ── 正面內容 ── */
+.front-inner{position:relative;z-index:2;padding:28px 32px;height:100%;display:flex;flex-direction:column;justify-content:space-between}
+.logo-row{display:flex;align-items:center;gap:12px}
+.logo-circle{width:40px;height:40px;background:#06C755;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;font-family:'Arial Black',Arial,sans-serif;flex-shrink:0}
+.brand-title{font-size:19px;font-weight:500;color:#fff;letter-spacing:.4px}
+.brand-sub{font-size:10px;color:rgba(200,237,221,.65);letter-spacing:2.5px;text-transform:uppercase;margin-top:2px}
+.front-foot{display:flex;justify-content:space-between;align-items:flex-end}
+.tagline-main{font-size:13px;color:rgba(255,255,255,.9)}
+.tagline-desc{font-size:11px;color:rgba(200,237,221,.55);margin-top:4px}
+.owner-tag{font-size:11px;color:rgba(200,237,221,.5);margin-top:8px}
+.flip-cue{font-size:11px;color:rgba(255,255,255,.25)}
+
+/* ── 背面裝飾圓 ── */
+.bg-ring{position:absolute;border-radius:50%;border:1px solid rgba(200,237,221,.1)}
+.bg-ring-a{width:290px;height:290px;top:-50px;right:-70px}
+.bg-ring-b{width:170px;height:170px;bottom:-40px;left:-25px}
+
+/* ── 背面內容 ── */
+.back-inner{position:relative;z-index:2;padding:22px 28px;height:100%;display:flex;flex-direction:column;justify-content:space-between}
+.feat-label{font-size:12px;font-weight:500;color:#fff;margin-bottom:8px}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px}
+.feat-item{display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,.78)}
+.feat-dot{width:4px;height:4px;border-radius:50%;background:#06C755;flex-shrink:0}
+.back-foot{display:flex;justify-content:space-between;align-items:flex-end}
+.contact-block .c-label{font-size:10px;color:rgba(200,237,221,.55)}
+.contact-block .c-email{font-size:11.5px;color:#c8eedd;margin-top:2px}
+.contact-block .c-owner{font-size:10px;color:rgba(200,237,221,.4);margin-top:2px}
+.cta{background:#06C755;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:500;cursor:pointer;letter-spacing:.3px;text-decoration:none;display:inline-block}
+.cta:hover{background:#05b34c}
+
+/* ── 控制列 ── */
+.controls{margin-top:20px;display:flex;flex-direction:column;align-items:center;gap:10px;position:relative;z-index:1}
+.hint-txt{font-size:12px;color:rgba(200,237,221,.4)}
+.flip-btn{background:transparent;border:1px solid rgba(200,237,221,.2);border-radius:8px;padding:8px 28px;font-size:13px;color:rgba(200,237,221,.7);cursor:pointer;letter-spacing:.5px}
+.flip-btn:hover{border-color:rgba(200,237,221,.5);color:#c8eedd}
+
+/* ── 分享區 ── */
+.share-row{margin-top:28px;display:flex;gap:10px;position:relative;z-index:1;flex-wrap:wrap;justify-content:center}
+.share-btn{background:transparent;border:1px solid rgba(200,237,221,.2);border-radius:8px;padding:7px 18px;font-size:12px;color:rgba(200,237,221,.6);cursor:pointer}
+.share-btn:hover{border-color:rgba(200,237,221,.5);color:#c8eedd}
+
+@media(max-width:460px){
+  .scene{width:100%}
+  .feat-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(prefers-reduced-motion:reduce){
+  .card-inner{transition:none}
+  .starfield span{animation:none;opacity:.3}
+}
+</style>
+</head>
+<body>
+
+<!-- 星空 -->
+<div class="starfield" aria-hidden="true" id="sf"></div>
+
+<!-- 名片 -->
+<div class="scene" id="scene" onclick="this.classList.toggle('flipped')" role="button" aria-label="點擊翻轉名片">
+  <div class="card-inner">
+
+    <!-- 正面 -->
+    <div class="face front">
+      <div class="orbit orbit-a"></div>
+      <div class="orbit orbit-b"></div>
+      <div class="orbit orbit-c"></div>
+      <!-- 星星 -->
+      <div class="star-pt" style="width:7px;height:7px;top:16px;left:215px;opacity:.9"></div>
+      <div class="star-pt" style="width:7px;height:7px;top:16px;right:38px;opacity:.85"></div>
+      <div class="star-pt" style="width:5px;height:5px;top:65px;left:28px;opacity:.5"></div>
+      <div class="star-pt" style="width:5px;height:5px;bottom:42px;left:185px;opacity:.5"></div>
+      <div class="star-pt" style="width:7px;height:7px;bottom:28px;right:78px;opacity:.85"></div>
+      <div class="star-pt" style="width:5px;height:5px;top:105px;right:18px;opacity:.5"></div>
+      <div class="front-inner">
+        <div class="logo-row">
+          <div class="logo-circle">J</div>
+          <div>
+            <div class="brand-title">J Cosmos</div>
+            <div class="brand-sub">LINE Bot API 管理平台</div>
+          </div>
+        </div>
+        <div class="front-foot">
+          <div>
+            <div class="tagline-main">行銷自動化 · 智慧管理</div>
+            <div class="tagline-desc">讓 LINE Bot 成為你最強的業務助手</div>
+            <div class="owner-tag">專案負責人　J</div>
+          </div>
+          <div class="flip-cue">翻轉 →</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 背面 -->
+    <div class="face back">
+      <div class="bg-ring bg-ring-a"></div>
+      <div class="bg-ring bg-ring-b"></div>
+      <div class="back-inner">
+        <div>
+          <div class="feat-label">核心功能</div>
+          <div class="feat-grid">
+            <div class="feat-item"><span class="feat-dot"></span>自動回覆管理</div>
+            <div class="feat-item"><span class="feat-dot"></span>受眾精準推播</div>
+            <div class="feat-item"><span class="feat-dot"></span>圖文選單設計</div>
+            <div class="feat-item"><span class="feat-dot"></span>小遊戲互動</div>
+            <div class="feat-item"><span class="feat-dot"></span>推薦集點機制</div>
+            <div class="feat-item"><span class="feat-dot"></span>數據儀表板</div>
+            <div class="feat-item"><span class="feat-dot"></span>黑名單管理</div>
+            <div class="feat-item"><span class="feat-dot"></span>資料匯出</div>
+            <div class="feat-item"><span class="feat-dot"></span>系統管理後台</div>
+          </div>
+        </div>
+        <div class="back-foot">
+          <div class="contact-block">
+            <div class="c-label">聯絡我們</div>
+            <div class="c-email">superjcosmos@gmail.com</div>
+            <div class="c-owner">專案負責人　J</div>
+          </div>
+          <a class="cta" href="https://superjcosmos.github.io/LINEBOTmain/" target="_blank" rel="noopener" onclick="event.stopPropagation()">立即體驗</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="controls">
+  <span class="hint-txt">點擊名片或按鈕翻轉</span>
+  <button class="flip-btn" onclick="document.getElementById('scene').classList.toggle('flipped')">翻轉名片</button>
+</div>
+
+<div class="share-row">
+  <button class="share-btn" onclick="copyLink()">複製名片連結</button>
+  <a class="share-btn" href="https://superjcosmos.github.io/LINEBOTmain/" target="_blank" rel="noopener" style="text-decoration:none">前往後台</a>
+</div>
+
+<script>
+(function(){
+  var sf=document.getElementById('sf');
+  var stars=[
+    {s:2,t:8,l:15,d:2.8},{s:3,t:12,l:42,d:3.5},{s:2,t:5,l:68,d:2.1},
+    {s:4,t:22,l:85,d:4.2},{s:2,t:35,l:8,d:3.1},{s:3,t:45,l:55,d:2.7},
+    {s:2,t:60,l:30,d:3.8},{s:4,t:70,l:72,d:2.4},{s:3,t:80,l:90,d:3.3},
+    {s:2,t:90,l:18,d:4.5},{s:3,t:15,l:95,d:2.9},{s:2,t:50,l:48,d:3.6},
+    {s:3,t:28,l:78,d:2.3},{s:2,t:65,l:62,d:4.1},{s:4,t:88,l:38,d:3.0}
+  ];
+  stars.forEach(function(s){
+    var el=document.createElement('span');
+    el.style.cssText='width:'+s.s+'px;height:'+s.s+'px;top:'+s.t+'%;left:'+s.l+'%;--d:'+s.d+'s';
+    sf.appendChild(el);
+  });
+})();
+
+function copyLink(){
+  var url=window.location.href;
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(function(){alert('連結已複製！');});
+  } else {
+    var ta=document.createElement('textarea');
+    ta.value=url;document.body.appendChild(ta);ta.select();
+    document.execCommand('copy');document.body.removeChild(ta);
+    alert('連結已複製！');
+  }
+}
+</script>
+</body>
+</html>
