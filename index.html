@@ -54,8 +54,22 @@
 
     <div class="form-group">
       <label>密碼</label>
-      <input type="password" id="inputPassword" placeholder="••••••••"
-             onkeydown="if(event.key==='Enter') login()">
+      <div style="position:relative">
+        <input type="password" id="inputPassword" placeholder="••••••••"
+               onkeydown="if(event.key==='Enter') login()"
+               onkeyup="checkCapsLock(event)"
+               style="padding-right:44px;width:100%">
+        <button type="button" id="btnTogglePwd" onclick="togglePassword()"
+                title="顯示/隱藏密碼"
+                style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+                       background:none;border:none;cursor:pointer;font-size:18px;color:#aaa;padding:0">
+          👁
+        </button>
+      </div>
+      <div id="capsLockWarning"
+           style="display:none;color:#f39c12;font-size:12px;margin-top:4px">
+        ⚠️ 大寫鎖定已開啟
+      </div>
     </div>
 
     <button class="btn-login" id="btnLogin" onclick="login()">登入</button>
