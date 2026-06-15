@@ -1,6 +1,6 @@
 // ============================================================
 // js/pages/loyalty.js
-// 功能：點數卡管理頁（精靈式設定 + 會員點數查詢 + 記錄）
+// 功能：點數卡管理頁（精靈式設定 + 會員點數查詢）
 // ============================================================
 
 var _loyaltySettings  = {};
@@ -8,55 +8,46 @@ var _loyaltyUserAll   = [];
 var _loyaltyUserFilt  = [];
 var _loyaltyUserPage  = 1;
 var _loyaltyPageSize  = 15;
-var _loyaltyLogAll    = [];
 
 async function loadLoyalty() {
   setContent('<div class="loading">載入點數卡管理...</div>');
   var settingRes = await apiCall({ action: 'getLoyaltySettings' });
   if (!settingRes.success) { setContent('<div class="loading">載入失敗</div>'); return; }
-
   _loyaltySettings = settingRes.data || {};
-  var configured   = settingRes.configured;
-
-  if (!configured || !_loyaltySettings.mode) {
-    // 尚未設定 → 顯示精靈
+  if (!settingRes.configured || !_loyaltySettings.mode) {
     _renderLoyaltyWizard(1);
   } else {
-    // 已設定 → 顯示主頁
     _renderLoyaltyMain();
   }
 }
 
 // ══════════════════════════════════════════
-// 精靈式設定（Step 1 / 2 / 3）
+// 精靈
 // ══════════════════════════════════════════
 var _wizardData = {};
 
 function _renderLoyaltyWizard(step) {
-  var steps = [
-    { label: '選擇模式' },
-    { label: '填寫規則' },
-    { label: '設定關鍵字' }
-  ];
-  var dots = steps.map(function(s, i) {
-    var active = i + 1 === step
-      ? 'background:#534AB7;color:#fff;'
-      : i + 1 < step
-        ? 'background:#1D9E75;color:#fff;'
-        : 'background:#e0e0e0;color:#999;';
-    return '<div style="' + active + 'width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">' + (i + 1) + '</div>' +
-      '<div style="font-size:11px;color:#888;margin-top:4px;text-align:center">' + s.label + '</div>';
-  }).join('<div style="flex:1;height:2px;background:#e0e0e0;margin:14px 4px 0"></div>');
+  var labels = ['選擇模式','填寫規則','設定關鍵字'];
+  var dots = labels.map(function(l, i) {
+    var n = i + 1;
+    var bg = n === step ? '#534AB7' : n < step ? '#1D9E75' : '#e0e0e0';
+    var fc = n <= step ? '#fff' : '#999';
+    return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px">' +
+      '<div style="width:28px;height:28px;border-radius:50%;background:' + bg + ';color:' + fc + ';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">' + n + '</div>' +
+      '<div style="font-size:11px;color:#888">' + l + '</div></div>';
+  });
+  var dotsHtml = dots[0] +
+    '<div style="flex:1;height:2px;background:#e0e0e0;margin:14px 4px 0"></div>' +
+    dots[1] +
+    '<div style="flex:1;height:2px;background:#e0e0e0;margin:14px 4px 0"></div>' +
+    dots[2];
 
-  var body = '';
-  if (step === 1) body = _wizardStep1();
-  if (step === 2) body = _wizardStep2();
-  if (step === 3) body = _wizardStep3();
+  var body = step === 1 ? _wizardStep1() : step === 2 ? _wizardStep2() : _wizardStep3();
 
   setContent(
-    '<div style="max-width:560px;margin:0 auto">' +
+    '<div style="max-width:580px;margin:0 auto">' +
       '<h2 class="page-title">點數卡設定</h2>' +
-      '<div style="display:flex;align-items:flex-start;gap:0;margin-bottom:28px">' + dots + '</div>' +
+      '<div style="display:flex;align-items:flex-start;gap:0;margin-bottom:28px">' + dotsHtml + '</div>' +
       '<div class="card" style="padding:24px">' + body + '</div>' +
     '</div>'
   );
@@ -64,20 +55,19 @@ function _renderLoyaltyWizard(step) {
 
 function _wizardStep1() {
   var modes = [
-    { value: 'stamp',  icon: '⭐', title: '消費集點',   desc: '消費累積點數，集滿換獎勵' },
-    { value: 'deduct', icon: '💳', title: '會員儲值',   desc: '預購點數，消費時扣點' },
-    { value: 'both',   icon: '✨', title: '雙模式',     desc: '集點 + 儲值同時並用' }
+    { value:'stamp',  icon:'⭐', title:'消費集點', desc:'消費累積點數，集滿換獎勵' },
+    { value:'deduct', icon:'💳', title:'會員儲值', desc:'預購點數，消費時扣點' },
+    { value:'both',   icon:'✨', title:'雙模式',   desc:'集點 + 儲值同時並用' }
   ];
   var cards = modes.map(function(m) {
     return '<div onclick="selectLoyaltyMode(\'' + m.value + '\')" id="mode_' + m.value + '" ' +
       'style="border:2px solid #e0e0e0;border-radius:12px;padding:18px;cursor:pointer;transition:border-color .2s">' +
       '<div style="font-size:28px;margin-bottom:8px">' + m.icon + '</div>' +
       '<div style="font-weight:600;font-size:15px;margin-bottom:4px">' + m.title + '</div>' +
-      '<div style="font-size:13px;color:#888">' + m.desc + '</div>' +
-    '</div>';
+      '<div style="font-size:13px;color:#888">' + m.desc + '</div></div>';
   }).join('');
-  return '<div style="margin-bottom:20px"><div style="font-weight:600;font-size:16px;margin-bottom:16px">選擇點數卡模式</div>' +
-    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">' + cards + '</div></div>' +
+  return '<div style="font-weight:600;font-size:16px;margin-bottom:16px">選擇點數卡模式</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">' + cards + '</div>' +
     '<div style="text-align:right"><button class="btn btn-primary" onclick="wizardNext(2)">下一步 →</button></div>';
 }
 
@@ -93,24 +83,23 @@ function _wizardStep2() {
   var m = _wizardData.mode || '';
   var showStamp  = m === 'stamp'  || m === 'both';
   var showDeduct = m === 'deduct' || m === 'both';
-
   return '<div style="font-weight:600;font-size:16px;margin-bottom:16px">填寫規則</div>' +
     (showStamp
-      ? '<div class="form-group">' +
-          '<label>集滿幾點可兌換獎勵</label>' +
-          '<input type="number" id="wStampGoal" min="1" max="9999" value="' + (_wizardData.stamp_goal || 10) + '">' +
-        '</div>' +
-        '<div class="form-group">' +
-          '<label>兌換成功訊息（LINE Bot 回傳給用戶）</label>' +
-          '<textarea id="wRewardMsg" rows="3" placeholder="恭喜集滿！請出示此訊息兌換免費飲品一杯">' + (_wizardData.reward_msg || '') + '</textarea>' +
-        '</div>'
+      ? '<div class="form-group"><label>集滿幾點可兌換獎勵</label><input type="number" id="wStampGoal" min="1" value="' + (_wizardData.stamp_goal || 10) + '"></div>' +
+        '<div class="form-group"><label>兌換成功訊息</label><textarea id="wRewardMsg" rows="3" placeholder="恭喜集滿！請出示此訊息兌換獎勵">' + (_wizardData.reward_msg || '') + '</textarea></div>'
       : '') +
     (showDeduct
-      ? '<div class="form-group">' +
-          '<label>點數有效天數（0 = 不限期）</label>' +
-          '<input type="number" id="wExpireDays" min="0" value="' + (_wizardData.expire_days || 0) + '">' +
-        '</div>'
+      ? '<div class="form-group"><label>點數有效天數（0 = 不限）</label><input type="number" id="wExpireDays" min="0" value="' + (_wizardData.expire_days || 0) + '"></div>'
       : '') +
+    '<div style="border-top:1px solid #eee;margin:16px 0;padding-top:16px">' +
+      '<div style="font-weight:600;font-size:14px;margin-bottom:12px">🛡️ 防刷設定</div>' +
+      '<div class="form-group"><label>每日集點上限（0 = 不限）</label><input type="number" id="wDailyLimit" min="0" value="' + (_wizardData.daily_limit || 0) + '"></div>' +
+      '<div class="form-group"><label>集點冷卻時間（分鐘，0 = 不限）</label><input type="number" id="wCooldown" min="0" value="' + (_wizardData.cooldown_minutes || 0) + '"></div>' +
+      '<div class="form-group" style="display:flex;align-items:center;gap:10px">' +
+        '<input type="checkbox" id="wManualOnly" ' + (_wizardData.manual_only ? 'checked' : '') + ' style="width:16px;height:16px">' +
+        '<label for="wManualOnly" style="margin:0;cursor:pointer">純後台手動模式（關閉關鍵字集點）</label>' +
+      '</div>' +
+    '</div>' +
     '<div style="display:flex;justify-content:space-between;margin-top:8px">' +
       '<button class="btn-cancel" onclick="_renderLoyaltyWizard(1)">← 上一步</button>' +
       '<button class="btn btn-primary" onclick="wizardNext(3)">下一步 →</button>' +
@@ -121,19 +110,18 @@ function _wizardStep3() {
   var m = _wizardData.mode || '';
   var showStamp  = m === 'stamp'  || m === 'both';
   var showDeduct = m === 'deduct' || m === 'both';
-
   return '<div style="font-weight:600;font-size:16px;margin-bottom:4px">設定 LINE Bot 關鍵字</div>' +
     '<div style="font-size:13px;color:#888;margin-bottom:16px">用戶在 LINE 輸入這些關鍵字時觸發對應功能</div>' +
-    '<div class="form-group"><label>查詢點數 關鍵字</label><input type="text" id="wCheckKw" placeholder="查點數" value="' + (_wizardData.check_keyword || '') + '"></div>' +
+    '<div class="form-group"><label>查詢點數關鍵字</label><input type="text" id="wCheckKw" placeholder="查點數" value="' + (_wizardData.check_keyword || '') + '"></div>' +
     (showStamp
-      ? '<div class="form-group"><label>集點 關鍵字</label><input type="text" id="wStampKw" placeholder="集點" value="' + (_wizardData.stamp_keyword || '') + '"></div>' +
-        '<div class="form-group"><label>兌換 關鍵字</label><input type="text" id="wRedeemKw" placeholder="兌換" value="' + (_wizardData.redeem_keyword || '') + '"></div>'
+      ? '<div class="form-group"><label>集點關鍵字</label><input type="text" id="wStampKw" placeholder="集點" value="' + (_wizardData.stamp_keyword || '') + '"></div>' +
+        '<div class="form-group"><label>兌換關鍵字</label><input type="text" id="wRedeemKw" placeholder="兌換" value="' + (_wizardData.redeem_keyword || '') + '"></div>'
       : '') +
     (showDeduct
-      ? '<div class="form-group"><label>扣點 關鍵字</label><input type="text" id="wDeductKw" placeholder="使用點數" value="' + (_wizardData.deduct_keyword || '') + '"></div>'
+      ? '<div class="form-group"><label>扣點關鍵字</label><input type="text" id="wDeductKw" placeholder="使用點數" value="' + (_wizardData.deduct_keyword || '') + '"></div>'
       : '') +
     '<div style="background:#fff8e1;border-radius:8px;padding:12px;font-size:13px;color:#856404;margin-bottom:16px">' +
-      '⚠️ 啟用後模式無法更改，關鍵字可日後修改' +
+      '⚠️ 啟用後模式無法更改，關鍵字與防刷設定可日後修改' +
     '</div>' +
     '<div style="display:flex;justify-content:space-between">' +
       '<button class="btn-cancel" onclick="_renderLoyaltyWizard(2)">← 上一步</button>' +
@@ -142,55 +130,52 @@ function _wizardStep3() {
 }
 
 function wizardNext(step) {
-  if (step === 2) {
-    if (!_wizardData.mode) { showToast('請選擇模式', 'error'); return; }
-  }
+  if (step === 2 && !_wizardData.mode) { showToast('請選擇模式', 'error'); return; }
   if (step === 3) {
     var m = _wizardData.mode || '';
     if (m === 'stamp' || m === 'both') {
-      _wizardData.stamp_goal  = parseInt(document.getElementById('wStampGoal').value) || 10;
-      _wizardData.reward_msg  = (document.getElementById('wRewardMsg').value || '').trim();
+      _wizardData.stamp_goal = parseInt(document.getElementById('wStampGoal').value) || 10;
+      _wizardData.reward_msg = (document.getElementById('wRewardMsg').value || '').trim();
       if (!_wizardData.reward_msg) { showToast('請填寫兌換成功訊息', 'error'); return; }
     }
     if (m === 'deduct' || m === 'both') {
       _wizardData.expire_days = parseInt(document.getElementById('wExpireDays').value) || 0;
     }
+    _wizardData.daily_limit      = parseInt(document.getElementById('wDailyLimit').value) || 0;
+    _wizardData.cooldown_minutes = parseInt(document.getElementById('wCooldown').value)   || 0;
+    _wizardData.manual_only      = document.getElementById('wManualOnly').checked;
   }
   _renderLoyaltyWizard(step);
 }
 
 async function saveLoyaltyWizard() {
-  var m = _wizardData.mode || '';
+  var m        = _wizardData.mode || '';
   var checkKw  = (document.getElementById('wCheckKw')  ? document.getElementById('wCheckKw').value  : '').trim();
   var stampKw  = (document.getElementById('wStampKw')  ? document.getElementById('wStampKw').value  : '').trim();
   var redeemKw = (document.getElementById('wRedeemKw') ? document.getElementById('wRedeemKw').value : '').trim();
   var deductKw = (document.getElementById('wDeductKw') ? document.getElementById('wDeductKw').value : '').trim();
-
   if (!checkKw) { showToast('請填寫查詢點數關鍵字', 'error'); return; }
-
   var res = await apiCall({
-    action:          'saveLoyaltySettings',
-    mode:            m,
-    stamp_keyword:   stampKw,
-    check_keyword:   checkKw,
-    redeem_keyword:  redeemKw,
-    deduct_keyword:  deductKw,
-    stamp_goal:      _wizardData.stamp_goal  || 10,
-    reward_msg:      _wizardData.reward_msg  || '',
-    unit_cost:       _wizardData.unit_cost   || 0,
-    expire_days:     _wizardData.expire_days || 0
+    action:           'saveLoyaltySettings',
+    mode:             m,
+    stamp_keyword:    stampKw,
+    check_keyword:    checkKw,
+    redeem_keyword:   redeemKw,
+    deduct_keyword:   deductKw,
+    stamp_goal:       _wizardData.stamp_goal       || 10,
+    reward_msg:       _wizardData.reward_msg       || '',
+    unit_cost:        0,
+    expire_days:      _wizardData.expire_days      || 0,
+    daily_limit:      _wizardData.daily_limit      || 0,
+    cooldown_minutes: _wizardData.cooldown_minutes || 0,
+    manual_only:      _wizardData.manual_only      || false
   });
-
-  if (res.success) {
-    showToast('點數卡已啟用！', 'success');
-    loadLoyalty();
-  } else {
-    showToast(res.message || '儲存失敗', 'error');
-  }
+  if (res.success) { showToast('點數卡已啟用！', 'success'); loadLoyalty(); }
+  else showToast(res.message || '儲存失敗', 'error');
 }
 
 // ══════════════════════════════════════════
-// 主頁（已設定後）
+// 主頁
 // ══════════════════════════════════════════
 async function _renderLoyaltyMain() {
   var userRes = await apiCall({ action: 'getLoyaltyUserList' });
@@ -198,45 +183,41 @@ async function _renderLoyaltyMain() {
   _loyaltyUserFilt = _loyaltyUserAll.slice();
   _loyaltyUserPage = 1;
 
-  var s     = _loyaltySettings;
+  var s = _loyaltySettings;
   var modeLabel = s.mode === 'stamp' ? '消費集點' : s.mode === 'deduct' ? '會員儲值' : '雙模式';
-  var modeColor = s.mode === 'stamp' ? '#D85A30' : s.mode === 'deduct' ? '#1D9E75' : '#534AB7';
+  var modeColor = s.mode === 'stamp' ? '#D85A30'  : s.mode === 'deduct' ? '#1D9E75'  : '#534AB7';
+
+  // 防刷標籤
+  var antiTags = [];
+  if (s.daily_limit      > 0) antiTags.push('每日上限 ' + s.daily_limit + ' 點');
+  if (s.cooldown_minutes > 0) antiTags.push('冷卻 ' + s.cooldown_minutes + ' 分鐘');
+  if (s.manual_only)          antiTags.push('純手動模式');
+  var antiHtml = antiTags.length
+    ? antiTags.map(function(t) { return '<span style="background:#f0eeff;color:#534AB7;border-radius:20px;padding:3px 10px;font-size:12px">' + t + '</span>'; }).join(' ')
+    : '<span style="color:#aaa;font-size:12px">未設定防刷</span>';
 
   setContent(
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
       '<h2 class="page-title" style="margin:0">點數卡管理</h2>' +
     '</div>' +
 
-    // 設定摘要
+    // 設定摘要卡
     '<div class="card" style="padding:16px 20px;margin-bottom:20px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
         '<div style="font-weight:600">⚙ 目前設定</div>' +
         '<button class="btn btn-primary" onclick="openLoyaltySettingsModal()" style="font-size:12px;padding:5px 12px">編輯設定</button>' +
       '</div>' +
-      '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px">' +
-        '<div style="background:#f5f5f5;border-radius:8px;padding:10px 14px">' +
-          '<div style="color:#888;font-size:11px;margin-bottom:2px">模式</div>' +
-          '<div style="font-weight:600;color:' + modeColor + '">' + modeLabel + '</div>' +
-        '</div>' +
-        '<div style="background:#f5f5f5;border-radius:8px;padding:10px 14px">' +
-          '<div style="color:#888;font-size:11px;margin-bottom:2px">查點數關鍵字</div>' +
-          '<div style="font-weight:600">' + _lEsc(s.check_keyword) + '</div>' +
-        '</div>' +
-        (s.stamp_keyword
-          ? '<div style="background:#f5f5f5;border-radius:8px;padding:10px 14px">' +
-              '<div style="color:#888;font-size:11px;margin-bottom:2px">集點關鍵字</div>' +
-              '<div style="font-weight:600">' + _lEsc(s.stamp_keyword) + '</div>' +
-            '</div>' : '') +
-        (s.deduct_keyword
-          ? '<div style="background:#f5f5f5;border-radius:8px;padding:10px 14px">' +
-              '<div style="color:#888;font-size:11px;margin-bottom:2px">扣點關鍵字</div>' +
-              '<div style="font-weight:600">' + _lEsc(s.deduct_keyword) + '</div>' +
-            '</div>' : '') +
-        (s.stamp_goal
-          ? '<div style="background:#f5f5f5;border-radius:8px;padding:10px 14px">' +
-              '<div style="color:#888;font-size:11px;margin-bottom:2px">集點目標</div>' +
-              '<div style="font-weight:600">' + s.stamp_goal + ' 點</div>' +
-            '</div>' : '') +
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin-bottom:12px">' +
+        _lSettingBox('模式', '<span style="color:' + modeColor + ';font-weight:600">' + modeLabel + '</span>') +
+        _lSettingBox('查點數', s.check_keyword  || '-') +
+        ((s.mode === 'stamp' || s.mode === 'both') ? _lSettingBox('集點', s.stamp_keyword  || '-') : '') +
+        ((s.mode === 'stamp' || s.mode === 'both') ? _lSettingBox('兌換', s.redeem_keyword || '-') : '') +
+        ((s.mode === 'stamp' || s.mode === 'both') ? _lSettingBox('集點目標', s.stamp_goal + ' 點') : '') +
+        ((s.mode === 'deduct' || s.mode === 'both') ? _lSettingBox('扣點', s.deduct_keyword || '-') : '') +
+        (s.expire_days > 0 ? _lSettingBox('有效天數', s.expire_days + ' 天') : '') +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span style="font-size:12px;color:#888">🛡️ 防刷：</span>' + antiHtml +
       '</div>' +
     '</div>' +
 
@@ -244,8 +225,7 @@ async function _renderLoyaltyMain() {
     '<div class="card">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
         '<div style="font-weight:600;font-size:15px">👥 會員點數查詢</div>' +
-        '<input type="text" id="loyaltySearch" placeholder="搜尋姓名 / UID"' +
-          ' oninput="filterLoyaltyUsers()"' +
+        '<input type="text" id="loyaltySearch" placeholder="搜尋姓名 / UID" oninput="filterLoyaltyUsers()"' +
           ' style="padding:7px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none;width:200px">' +
       '</div>' +
       '<span id="loyaltyUserHint" style="color:#888;font-size:12px;display:block;margin-bottom:8px"></span>' +
@@ -258,13 +238,9 @@ async function _renderLoyaltyMain() {
       '<div class="modal" style="max-width:400px">' +
         '<h3 id="adjustModalTitle">調整點數</h3>' +
         '<input type="hidden" id="adjustUserId">' +
-        '<div class="form-group">' +
-          '<label>操作</label>' +
-          '<select id="adjustAction">' +
-            '<option value="add">加點</option>' +
-            '<option value="deduct">扣點</option>' +
-          '</select>' +
-        '</div>' +
+        '<input type="hidden" id="adjustDisplayName">' +
+        '<div class="form-group"><label>操作</label>' +
+          '<select id="adjustAction"><option value="add">加點</option><option value="deduct">扣點</option></select></div>' +
         '<div class="form-group"><label>點數</label><input type="number" id="adjustPoints" min="1" value="1"></div>' +
         '<div class="form-group"><label>備註</label><input type="text" id="adjustNote" placeholder="後台手動調整"></div>' +
         '<div class="modal-footer">' +
@@ -276,10 +252,10 @@ async function _renderLoyaltyMain() {
 
     // 編輯設定 Modal
     '<div class="modal-overlay" id="loyaltySettingsModal">' +
-      '<div class="modal" style="max-width:480px">' +
+      '<div class="modal" style="max-width:500px">' +
         '<h3>⚙ 編輯點數卡設定</h3>' +
         '<div style="background:#fff3cd;border-radius:8px;padding:10px 14px;font-size:13px;color:#856404;margin-bottom:16px">' +
-          '⚠️ 模式已鎖定（' + modeLabel + '），以下僅可修改規則與關鍵字' +
+          '⚠️ 模式已鎖定（' + modeLabel + '），以下可修改規則、關鍵字與防刷設定' +
         '</div>' +
         '<div id="loyaltySettingsForm"></div>' +
         '<div class="modal-footer">' +
@@ -294,6 +270,13 @@ async function _renderLoyaltyMain() {
   _renderLoyaltyUserPager();
 }
 
+function _lSettingBox(label, val) {
+  return '<div style="background:#f5f5f5;border-radius:8px;padding:8px 12px;min-width:80px">' +
+    '<div style="color:#888;font-size:11px;margin-bottom:2px">' + label + '</div>' +
+    '<div style="font-weight:600;font-size:13px">' + val + '</div>' +
+  '</div>';
+}
+
 // ── 表格 ──
 function _renderLoyaltyUserTable() {
   var wrap = document.getElementById('loyaltyUserTable');
@@ -305,14 +288,14 @@ function _renderLoyaltyUserTable() {
   var start = (_loyaltyUserPage - 1) * _loyaltyPageSize;
   var page  = _loyaltyUserFilt.slice(start, start + _loyaltyPageSize);
   var rows  = page.map(function(u, idx) {
-    var realIdx = start + idx;
     return '<tr>' +
       '<td>' + _lEsc(u.display_name || '-') + '</td>' +
       '<td style="font-size:11px;color:#888">' + _lEsc(u.user_id) + '</td>' +
       '<td style="text-align:center;font-weight:600;color:#534AB7;font-size:16px">' + u.balance + '</td>' +
       '<td style="font-size:12px;color:#aaa">' + _lEsc(u.last_time) + '</td>' +
       '<td style="text-align:center">' +
-        '<button onclick="openAdjustModal(' + realIdx + ')" style="font-size:12px;padding:4px 10px;border:1px solid #534AB7;color:#534AB7;background:#fff;border-radius:6px;cursor:pointer">調整點數</button>' +
+        '<button onclick="openAdjustModal(' + (start + idx) + ')" ' +
+          'style="font-size:12px;padding:4px 10px;border:1px solid #534AB7;color:#534AB7;background:#fff;border-radius:6px;cursor:pointer">調整點數</button>' +
       '</td>' +
     '</tr>';
   }).join('');
@@ -329,10 +312,10 @@ function _renderLoyaltyUserPager() {
   if (totalPages <= 1) { pager.innerHTML = ''; return; }
   var btns = '';
   for (var p = 1; p <= totalPages; p++) {
-    var active = p === _loyaltyUserPage
+    var style = p === _loyaltyUserPage
       ? 'background:#534AB7;color:#fff;'
       : 'background:#f0f0f0;color:#444;';
-    btns += '<button onclick="goLoyaltyPage(' + p + ')" style="' + active + 'border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px">' + p + '</button>';
+    btns += '<button onclick="goLoyaltyPage(' + p + ')" style="' + style + 'border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px">' + p + '</button>';
   }
   pager.innerHTML = btns;
 }
@@ -356,10 +339,11 @@ function filterLoyaltyUsers() {
 function openAdjustModal(idx) {
   var u = _loyaltyUserFilt[idx];
   if (!u) return;
-  document.getElementById('adjustUserId').value   = u.user_id;
+  document.getElementById('adjustUserId').value      = u.user_id;
+  document.getElementById('adjustDisplayName').value = u.display_name || '';
   document.getElementById('adjustModalTitle').textContent = '調整點數 — ' + (u.display_name || u.user_id);
-  document.getElementById('adjustPoints').value   = 1;
-  document.getElementById('adjustNote').value     = '';
+  document.getElementById('adjustPoints').value = 1;
+  document.getElementById('adjustNote').value   = '';
   document.getElementById('adjustPointsModal').style.display = 'flex';
 }
 
@@ -368,23 +352,13 @@ function closeAdjustModal() {
 }
 
 async function submitAdjustPoints() {
-  var userId = document.getElementById('adjustUserId').value;
-  var action = document.getElementById('adjustAction').value;
-  var points = parseInt(document.getElementById('adjustPoints').value) || 0;
-  var note   = document.getElementById('adjustNote').value.trim() || '後台手動調整';
-  var user   = _loyaltyUserAll.find(function(u) { return u.user_id === userId; });
-
+  var userId      = document.getElementById('adjustUserId').value;
+  var displayName = document.getElementById('adjustDisplayName').value;
+  var action      = document.getElementById('adjustAction').value;
+  var points      = parseInt(document.getElementById('adjustPoints').value) || 0;
+  var note        = document.getElementById('adjustNote').value.trim() || '後台手動調整';
   if (points <= 0) { showToast('請輸入有效點數', 'error'); return; }
-
-  var res = await apiCall({
-    action:       'adjustLoyaltyPoints',
-    user_id:      userId,
-    display_name: user ? user.display_name : '',
-    action:       action,
-    points:       points,
-    note:         note
-  });
-
+  var res = await apiCall({ action: 'adjustLoyaltyPoints', user_id: userId, display_name: displayName, action: action, points: points, note: note });
   if (res.success) {
     showToast('點數已調整，新餘額：' + res.data.balance, 'success');
     closeAdjustModal();
@@ -400,7 +374,6 @@ function openLoyaltySettingsModal() {
   var m = s.mode || '';
   var showStamp  = m === 'stamp'  || m === 'both';
   var showDeduct = m === 'deduct' || m === 'both';
-
   var form =
     '<div class="form-group"><label>查詢點數關鍵字</label><input type="text" id="esCheckKw" value="' + _lEsc(s.check_keyword || '') + '"></div>' +
     (showStamp
@@ -412,8 +385,16 @@ function openLoyaltySettingsModal() {
     (showDeduct
       ? '<div class="form-group"><label>扣點關鍵字</label><input type="text" id="esDeductKw" value="' + _lEsc(s.deduct_keyword || '') + '"></div>' +
         '<div class="form-group"><label>點數有效天數（0=不限）</label><input type="number" id="esExpireDays" min="0" value="' + (s.expire_days || 0) + '"></div>'
-      : '');
-
+      : '') +
+    '<div style="border-top:1px solid #eee;margin:16px 0;padding-top:16px">' +
+      '<div style="font-weight:600;font-size:14px;margin-bottom:12px">🛡️ 防刷設定</div>' +
+      '<div class="form-group"><label>每日集點上限（0 = 不限）</label><input type="number" id="esDailyLimit" min="0" value="' + (s.daily_limit || 0) + '"></div>' +
+      '<div class="form-group"><label>集點冷卻時間（分鐘，0 = 不限）</label><input type="number" id="esCooldown" min="0" value="' + (s.cooldown_minutes || 0) + '"></div>' +
+      '<div class="form-group" style="display:flex;align-items:center;gap:10px">' +
+        '<input type="checkbox" id="esManualOnly" ' + (s.manual_only ? 'checked' : '') + ' style="width:16px;height:16px">' +
+        '<label for="esManualOnly" style="margin:0;cursor:pointer">純後台手動模式（關閉關鍵字集點）</label>' +
+      '</div>' +
+    '</div>';
   document.getElementById('loyaltySettingsForm').innerHTML = form;
   document.getElementById('loyaltySettingsModal').style.display = 'flex';
 }
@@ -425,36 +406,28 @@ function closeLoyaltySettingsModal() {
 async function submitLoyaltySettings() {
   var s = _loyaltySettings;
   var m = s.mode || '';
-  var checkKw   = (document.getElementById('esCheckKw')    ? document.getElementById('esCheckKw').value    : '').trim();
-  var stampKw   = (document.getElementById('esStampKw')    ? document.getElementById('esStampKw').value    : '').trim();
-  var redeemKw  = (document.getElementById('esRedeemKw')   ? document.getElementById('esRedeemKw').value   : '').trim();
-  var stampGoal = document.getElementById('esStampGoal')   ? parseInt(document.getElementById('esStampGoal').value) || 10 : s.stamp_goal;
-  var rewardMsg = (document.getElementById('esRewardMsg')  ? document.getElementById('esRewardMsg').value   : '').trim();
-  var deductKw  = (document.getElementById('esDeductKw')   ? document.getElementById('esDeductKw').value   : '').trim();
-  var expireDays= document.getElementById('esExpireDays')  ? parseInt(document.getElementById('esExpireDays').value) || 0 : s.expire_days;
-
+  var get = function(id) { var el = document.getElementById(id); return el ? el.value : ''; };
+  var checkKw   = get('esCheckKw').trim();
+  var stampKw   = get('esStampKw').trim();
+  var redeemKw  = get('esRedeemKw').trim();
+  var deductKw  = get('esDeductKw').trim();
+  var stampGoal = parseInt(get('esStampGoal')) || s.stamp_goal || 10;
+  var rewardMsg = get('esRewardMsg').trim();
+  var expireDays= parseInt(get('esExpireDays')) || 0;
+  var dailyLimit= parseInt(get('esDailyLimit')) || 0;
+  var cooldown  = parseInt(get('esCooldown'))   || 0;
+  var manualOnly= document.getElementById('esManualOnly') ? document.getElementById('esManualOnly').checked : false;
   if (!checkKw) { showToast('請填寫查詢點數關鍵字', 'error'); return; }
-
   var res = await apiCall({
-    action:          'saveLoyaltySettings',
-    mode:            m,
-    stamp_keyword:   stampKw,
-    check_keyword:   checkKw,
-    redeem_keyword:  redeemKw,
-    deduct_keyword:  deductKw,
-    stamp_goal:      stampGoal,
-    reward_msg:      rewardMsg,
-    unit_cost:       s.unit_cost   || 0,
-    expire_days:     expireDays
+    action: 'saveLoyaltySettings', mode: m,
+    stamp_keyword: stampKw, check_keyword: checkKw,
+    redeem_keyword: redeemKw, deduct_keyword: deductKw,
+    stamp_goal: stampGoal, reward_msg: rewardMsg,
+    unit_cost: s.unit_cost || 0, expire_days: expireDays,
+    daily_limit: dailyLimit, cooldown_minutes: cooldown, manual_only: manualOnly
   });
-
-  if (res.success) {
-    showToast('設定已儲存', 'success');
-    closeLoyaltySettingsModal();
-    loadLoyalty();
-  } else {
-    showToast(res.message || '儲存失敗', 'error');
-  }
+  if (res.success) { showToast('設定已儲存', 'success'); closeLoyaltySettingsModal(); loadLoyalty(); }
+  else showToast(res.message || '儲存失敗', 'error');
 }
 
 function _lEsc(s) {
