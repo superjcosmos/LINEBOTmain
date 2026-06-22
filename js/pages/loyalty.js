@@ -279,7 +279,7 @@ async function submitCardModal() {
 async function toggleCard(idx) {
   var c   = _loyaltyCards[idx];
   var act = c.status === 'active' ? '停用' : '啟用';
-  if (!confirmDialog(act + '「' + c.card_name + '」？')) return;
+  if (!(await confirmDialog(act + '「' + c.card_name + '」？'))) return;
   var res = await apiCall({ action: 'toggleLoyaltyCard', card_id: c.card_id });
   if (res.success) { showToast(act + '成功', 'success'); loadLoyalty(); }
   else showToast(res.message || '操作失敗', 'error');
@@ -288,7 +288,7 @@ async function toggleCard(idx) {
 // ── 刪除 ──
 async function deleteCard(idx) {
   var c = _loyaltyCards[idx];
-  if (!confirmDialog('確定刪除「' + c.card_name + '」？\n歷史記錄將一併移除，此動作無法復原。')) return;
+  if (!(await confirmDialog('確定刪除「' + c.card_name + '」？\n歷史記錄將一併移除，此動作無法復原。'))) return;
   var res = await apiCall({ action: 'deleteLoyaltyCard', card_id: c.card_id });
   if (res.success) { showToast('已刪除', 'success'); loadLoyalty(); }
   else showToast(res.message || '刪除失敗', 'error');
