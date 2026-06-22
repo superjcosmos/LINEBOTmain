@@ -37,13 +37,13 @@ function _renderLoyaltyMain() {
     }).join(' ') : '-';
 
     return '<tr>' +
-      '<td><strong>' + _lEsc(c.card_name) + '</strong><br><span style="font-size:11px;color:#aaa">' + _lEsc(c.card_id) + '</span></td>' +
+      '<td><strong>' + escHtml(c.card_name) + '</strong><br><span style="font-size:11px;color:#aaa">' + escHtml(c.card_id) + '</span></td>' +
       '<td><span style="color:' + modeColor + ';font-weight:600">' + modeLbl + '</span></td>' +
       '<td style="font-size:12px">' +
-        (c.stamp_keyword  ? '集點：' + _lEsc(c.stamp_keyword)  + '<br>' : '') +
-        (c.check_keyword  ? '查詢：' + _lEsc(c.check_keyword)  + '<br>' : '') +
-        (c.redeem_keyword ? '兌換：' + _lEsc(c.redeem_keyword) + '<br>' : '') +
-        (c.deduct_keyword ? '扣點：' + _lEsc(c.deduct_keyword) : '') +
+        (c.stamp_keyword  ? '集點：' + escHtml(c.stamp_keyword)  + '<br>' : '') +
+        (c.check_keyword  ? '查詢：' + escHtml(c.check_keyword)  + '<br>' : '') +
+        (c.redeem_keyword ? '兌換：' + escHtml(c.redeem_keyword) + '<br>' : '') +
+        (c.deduct_keyword ? '扣點：' + escHtml(c.deduct_keyword) : '') +
       '</td>' +
       '<td>' + antiHtml + '</td>' +
       '<td>' + statusBadge + '</td>' +
@@ -153,8 +153,8 @@ async function searchUserLogForAdjust() {
     return '<div onclick="selectAdjustUser(\'' + u.user_id.replace(/'/g, "\\'") + '\',\'' + (u.display_name || '').replace(/'/g, "\\'") + '\')" ' +
       'style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:13px" ' +
       'onmouseover="this.style.background=\'#f5f5f5\'" onmouseout="this.style.background=\'#fff\'">' +
-      '<strong>' + _lEsc(u.display_name || '(無名稱)') + '</strong> ' +
-      '<span style="color:#aaa;font-size:11px">' + _lEsc(u.user_id) + '</span>' +
+      '<strong>' + escHtml(u.display_name || '(無名稱)') + '</strong> ' +
+      '<span style="color:#aaa;font-size:11px">' + escHtml(u.user_id) + '</span>' +
     '</div>';
   }).join('');
   dropdown.style.display = 'block';
@@ -178,16 +178,16 @@ function openCardModal(card) {
   var m = c.mode || 'stamp';
   document.getElementById('cardModalTitle').textContent = card ? '編輯點數卡' : '新增點數卡';
   document.getElementById('cardModalForm').innerHTML = _buildCardForm(c, m);
-  document.getElementById('cardModal').style.display = 'flex';
+  openModal('cardModal');
 }
 
 function editLoyaltyCard(idx) { openCardModal(_loyaltyCards[idx]); }
-function closeCardModal()     { document.getElementById('cardModal').style.display = 'none'; }
+function closeCardModal()     { closeModal('cardModal'); }
 
 function _buildCardForm(c, m) {
   var showStamp  = m === 'stamp'  || m === 'both';
   var showDeduct = m === 'deduct' || m === 'both';
-  return '<div class="form-group"><label>點數卡名稱</label><input type="text" id="cfCardName" placeholder="咖啡集點卡" value="' + _lEsc(c.card_name || '') + '"></div>' +
+  return '<div class="form-group"><label>點數卡名稱</label><input type="text" id="cfCardName" placeholder="咖啡集點卡" value="' + escHtml(c.card_name || '') + '"></div>' +
     '<div class="form-group"><label>模式</label>' +
       '<select id="cfMode" onchange="refreshCardForm()">' +
         '<option value="stamp"  ' + (m==='stamp'  ?'selected':'') + '>消費集點</option>' +
@@ -196,7 +196,7 @@ function _buildCardForm(c, m) {
       '</select>' +
     '</div>' +
     '<div id="cfModeFields">' + _buildModeFields(c, m) + '</div>' +
-    '<div class="form-group"><label>查詢點數關鍵字</label><input type="text" id="cfCheckKw" placeholder="查點數" value="' + _lEsc(c.check_keyword || '') + '"></div>' +
+    '<div class="form-group"><label>查詢點數關鍵字</label><input type="text" id="cfCheckKw" placeholder="查點數" value="' + escHtml(c.check_keyword || '') + '"></div>' +
     '<div style="border-top:1px solid #eee;margin:16px 0;padding-top:16px">' +
       '<div style="font-weight:600;font-size:14px;margin-bottom:12px">🛡️ 防刷設定</div>' +
       '<div class="form-group"><label>每日集點上限（0 = 不限）</label><input type="number" id="cfDailyLimit" min="0" value="' + (c.daily_limit || 0) + '"></div>' +
@@ -212,13 +212,13 @@ function _buildModeFields(c, m) {
   var showStamp  = m === 'stamp'  || m === 'both';
   var showDeduct = m === 'deduct' || m === 'both';
   return (showStamp
-    ? '<div class="form-group"><label>集點關鍵字</label><input type="text" id="cfStampKw" placeholder="集點" value="' + _lEsc(c.stamp_keyword || '') + '"></div>' +
-      '<div class="form-group"><label>兌換關鍵字</label><input type="text" id="cfRedeemKw" placeholder="兌換" value="' + _lEsc(c.redeem_keyword || '') + '"></div>' +
+    ? '<div class="form-group"><label>集點關鍵字</label><input type="text" id="cfStampKw" placeholder="集點" value="' + escHtml(c.stamp_keyword || '') + '"></div>' +
+      '<div class="form-group"><label>兌換關鍵字</label><input type="text" id="cfRedeemKw" placeholder="兌換" value="' + escHtml(c.redeem_keyword || '') + '"></div>' +
       '<div class="form-group"><label>集滿幾點兌換</label><input type="number" id="cfStampGoal" min="1" value="' + (c.stamp_goal || 10) + '"></div>' +
-      '<div class="form-group"><label>兌換成功訊息</label><textarea id="cfRewardMsg" rows="2" placeholder="恭喜集滿！請出示此訊息兌換獎勵">' + _lEsc(c.reward_msg || '') + '</textarea></div>'
+      '<div class="form-group"><label>兌換成功訊息</label><textarea id="cfRewardMsg" rows="2" placeholder="恭喜集滿！請出示此訊息兌換獎勵">' + escHtml(c.reward_msg || '') + '</textarea></div>'
     : '') +
   (showDeduct
-    ? '<div class="form-group"><label>扣點關鍵字</label><input type="text" id="cfDeductKw" placeholder="使用點數" value="' + _lEsc(c.deduct_keyword || '') + '"></div>'
+    ? '<div class="form-group"><label>扣點關鍵字</label><input type="text" id="cfDeductKw" placeholder="使用點數" value="' + escHtml(c.deduct_keyword || '') + '"></div>'
     : '') +
   '<div class="form-group"><label>點數有效天數（0 = 不限）</label><input type="number" id="cfExpireDays" min="0" value="' + (c.expire_days || 0) + '"></div>';
 }
@@ -279,19 +279,21 @@ async function submitCardModal() {
 async function toggleCard(idx) {
   var c   = _loyaltyCards[idx];
   var act = c.status === 'active' ? '停用' : '啟用';
-  if (!(await confirmDialog(act + '「' + c.card_name + '」？'))) return;
-  var res = await apiCall({ action: 'toggleLoyaltyCard', card_id: c.card_id });
-  if (res.success) { showToast(act + '成功', 'success'); loadLoyalty(); }
-  else showToast(res.message || '操作失敗', 'error');
+  await confirmAndRun(act + '「' + c.card_name + '」？', async function() {
+    var res = await apiCall({ action: 'toggleLoyaltyCard', card_id: c.card_id });
+    if (res.success) { showToast(act + '成功', 'success'); loadLoyalty(); }
+    else showToast(res.message || '操作失敗', 'error');
+  });
 }
 
 // ── 刪除 ──
 async function deleteCard(idx) {
   var c = _loyaltyCards[idx];
-  if (!(await confirmDialog('確定刪除「' + c.card_name + '」？\n歷史記錄將一併移除，此動作無法復原。'))) return;
-  var res = await apiCall({ action: 'deleteLoyaltyCard', card_id: c.card_id });
-  if (res.success) { showToast('已刪除', 'success'); loadLoyalty(); }
-  else showToast(res.message || '刪除失敗', 'error');
+  await confirmAndRun('確定刪除「' + c.card_name + '」？\n歷史記錄將一併移除，此動作無法復原。', async function() {
+    var res = await apiCall({ action: 'deleteLoyaltyCard', card_id: c.card_id });
+    if (res.success) { showToast('已刪除', 'success'); loadLoyalty(); }
+    else showToast(res.message || '刪除失敗', 'error');
+  });
 }
 
 // ══════════════════════════════════════════
@@ -301,7 +303,7 @@ async function viewLoyaltyCard(idx) {
   var c = _loyaltyCards[idx];
   _loyaltyActiveCard = c;
   document.getElementById('userPointsTitle').textContent = '【' + c.card_name + '】會員點數';
-  document.getElementById('userPointsModal').style.display = 'flex';
+  openModal('userPointsModal');
   document.getElementById('loyaltyUserTable').innerHTML = '<p style="color:#888;font-size:13px">載入中...</p>';
 
   var res = await apiCall({ action: 'getLoyaltyUserList', card_id: c.card_id });
@@ -313,7 +315,7 @@ async function viewLoyaltyCard(idx) {
 }
 
 function closeUserPointsModal() {
-  document.getElementById('userPointsModal').style.display = 'none';
+  closeModal('userPointsModal');
   _loyaltyActiveCard = null;
 }
 
@@ -328,10 +330,10 @@ function _renderLoyaltyUserTable() {
   var page  = _loyaltyUserFilt.slice(start, start + _loyaltyPageSize);
   var rows  = page.map(function(u, idx) {
     return '<tr>' +
-      '<td>' + _lEsc(u.display_name || '-') + '</td>' +
-      '<td style="font-size:11px;color:#888">' + _lEsc(u.user_id) + '</td>' +
+      '<td>' + escHtml(u.display_name || '-') + '</td>' +
+      '<td style="font-size:11px;color:#888">' + escHtml(u.user_id) + '</td>' +
       '<td style="text-align:center;font-weight:600;color:#534AB7;font-size:16px">' + u.balance + '</td>' +
-      '<td style="font-size:12px;color:#aaa">' + _lEsc(u.last_time) + '</td>' +
+      '<td style="font-size:12px;color:#aaa">' + escHtml(u.last_time) + '</td>' +
       '<td style="text-align:center">' +
         '<button onclick="openAdjustModalForUser(' + (start + idx) + ')" ' +
           'style="font-size:12px;padding:4px 10px;border:1px solid #534AB7;color:#534AB7;background:#fff;border-radius:6px;cursor:pointer">調整點數</button>' +
@@ -342,16 +344,7 @@ function _renderLoyaltyUserTable() {
 }
 
 function _renderLoyaltyUserPager() {
-  var pager = document.getElementById('loyaltyUserPager');
-  if (!pager) return;
-  var total = Math.ceil(_loyaltyUserFilt.length / _loyaltyPageSize);
-  if (total <= 1) { pager.innerHTML = ''; return; }
-  var btns = '';
-  for (var p = 1; p <= total; p++) {
-    var s = p === _loyaltyUserPage ? 'background:#534AB7;color:#fff;' : 'background:#f0f0f0;color:#444;';
-    btns += '<button onclick="goLoyaltyPage(' + p + ')" style="' + s + 'border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px">' + p + '</button>';
-  }
-  pager.innerHTML = btns;
+  renderPager('loyaltyUserPager', _loyaltyUserFilt.length, _loyaltyUserPage, _loyaltyPageSize, goLoyaltyPage);
 }
 
 function goLoyaltyPage(p) { _loyaltyUserPage = p; _renderLoyaltyUserTable(); _renderLoyaltyUserPager(); }
@@ -381,7 +374,7 @@ function openAdjustModalForUser(idx) {
   document.getElementById('adjustModalTitle').textContent = '調整點數 — ' + (u.display_name || u.user_id);
   document.getElementById('adjustPoints').value = 1;
   document.getElementById('adjustNote').value   = '';
-  document.getElementById('adjustPointsModal').style.display = 'flex';
+  openModal('adjustPointsModal');
 }
 
 function openAdjustModalNew() {
@@ -393,10 +386,10 @@ function openAdjustModalNew() {
   document.getElementById('adjustModalTitle').textContent = '手動加/扣點';
   document.getElementById('adjustPoints').value = 1;
   document.getElementById('adjustNote').value   = '';
-  document.getElementById('adjustPointsModal').style.display = 'flex';
+  openModal('adjustPointsModal');
 }
 
-function closeAdjustModal() { document.getElementById('adjustPointsModal').style.display = 'none'; }
+function closeAdjustModal() { closeModal('adjustPointsModal'); }
 
 async function submitAdjustPoints() {
   var cardId      = document.getElementById('adjustCardId').value;
@@ -419,7 +412,4 @@ async function submitAdjustPoints() {
   }
 }
 
-function _lEsc(s) {
-  if (s === null || s === undefined) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+// escHtml() 已移至 js/utils/dom.js 全域共用，此處不再重複定義
