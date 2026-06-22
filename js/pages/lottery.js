@@ -7,7 +7,7 @@ var lotteryLogData = [];
 
 async function loadLottery() {
   var res = await apiCall({ action: 'getLotteryList' });
-  lotteryList = res.data || [];
+  lotteryList = (res.success && res.data && res.data.list) ? res.data.list : [];
   renderLotteryList();
 }
 
@@ -190,7 +190,7 @@ async function submitLottery() {
 
 async function viewLotteryLog(activityName) {
   var res = await apiCall({ action: 'getLotteryLog', activity_name: activityName });
-  var logs = res.data || [];
+  var logs = (res.success && res.data && res.data.list) ? res.data.list : [];
 
   var rows = logs.map(function(l) {
     var resultText = l.result === 'won' ? '🎉 中獎' : l.result === 'entered' ? '📝 報名' : '未中獎';
