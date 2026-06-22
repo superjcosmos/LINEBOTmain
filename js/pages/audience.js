@@ -1,19 +1,16 @@
 // ============================================================
 // js/pages/audience.js
+// ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / renderPager
 // ============================================================
 
-// ── 狀態變數 ──
-var _audienceAll      = [];  // 完整資料
-var _audienceFiltered = [];  // 搜尋後資料
+var _audienceAll      = [];
+var _audienceFiltered = [];
 var _audiencePage     = 1;
 var _audiencePageSize = 20;
 var _audienceRmOptions = '';
 var audienceEditIndex  = null;
 var currentAudienceId  = null;
 
-// ────────────────────────────────────────────────────────────
-// 載入受眾頁面
-// ────────────────────────────────────────────────────────────
 async function loadAudience() {
   setContent('<div class="loading">載入中...</div>');
 
@@ -21,11 +18,10 @@ async function loadAudience() {
   var richMenuResult = await apiCall({ action: 'getRichMenuList' });
 
   if (!audienceResult.success) {
-    setContent('<div class="empty">載入失敗：' + audienceResult.message + '</div>');
+    setContent('<div class="empty">載入失敗：' + escHtml(audienceResult.message) + '</div>');
     return;
   }
 
-  // 自動同步所有受眾人數
   if (audienceResult.data.length > 0) {
     await Promise.all(audienceResult.data.map(function(row) {
       return apiCall({ action: 'syncAudienceCount', audience_id: row.audience_id });
@@ -33,36 +29,27 @@ async function loadAudience() {
     audienceResult = await apiCall({ action: 'getAudienceList' });
   }
 
-  // 建立圖文選單下拉選項（供 Modal 用）
   _audienceRmOptions = '<option value="">不切換圖文選單</option>';
   if (richMenuResult.success) {
     richMenuResult.data.forEach(function(rm) {
-      _audienceRmOptions += '<option value="' + rm.rich_menu_id + '">' + rm.name + '</option>';
+      _audienceRmOptions += '<option value="' + escHtml(rm.rich_menu_id) + '">' + escHtml(rm.name) + '</option>';
     });
   }
 
-  // 存到全域，供搜尋和分頁用
   _audienceAll      = audienceResult.data || [];
   _audienceFiltered = _audienceAll.slice();
   _audiencePage     = 1;
 
-  // 建立頁面骨架（搜尋列、表格容器、分頁容器、Modal）
   setContent(_buildAudienceShell());
 
-  // 渲染表格和分頁
   _renderAudienceTable();
   _renderAudiencePager();
 }
 
-// ────────────────────────────────────────────────────────────
-// 頁面骨架 HTML（Modal 也放在這裡，只建立一次）
-// ────────────────────────────────────────────────────────────
 function _buildAudienceShell() {
   return '' +
     '<h2 class="page-title">受眾管理</h2>' +
     '<div class="card">' +
-
-      // ── 工具列 ──
       '<div class="toolbar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
         '<button class="btn btn-primary" onclick="openCreateModal()">＋ 建立受眾</button>' +
         '<input type="text" id="audienceSearch"' +
@@ -74,16 +61,13 @@ function _buildAudienceShell() {
         '<span id="audienceTotalHint" style="color:#888;font-size:13px;white-space:nowrap;"></span>' +
       '</div>' +
 
-      // ── 表格 ──
       '<div id="audienceTableWrap"></div>' +
 
-      // ── 分頁 ──
       '<div id="audiencePager" style="display:flex;justify-content:center;' +
            'gap:6px;margin-top:16px;flex-wrap:wrap;"></div>' +
 
     '</div>' +
 
-    // ── 建立 / 編輯受眾 Modal ──
     '<div class="modal-overlay" id="createModal">' +
       '<div class="modal">' +
         '<h3 id="audienceModalTitle">建立受眾</h3>' +
@@ -103,7 +87,6 @@ function _buildAudienceShell() {
           '<select id="audienceRichMenu">' + _audienceRmOptions + '</select>' +
         '</div>' +
 
-        // ── 同步建立自動回覆（僅建立時顯示）──
         '<div id="autoReplySection" style="margin-top:4px;">' +
           '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;' +
                          'font-size:14px;color:#444;user-select:none;">' +
@@ -130,7 +113,6 @@ function _buildAudienceShell() {
       '</div>' +
     '</div>' +
 
-    // ── 匯入 UID Modal ──
     '<div class="modal-overlay" id="importModal">' +
       '<div class="modal">' +
         '<h3>匯入 UID</h3>' +
@@ -149,17 +131,11 @@ function _buildAudienceShell() {
     '</div>';
 }
 
-// ────────────────────────────────────────────────────────────
-// 同步建立自動回覆：切換顯示
-// ────────────────────────────────────────────────────────────
 function toggleAudReplyField() {
   var checked = document.getElementById('audAutoReply').checked;
   document.getElementById('audReplyField').style.display = checked ? 'block' : 'none';
 }
 
-// ────────────────────────────────────────────────────────────
-// 搜尋過濾
-// ────────────────────────────────────────────────────────────
 function filterAudience() {
   var keyword = (document.getElementById('audienceSearch').value || '').trim().toLowerCase();
 
@@ -177,9 +153,6 @@ function filterAudience() {
   _renderAudiencePager();
 }
 
-// ────────────────────────────────────────────────────────────
-// 渲染表格（依目前頁碼切片）
-// ────────────────────────────────────────────────────────────
 function _renderAudienceTable() {
   var wrap = document.getElementById('audienceTableWrap');
   var hint = document.getElementById('audienceTotalHint');
@@ -210,19 +183,19 @@ function _renderAudienceTable() {
 
     var rowJson = encodeURIComponent(JSON.stringify(row));
     return '<tr>' +
-      '<td>' + _esc(row.name) + '</td>' +
-      '<td>' + (row.keyword ? _esc(row.keyword) : '-') + '</td>' +
+      '<td>' + escHtml(row.name) + '</td>' +
+      '<td>' + (row.keyword ? escHtml(row.keyword) : '-') + '</td>' +
       '<td>' + (row.count || 0) + ' 人</td>' +
-      '<td>' + rmName + '</td>' +
+      '<td>' + escHtml(rmName) + '</td>' +
       '<td style="white-space:nowrap;">' +
         '<button class="btn btn-edit" ' +
           'onclick="editAudience(' + row.index + ',\'' + rowJson + '\')">編輯</button> ' +
         '<button class="btn btn-sync" ' +
-          'onclick="syncCount(\'' + _esc(row.audience_id) + '\',' + row.index + ')">同步人數</button> ' +
+          'onclick="syncCount(\'' + escHtml(row.audience_id) + '\',' + row.index + ')">同步人數</button> ' +
         '<button class="btn btn-primary" ' +
-          'onclick="openImportModal(\'' + _esc(row.audience_id) + '\',\'' + _esc(row.name) + '\')">匯入UID</button> ' +
+          'onclick="openImportModal(\'' + escHtml(row.audience_id) + '\',\'' + escHtml(row.name) + '\')">匯入UID</button> ' +
         '<button class="btn btn-danger" ' +
-          'onclick="doDeleteAudience(\'' + _esc(row.audience_id) + '\',' + row.index + ')">刪除</button>' +
+          'onclick="doDeleteAudience(\'' + escHtml(row.audience_id) + '\',' + row.index + ')">刪除</button>' +
       '</td>' +
     '</tr>';
   }).join('');
@@ -240,58 +213,8 @@ function _renderAudienceTable() {
     '</table>';
 }
 
-// ────────────────────────────────────────────────────────────
-// 渲染分頁列
-// ────────────────────────────────────────────────────────────
 function _renderAudiencePager() {
-  var pager = document.getElementById('audiencePager');
-  if (!pager) return;
-
-  var total      = _audienceFiltered.length;
-  var totalPages = Math.ceil(total / _audiencePageSize);
-
-  if (totalPages <= 1) { pager.innerHTML = ''; return; }
-
-  var btnStyle = 'style="padding:6px 12px;border-radius:6px;border:1.5px solid #e0e0e0;' +
-                 'background:white;cursor:pointer;font-size:13px;"';
-  var activeBtnStyle = 'style="padding:6px 12px;border-radius:6px;border:none;' +
-                       'background:#06C755;color:white;cursor:pointer;font-size:13px;font-weight:600;"';
-
-  var html = '';
-
-  html += '<button ' + (_audiencePage === 1 ? 'disabled ' : '') + btnStyle +
-          ' onclick="gotoAudiencePage(' + (_audiencePage - 1) + ')">上一頁</button>';
-
-  var pages = _buildPageNumbers(totalPages, _audiencePage);
-  pages.forEach(function(p) {
-    if (p === '...') {
-      html += '<span style="padding:6px 4px;color:#aaa;">...</span>';
-    } else {
-      html += '<button ' + (p === _audiencePage ? activeBtnStyle : btnStyle) +
-              ' onclick="gotoAudiencePage(' + p + ')">' + p + '</button>';
-    }
-  });
-
-  html += '<button ' + (_audiencePage === totalPages ? 'disabled ' : '') + btnStyle +
-          ' onclick="gotoAudiencePage(' + (_audiencePage + 1) + ')">下一頁</button>';
-
-  pager.innerHTML = html;
-}
-
-function _buildPageNumbers(total, current) {
-  if (total <= 7) {
-    var arr = [];
-    for (var i = 1; i <= total; i++) arr.push(i);
-    return arr;
-  }
-  var pages = [1];
-  if (current > 3)       pages.push('...');
-  for (var i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
-    pages.push(i);
-  }
-  if (current < total - 2) pages.push('...');
-  pages.push(total);
-  return pages;
+  renderPager('audiencePager', _audienceFiltered.length, _audiencePage, _audiencePageSize, gotoAudiencePage);
 }
 
 function gotoAudiencePage(page) {
@@ -302,9 +225,6 @@ function gotoAudiencePage(page) {
   _renderAudiencePager();
 }
 
-// ────────────────────────────────────────────────────────────
-// 建立 / 編輯受眾 Modal
-// ────────────────────────────────────────────────────────────
 function openCreateModal() {
   audienceEditIndex = null;
   document.getElementById('audienceModalTitle').textContent = '建立受眾';
@@ -312,17 +232,15 @@ function openCreateModal() {
   document.getElementById('audienceName').value     = '';
   document.getElementById('audienceKeyword').value  = '';
   document.getElementById('audienceRichMenu').value = '';
-  // 重置同步回覆欄位
   document.getElementById('audAutoReply').checked       = false;
   document.getElementById('audReplyContent').value      = '';
   document.getElementById('audReplyField').style.display = 'none';
-  // 建立時才顯示同步回覆區塊
   document.getElementById('autoReplySection').style.display = 'block';
-  document.getElementById('createModal').classList.add('show');
+  openModal('createModal');
 }
 
 function closeCreateModal() {
-  document.getElementById('createModal').classList.remove('show');
+  closeModal('createModal');
   audienceEditIndex = null;
 }
 
@@ -334,9 +252,8 @@ function editAudience(index, rowJson) {
   document.getElementById('audienceName').value     = row.name         || '';
   document.getElementById('audienceKeyword').value  = row.keyword      || '';
   document.getElementById('audienceRichMenu').value = row.rich_menu_id || '';
-  // 編輯時隱藏同步回覆區塊（已存在的受眾不重複建立）
   document.getElementById('autoReplySection').style.display = 'none';
-  document.getElementById('createModal').classList.add('show');
+  openModal('createModal');
 }
 
 async function saveAudience() {
@@ -356,7 +273,6 @@ async function saveAudience() {
 
   var result;
   if (audienceEditIndex !== null) {
-    // 編輯：不帶 auto_reply 參數
     result = await apiCall({
       action:       'updateAudience',
       index:        audienceEditIndex,
@@ -365,7 +281,6 @@ async function saveAudience() {
       rich_menu_id: richMenuId
     });
   } else {
-    // 建立：帶入同步回覆參數
     result = await apiCall({
       action:        'createAudience',
       name:          name,
@@ -390,18 +305,15 @@ async function saveAudience() {
   }
 }
 
-// ────────────────────────────────────────────────────────────
-// 匯入 UID Modal
-// ────────────────────────────────────────────────────────────
 function openImportModal(audienceId, name) {
   currentAudienceId = audienceId;
   document.getElementById('importModalTitle').textContent = '受眾：' + name;
   document.getElementById('importUids').value = '';
-  document.getElementById('importModal').classList.add('show');
+  openModal('importModal');
 }
 
 function closeImportModal() {
-  document.getElementById('importModal').classList.remove('show');
+  closeModal('importModal');
   document.getElementById('importUids').value = '';
   currentAudienceId = null;
 }
@@ -427,9 +339,6 @@ async function doImportAudience() {
   }
 }
 
-// ────────────────────────────────────────────────────────────
-// 同步人數
-// ────────────────────────────────────────────────────────────
 async function syncCount(audienceId, index) {
   showToast('同步中...');
   var result = await apiCall({ action: 'syncAudienceCount', audience_id: audienceId });
@@ -441,36 +350,19 @@ async function syncCount(audienceId, index) {
   }
 }
 
-// ────────────────────────────────────────────────────────────
-// 刪除受眾
-// ────────────────────────────────────────────────────────────
 async function doDeleteAudience(audienceId, index) {
-  var ok = await confirmDialog('確定要刪除這個受眾嗎？此操作無法復原。');
-  if (!ok) return;
+  await confirmAndRun('確定要刪除這個受眾嗎？此操作無法復原。', async function() {
+    var result = await apiCall({
+      action:      'deleteAudience',
+      audience_id: audienceId,
+      index:       index
+    });
 
-  var result = await apiCall({
-    action:      'deleteAudience',
-    audience_id: audienceId,
-    index:       index
+    if (result.success) {
+      showToast('受眾已刪除', 'success');
+      loadAudience();
+    } else {
+      showToast(result.message, 'error');
+    }
   });
-
-  if (result.success) {
-    showToast('受眾已刪除', 'success');
-    loadAudience();
-  } else {
-    showToast(result.message, 'error');
-  }
-}
-
-// ────────────────────────────────────────────────────────────
-// 工具函式
-// ────────────────────────────────────────────────────────────
-function _esc(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
