@@ -1,12 +1,11 @@
 // === support.js ===
 // 路徑：js/pages/support.js
 // 功能：客戶留言頁（登入後側邊欄）
+// ⚠️ 已套用 CODE_STYLE.md 規範：escHtml
 
 async function loadSupport() {
   setContent('<div class="loading">載入客服留言...</div>');
-  // 讀取此客戶的歷史留言
   var histRes = await apiCall({ action: 'getSupportLog', status: 'all' });
-  // 非 admin 只能看自己的（API 層面已透過 clientId 控管）
   var history = [];
   if (histRes.success && Array.isArray(histRes.data)) {
     history = histRes.data.filter(function(r) {
@@ -17,7 +16,6 @@ async function loadSupport() {
 }
 
 function _buildSupportPage(history) {
-  // 歷史留言清單
   var histRows = history.length === 0
     ? '<p class="empty">尚無留言記錄</p>'
     : history.map(function(r) {
@@ -26,15 +24,15 @@ function _buildSupportPage(history) {
           : '<span style="background:#f39c12;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">待回覆</span>';
         return '<div class="card" style="margin-bottom:12px;padding:16px">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
-            '<div style="font-weight:600;font-size:14px">' + _escS(r.subject) + '</div>' +
+            '<div style="font-weight:600;font-size:14px">' + escHtml(r.subject) + '</div>' +
             statusBadge +
           '</div>' +
-          '<div style="font-size:13px;color:#555;margin-bottom:8px;line-height:1.6">' + _escS(r.message) + '</div>' +
-          '<div style="font-size:11px;color:#aaa">' + r.time + '</div>' +
+          '<div style="font-size:13px;color:#555;margin-bottom:8px;line-height:1.6">' + escHtml(r.message) + '</div>' +
+          '<div style="font-size:11px;color:#aaa">' + escHtml(r.time) + '</div>' +
           (r.reply
             ? '<div style="margin-top:12px;padding:12px;background:#f0f9f4;border-radius:8px;border-left:3px solid #06C755">' +
-                '<div style="font-size:11px;color:#06C755;font-weight:600;margin-bottom:4px">✅ 客服回覆（' + r.reply_at + '）</div>' +
-                '<div style="font-size:13px;color:#333;line-height:1.6">' + _escS(r.reply) + '</div>' +
+                '<div style="font-size:11px;color:#06C755;font-weight:600;margin-bottom:4px">✅ 客服回覆（' + escHtml(r.reply_at) + '）</div>' +
+                '<div style="font-size:13px;color:#333;line-height:1.6">' + escHtml(r.reply) + '</div>' +
               '</div>'
             : '') +
         '</div>';
@@ -43,7 +41,6 @@ function _buildSupportPage(history) {
   return '' +
   '<h2 class="page-title">💬 聯絡我們</h2>' +
 
-  // 留言表單
   '<div class="card" style="margin-bottom:24px">' +
     '<div style="font-weight:600;font-size:15px;margin-bottom:16px">📝 新增留言</div>' +
 
@@ -60,7 +57,7 @@ function _buildSupportPage(history) {
     '<div class="form-group">' +
       '<label>您的 Email（回覆通知用）</label>' +
       '<input type="email" id="supportEmail" placeholder="your@email.com"' +
-        ' value="' + _escS(authState.email || '') + '">' +
+        ' value="' + escHtml(authState.email || '') + '">' +
     '</div>' +
 
     '<div style="display:flex;justify-content:flex-end">' +
@@ -68,7 +65,6 @@ function _buildSupportPage(history) {
     '</div>' +
   '</div>' +
 
-  // 歷史記錄
   '<div style="font-weight:600;font-size:15px;margin-bottom:12px">📋 留言記錄</div>' +
   histRows;
 }
@@ -96,13 +92,8 @@ async function submitSupport() {
 
   if (res.success) {
     showToast(res.data.message || '留言已送出！', 'success');
-    loadSupport(); // 重新整理，顯示新留言
+    loadSupport();
   } else {
     showToast(res.message || '送出失敗', 'error');
   }
-}
-
-function _escS(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
