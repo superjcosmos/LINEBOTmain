@@ -1,5 +1,6 @@
 // js/utils/dom.js
-// DOM 操作相關
+// DOM 操作相關共用工具
+// ⚠️ 規範詳見專案知識 CODE_STYLE.md
 
 function setContent(idOrHtml, html) {
   // 支援雙參數 setContent('elementId', html)
@@ -13,11 +14,43 @@ function setContent(idOrHtml, html) {
   }
 }
 
+// ── HTML escape：全站唯一版本，取代所有頁面各自的 _esc/_escR/_lEsc 等 ──
+function escHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ── 確認對話框（回傳 Promise<boolean>） ──
 function confirmDialog(message) {
   return new Promise(function(resolve) {
-    // 用原生 confirm，之後可替換成自訂 Modal
+    // 用原生 confirm，之後可替換成自訂 Modal（只需改這裡，全站自動套用）
     resolve(window.confirm(message));
   });
+}
+
+// ── 確認後執行：取代裸的 confirmDialog 呼叫，避免漏掉 await 的 bug ──
+// 用法：await confirmAndRun('確定刪除？', async function() { ...刪除邏輯... });
+async function confirmAndRun(message, actionFn) {
+  var ok = await confirmDialog(message);
+  if (!ok) return false;
+  await actionFn();
+  return true;
+}
+
+// ── Modal 開關：統一用 display 切換，所有 Modal 預先寫在頁面骨架 HTML 裡 ──
+function openModal(modalId) {
+  var m = document.getElementById(modalId);
+  if (m) m.style.display = 'flex';
+}
+
+function closeModal(modalId) {
+  var m = document.getElementById(modalId);
+  if (m) m.style.display = 'none';
 }
 
 function initSheet() {
