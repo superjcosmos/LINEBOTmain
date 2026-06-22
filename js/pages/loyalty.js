@@ -101,13 +101,16 @@ function _renderLoyaltyMain() {
 
     // 調整點數 Modal
     '<div class="modal-overlay" id="adjustPointsModal">' +
-      '<div class="modal" style="max-width:400px">' +
+      '<div class="modal" style="max-width:420px">' +
         '<h3 id="adjustModalTitle">手動加/扣點</h3>' +
         '<input type="hidden" id="adjustCardId">' +
         '<input type="hidden" id="adjustUserId">' +
         '<input type="hidden" id="adjustDisplayName">' +
-        '<div class="form-group"><label>搜尋用戶（輸入 UID 或姓名）</label>' +
-          '<input type="text" id="adjustUserSearch" placeholder="從上方列表選取" readonly></div>' +
+        '<div class="form-group">' +
+          '<label>選擇用戶</label>' +
+          '<input type="text" id="adjustUserSearch" placeholder="輸入姓名或 UID 搜尋" oninput="searchUserLogForAdjust()" autocomplete="off">' +
+          '<div id="adjustUserDropdown" style="position:relative;max-height:180px;overflow-y:auto;border:1px solid #e0e0e0;border-radius:8px;margin-top:4px;display:none;background:#fff"></div>' +
+        '</div>' +
         '<div class="form-group"><label>操作</label>' +
           '<select id="adjustAction"><option value="add">加點（儲值）</option><option value="deduct">扣點</option></select></div>' +
         '<div class="form-group"><label>點數</label><input type="number" id="adjustPoints" min="1" value="1"></div>' +
@@ -119,6 +122,49 @@ function _renderLoyaltyMain() {
       '</div>' +
     '</div>'
   );
+}
+
+var _userLogCache = null;
+
+async function _ensureUserLogCache() {
+  if (_userLogCache) return _userLogCache;
+  var res = await apiCall({ action: 'getUserLogListForLoyalty' });
+  _userLogCache = res.success ? (res.data || []) : [];
+  return _userLogCache;
+}
+
+async function searchUserLogForAdjust() {
+  var kw = (document.getElementById('adjustUserSearch').value || '').trim().toLowerCase();
+  var dropdown = document.getElementById('adjustUserDropdown');
+  if (!kw) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+
+  var list = await _ensureUserLogCache();
+  var matched = list.filter(function(u) {
+    return (u.display_name || '').toLowerCase().includes(kw) || (u.user_id || '').toLowerCase().includes(kw);
+  }).slice(0, 20);
+
+  if (matched.length === 0) {
+    dropdown.innerHTML = '<div style="padding:10px;font-size:12px;color:#aaa">找不到符合的用戶</div>';
+    dropdown.style.display = 'block';
+    return;
+  }
+
+  dropdown.innerHTML = matched.map(function(u) {
+    return '<div onclick="selectAdjustUser(\'' + u.user_id.replace(/'/g, "\\'") + '\',\'' + (u.display_name || '').replace(/'/g, "\\'") + '\')" ' +
+      'style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:13px" ' +
+      'onmouseover="this.style.background=\'#f5f5f5\'" onmouseout="this.style.background=\'#fff\'">' +
+      '<strong>' + _lEsc(u.display_name || '(無名稱)') + '</strong> ' +
+      '<span style="color:#aaa;font-size:11px">' + _lEsc(u.user_id) + '</span>' +
+    '</div>';
+  }).join('');
+  dropdown.style.display = 'block';
+}
+
+function selectAdjustUser(userId, displayName) {
+  document.getElementById('adjustUserId').value      = userId;
+  document.getElementById('adjustDisplayName').value = displayName;
+  document.getElementById('adjustUserSearch').value  = displayName ? (displayName + '（' + userId + '）') : userId;
+  document.getElementById('adjustUserDropdown').style.display = 'none';
 }
 
 // ══════════════════════════════════════════
@@ -172,9 +218,9 @@ function _buildModeFields(c, m) {
       '<div class="form-group"><label>兌換成功訊息</label><textarea id="cfRewardMsg" rows="2" placeholder="恭喜集滿！請出示此訊息兌換獎勵">' + _lEsc(c.reward_msg || '') + '</textarea></div>'
     : '') +
   (showDeduct
-    ? '<div class="form-group"><label>扣點關鍵字</label><input type="text" id="cfDeductKw" placeholder="使用點數" value="' + _lEsc(c.deduct_keyword || '') + '"></div>' +
-      '<div class="form-group"><label>點數有效天數（0 = 不限）</label><input type="number" id="cfExpireDays" min="0" value="' + (c.expire_days || 0) + '"></div>'
-    : '');
+    ? '<div class="form-group"><label>扣點關鍵字</label><input type="text" id="cfDeductKw" placeholder="使用點數" value="' + _lEsc(c.deduct_keyword || '') + '"></div>'
+    : '') +
+  '<div class="form-group"><label>點數有效天數（0 = 不限）</label><input type="number" id="cfExpireDays" min="0" value="' + (c.expire_days || 0) + '"></div>';
 }
 
 function refreshCardForm() {
