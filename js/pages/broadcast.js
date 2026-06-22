@@ -1,14 +1,15 @@
 // js/pages/broadcast.js
+// ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun
+// ⚠️ 修正：原版樣板字串插值未轉義使用者輸入（受眾名稱、推播紀錄摘要等），已全面補上 escHtml
 
-let _broadcastAudienceData = [];
-let _selectedAudience = null;
-let _bcMessages = [];
-const BC_MAX_MESSAGES = 5;
+var _broadcastAudienceData = [];
+var _selectedAudience = null;
+var _bcMessages = [];
+var BC_MAX_MESSAGES = 5;
 
-const FLEX_SIMULATOR_URL = 'https://developers.line.biz/flex-simulator/';
+var FLEX_SIMULATOR_URL = 'https://developers.line.biz/flex-simulator/';
 
-// ── 常用 Flex 範本 ──────────────────────────────────────
-const FLEX_TEMPLATES = [
+var FLEX_TEMPLATES = [
   {
     label: '🎉 促銷公告',
     json: JSON.stringify({
@@ -80,210 +81,142 @@ const FLEX_TEMPLATES = [
   }
 ];
 
-// ── 主載入函式 ──────────────────────────────────────
-
 async function loadBroadcast() {
-  setContent('mainContent', `
-    <div class="page-header">
-      <h2>📢 推播管理</h2>
-      <p class="page-desc">選擇受眾，編輯訊息，批次推播給所有用戶</p>
-    </div>
+  setContent('mainContent', '' +
+    '<div class="page-header">' +
+      '<h2>📢 推播管理</h2>' +
+      '<p class="page-desc">選擇受眾，編輯訊息，批次推播給所有用戶</p>' +
+    '</div>' +
 
-    <div class="broadcast-layout">
-      <!-- 左：受眾選擇 -->
-      <div class="card" id="audience-select-card">
-        <h3>① 選擇受眾</h3>
-        <div class="search-bar">
-          <input type="text" id="bc-search" placeholder="搜尋關鍵字或受眾ID…" oninput="filterBcAudience()">
-        </div>
-        <div id="bc-audience-list" class="bc-audience-list">
-          <div class="loading-placeholder">載入中…</div>
-        </div>
-      </div>
+    '<div class="broadcast-layout">' +
+      '<div class="card" id="audience-select-card">' +
+        '<h3>① 選擇受眾</h3>' +
+        '<div class="search-bar">' +
+          '<input type="text" id="bc-search" placeholder="搜尋關鍵字或受眾ID…" oninput="filterBcAudience()">' +
+        '</div>' +
+        '<div id="bc-audience-list" class="bc-audience-list">' +
+          '<div class="loading-placeholder">載入中…</div>' +
+        '</div>' +
+      '</div>' +
 
-      <!-- 右：訊息編輯 + 發送 -->
-      <div class="card" id="message-compose-card">
-        <h3>② 編輯訊息</h3>
+      '<div class="card" id="message-compose-card">' +
+        '<h3>② 編輯訊息</h3>' +
 
-        <div id="bc-messages-container"></div>
+        '<div id="bc-messages-container"></div>' +
 
-        <button class="btn btn-secondary btn-sm" onclick="addBcMessage()" id="add-msg-btn"
-          style="margin-top:8px">
-          ＋ 新增訊息（最多 5 則）
-        </button>
+        '<button class="btn btn-secondary btn-sm" onclick="addBcMessage()" id="add-msg-btn" style="margin-top:8px">' +
+          '＋ 新增訊息（最多 5 則）' +
+        '</button>' +
 
-        <div class="bc-target-info" id="bc-target-info">
-          請先從左側選擇受眾
-        </div>
+        '<div class="bc-target-info" id="bc-target-info">' +
+          '請先從左側選擇受眾' +
+        '</div>' +
 
-        <button class="btn btn-primary btn-block" onclick="submitBroadcast()" id="bc-send-btn" disabled>
-          🚀 確認推播
-        </button>
-      </div>
-    </div>
+        '<button class="btn btn-primary btn-block" onclick="submitBroadcast()" id="bc-send-btn" disabled>' +
+          '🚀 確認推播' +
+        '</button>' +
+      '</div>' +
+    '</div>' +
 
-    <!-- 推播紀錄 -->
-    <div class="card" style="margin-top:20px">
-      <div class="card-header-row">
-        <h3>📋 推播紀錄</h3>
-        <button class="btn btn-secondary btn-sm" onclick="loadBroadcastLog()">重新整理</button>
-      </div>
-      <div id="bc-log-table">載入中…</div>
-    </div>
+    '<div class="card" style="margin-top:20px">' +
+      '<div class="card-header-row">' +
+        '<h3>📋 推播紀錄</h3>' +
+        '<button class="btn btn-secondary btn-sm" onclick="loadBroadcastLog()">重新整理</button>' +
+      '</div>' +
+      '<div id="bc-log-table">載入中…</div>' +
+    '</div>' +
 
-    <!-- Flex 範本 Modal（自帶完整樣式，不依賴全域 CSS） -->
-    <div id="flex-template-modal" onclick="closeFlexTemplateModal(event)" style="
-      display:none;
-      position:fixed; inset:0; z-index:9999;
-      background:rgba(0,0,0,.5);
-      align-items:center; justify-content:center;
-    ">
-      <div onclick="event.stopPropagation()" style="
-        background:#fff; border-radius:14px;
-        width:90%; max-width:520px;
-        box-shadow:0 8px 32px rgba(0,0,0,.18);
-        overflow:hidden;
-      ">
-        <!-- Modal Header -->
-        <div style="
-          display:flex; align-items:center; justify-content:space-between;
-          padding:16px 20px; border-bottom:1px solid #f0f0f0;
-        ">
-          <h3 style="margin:0;font-size:16px">📋 Flex 範本</h3>
-          <button onclick="closeFlexTemplateModalDirect()" style="
-            background:none; border:none; font-size:18px;
-            color:#aaa; cursor:pointer; line-height:1; padding:2px 6px;
-          ">✕</button>
-        </div>
-        <!-- Modal Body -->
-        <div style="padding:20px">
-          <p style="font-size:13px;color:#888;margin:0 0 14px">
-            選擇範本後可在編輯區繼續修改，或前往
-            <a href="https://developers.line.biz/flex-simulator/" target="_blank"
-               style="color:#06c755;text-decoration:none;font-weight:500">LINE Flex Simulator</a>
-            設計完整版面。
-          </p>
-          <div id="flex-template-list">
-            <div onclick="applyFlexTemplate(0)" class="bc-tpl-item">
-              <span>🎉 促銷公告</span><span class="bc-tpl-arrow">套用 →</span>
-            </div>
-            <div onclick="applyFlexTemplate(1)" class="bc-tpl-item">
-              <span>📋 活動報名</span><span class="bc-tpl-arrow">套用 →</span>
-            </div>
-            <div onclick="applyFlexTemplate(2)" class="bc-tpl-item">
-              <span>📦 訂單通知</span><span class="bc-tpl-arrow">套用 →</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    '<div id="flex-template-modal" onclick="closeFlexTemplateModal(event)" style="' +
+      'display:none;' +
+      'position:fixed; inset:0; z-index:9999;' +
+      'background:rgba(0,0,0,.5);' +
+      'align-items:center; justify-content:center;' +
+    '">' +
+      '<div onclick="event.stopPropagation()" style="' +
+        'background:#fff; border-radius:14px;' +
+        'width:90%; max-width:520px;' +
+        'box-shadow:0 8px 32px rgba(0,0,0,.18);' +
+        'overflow:hidden;' +
+      '">' +
+        '<div style="' +
+          'display:flex; align-items:center; justify-content:space-between;' +
+          'padding:16px 20px; border-bottom:1px solid #f0f0f0;' +
+        '">' +
+          '<h3 style="margin:0;font-size:16px">📋 Flex 範本</h3>' +
+          '<button onclick="closeFlexTemplateModalDirect()" style="' +
+            'background:none; border:none; font-size:18px;' +
+            'color:#aaa; cursor:pointer; line-height:1; padding:2px 6px;' +
+          '">✕</button>' +
+        '</div>' +
+        '<div style="padding:20px">' +
+          '<p style="font-size:13px;color:#888;margin:0 0 14px">' +
+            '選擇範本後可在編輯區繼續修改，或前往' +
+            '<a href="https://developers.line.biz/flex-simulator/" target="_blank" style="color:#06c755;text-decoration:none;font-weight:500">LINE Flex Simulator</a>' +
+            '設計完整版面。' +
+          '</p>' +
+          '<div id="flex-template-list">' +
+            '<div onclick="applyFlexTemplate(0)" class="bc-tpl-item">' +
+              '<span>🎉 促銷公告</span><span class="bc-tpl-arrow">套用 →</span>' +
+            '</div>' +
+            '<div onclick="applyFlexTemplate(1)" class="bc-tpl-item">' +
+              '<span>📋 活動報名</span><span class="bc-tpl-arrow">套用 →</span>' +
+            '</div>' +
+            '<div onclick="applyFlexTemplate(2)" class="bc-tpl-item">' +
+              '<span>📦 訂單通知</span><span class="bc-tpl-arrow">套用 →</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
 
-    <style>
-      .bc-audience-list {
-        margin-top:10px; max-height:400px; overflow-y:auto;
-      }
-      .bc-audience-item {
-        padding:12px 14px; border-radius:8px; cursor:pointer;
-        transition:background .15s; margin-bottom:4px;
-        border:1px solid transparent;
-      }
-      .bc-audience-item:hover { background:#f5f5f5; }
-      .bc-audience-item.selected { background:#f0fff4; border-color:#06c755; }
-      .bc-aud-name { font-size:15px; font-weight:600; color:#222; margin-bottom:4px; }
-      .bc-aud-meta { display:flex; align-items:center; gap:8px; font-size:12px; color:#888; }
-
-      .bc-msg-block {
-        border:1px solid #e5e5e5; border-radius:10px;
-        margin-bottom:12px; overflow:hidden;
-      }
-      .bc-msg-header {
-        display:flex; align-items:center; padding:8px 12px;
-        background:#fafafa; border-bottom:1px solid #ebebeb; gap:8px;
-      }
-      .bc-msg-index { font-size:13px; font-weight:600; color:#444; flex:1; }
-      .bc-msg-type-tabs { display:flex; gap:4px; }
-      .type-tab {
-        font-size:12px; padding:3px 10px; border-radius:20px;
-        border:1px solid #ddd; background:#fff; color:#666;
-        cursor:pointer; transition:all .15s;
-      }
-      .type-tab:hover { background:#f0f0f0; }
-      .type-tab.active { background:#06c755; color:#fff; border-color:#06c755; }
-      .bc-msg-remove {
-        background:none; border:none; color:#bbb; font-size:16px;
-        cursor:pointer; padding:0 2px; line-height:1; transition:color .15s;
-      }
-      .bc-msg-remove:hover { color:#e53e3e; }
-      .bc-msg-body { padding:12px; }
-      .bc-textarea {
-        width:100%; border:1px solid #ddd; border-radius:8px;
-        padding:10px; font-size:14px; resize:vertical;
-        box-sizing:border-box; font-family:inherit;
-        transition:border-color .15s; line-height:1.6;
-      }
-      .bc-textarea:focus { outline:none; border-color:#06c755; }
-      .bc-textarea-mono { font-family:'Courier New',monospace; font-size:12px; }
-      .bc-input-group { margin-bottom:10px; }
-      .bc-input-group label { font-size:12px; color:#666; display:block; margin-bottom:4px; }
-      .bc-input {
-        width:100%; border:1px solid #ddd; border-radius:8px;
-        padding:8px 10px; font-size:14px; box-sizing:border-box;
-      }
-      .bc-input:focus { outline:none; border-color:#06c755; }
-
-      .flex-toolbar { display:flex; gap:8px; margin-bottom:8px; }
-      .flex-toolbar a, .flex-toolbar button {
-        font-size:12px; padding:4px 12px; border-radius:20px;
-        border:1px solid #06c755; color:#06c755; background:#fff;
-        cursor:pointer; text-decoration:none; transition:all .15s;
-      }
-      .flex-toolbar a:hover, .flex-toolbar button:hover {
-        background:#06c755; color:#fff;
-      }
-      .flex-hint { font-size:11px; color:#aaa; margin-top:4px; }
-
-      .bc-target-info {
-        margin:14px 0 10px; padding:10px 14px; border-radius:8px;
-        background:#f5f5f5; font-size:13px; color:#888;
-      }
-      .bc-target-info.selected {
-        background:#f0fff4; color:#333; border:1px solid #c3f0d0;
-      }
-      .target-label { color:#888; margin-right:4px; }
-      .target-count { margin-left:6px; color:#555; }
-
-      /* 範本清單項目 */
-      .bc-tpl-item {
-        display:flex; align-items:center; justify-content:space-between;
-        padding:12px 16px; border-radius:8px; border:1px solid #eee;
-        margin-bottom:8px; cursor:pointer; transition:all .15s;
-        font-size:14px; font-weight:500;
-      }
-      .bc-tpl-item:hover { border-color:#06c755; background:#f0fff4; }
-      .bc-tpl-arrow { font-size:12px; color:#06c755; }
-
-      .broadcast-layout {
-        display:grid; grid-template-columns:300px 1fr;
-        gap:16px; align-items:start;
-      }
-      @media (max-width:768px) {
-        .broadcast-layout { grid-template-columns:1fr; }
-      }
-    </style>
-  `);
+    '<style>' +
+      '.bc-audience-list { margin-top:10px; max-height:400px; overflow-y:auto; }' +
+      '.bc-audience-item { padding:12px 14px; border-radius:8px; cursor:pointer; transition:background .15s; margin-bottom:4px; border:1px solid transparent; }' +
+      '.bc-audience-item:hover { background:#f5f5f5; }' +
+      '.bc-audience-item.selected { background:#f0fff4; border-color:#06c755; }' +
+      '.bc-aud-name { font-size:15px; font-weight:600; color:#222; margin-bottom:4px; }' +
+      '.bc-aud-meta { display:flex; align-items:center; gap:8px; font-size:12px; color:#888; }' +
+      '.bc-msg-block { border:1px solid #e5e5e5; border-radius:10px; margin-bottom:12px; overflow:hidden; }' +
+      '.bc-msg-header { display:flex; align-items:center; padding:8px 12px; background:#fafafa; border-bottom:1px solid #ebebeb; gap:8px; }' +
+      '.bc-msg-index { font-size:13px; font-weight:600; color:#444; flex:1; }' +
+      '.bc-msg-type-tabs { display:flex; gap:4px; }' +
+      '.type-tab { font-size:12px; padding:3px 10px; border-radius:20px; border:1px solid #ddd; background:#fff; color:#666; cursor:pointer; transition:all .15s; }' +
+      '.type-tab:hover { background:#f0f0f0; }' +
+      '.type-tab.active { background:#06c755; color:#fff; border-color:#06c755; }' +
+      '.bc-msg-remove { background:none; border:none; color:#bbb; font-size:16px; cursor:pointer; padding:0 2px; line-height:1; transition:color .15s; }' +
+      '.bc-msg-remove:hover { color:#e53e3e; }' +
+      '.bc-msg-body { padding:12px; }' +
+      '.bc-textarea { width:100%; border:1px solid #ddd; border-radius:8px; padding:10px; font-size:14px; resize:vertical; box-sizing:border-box; font-family:inherit; transition:border-color .15s; line-height:1.6; }' +
+      '.bc-textarea:focus { outline:none; border-color:#06c755; }' +
+      '.bc-textarea-mono { font-family:\'Courier New\',monospace; font-size:12px; }' +
+      '.bc-input-group { margin-bottom:10px; }' +
+      '.bc-input-group label { font-size:12px; color:#666; display:block; margin-bottom:4px; }' +
+      '.bc-input { width:100%; border:1px solid #ddd; border-radius:8px; padding:8px 10px; font-size:14px; box-sizing:border-box; }' +
+      '.bc-input:focus { outline:none; border-color:#06c755; }' +
+      '.flex-toolbar { display:flex; gap:8px; margin-bottom:8px; }' +
+      '.flex-toolbar a, .flex-toolbar button { font-size:12px; padding:4px 12px; border-radius:20px; border:1px solid #06c755; color:#06c755; background:#fff; cursor:pointer; text-decoration:none; transition:all .15s; }' +
+      '.flex-toolbar a:hover, .flex-toolbar button:hover { background:#06c755; color:#fff; }' +
+      '.flex-hint { font-size:11px; color:#aaa; margin-top:4px; }' +
+      '.bc-target-info { margin:14px 0 10px; padding:10px 14px; border-radius:8px; background:#f5f5f5; font-size:13px; color:#888; }' +
+      '.bc-target-info.selected { background:#f0fff4; color:#333; border:1px solid #c3f0d0; }' +
+      '.target-label { color:#888; margin-right:4px; }' +
+      '.target-count { margin-left:6px; color:#555; }' +
+      '.bc-tpl-item { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-radius:8px; border:1px solid #eee; margin-bottom:8px; cursor:pointer; transition:all .15s; font-size:14px; font-weight:500; }' +
+      '.bc-tpl-item:hover { border-color:#06c755; background:#f0fff4; }' +
+      '.bc-tpl-arrow { font-size:12px; color:#06c755; }' +
+      '.broadcast-layout { display:grid; grid-template-columns:300px 1fr; gap:16px; align-items:start; }' +
+      '@media (max-width:768px) { .broadcast-layout { grid-template-columns:1fr; } }' +
+    '</style>'
+  );
 
   _selectedAudience = null;
   _bcMessages = [];
   addBcMessage();
 
-  // ── 修正：改用 getAudienceList（讀 AudienceSettings），與 audience.js 一致 ──
-  const res = await apiCall({ action: 'getAudienceList' });
+  var res = await apiCall({ action: 'getAudienceList' });
   if (res.success) {
-    // getAudienceList 回傳欄位：audience_id, audience_name, keyword, count, status
-    // 過濾掉 disabled 的受眾
-    // getAudienceList 直接回傳 array（不是 {list:[...]}），欄位用 name 不是 audience_name
-    const raw = Array.isArray(res.data) ? res.data : (res.data.list || []);
-    _broadcastAudienceData = raw.filter(a => a.status !== 'disabled');
+    var raw = Array.isArray(res.data) ? res.data : (res.data.list || []);
+    _broadcastAudienceData = raw.filter(function(a) { return a.status !== 'disabled'; });
     renderBcAudienceList(_broadcastAudienceData);
   } else {
     document.getElementById('bc-audience-list').innerHTML = '<p class="empty-tip">載入受眾失敗</p>';
@@ -292,71 +225,66 @@ async function loadBroadcast() {
   loadBroadcastLog();
 }
 
-// ── 受眾選擇 ──────────────────────────────────────
-
 function renderBcAudienceList(list) {
-  const el = document.getElementById('bc-audience-list');
+  var el = document.getElementById('bc-audience-list');
   if (!el) return;
   if (!list || !list.length) {
     el.innerHTML = '<p class="empty-tip">沒有受眾資料</p>';
     return;
   }
-  el.innerHTML = list.map(a => `
-    <div class="bc-audience-item${_selectedAudience && String(_selectedAudience.audience_id) === String(a.audience_id) ? ' selected' : ''}"
-         id="bc-aud-${a.audience_id}"
-         onclick="selectBcAudience('${a.audience_id}')">
-      <div class="bc-aud-name">${a.name || a.keyword || '（無名稱）'}</div>
-      <div class="bc-aud-meta">
-        <span class="badge">${a.audience_id}</span>
-        <span class="bc-aud-count">👥 ${a.count || 0} 人</span>
-      </div>
-    </div>
-  `).join('');
+  el.innerHTML = list.map(function(a) {
+    var isSelected = _selectedAudience && String(_selectedAudience.audience_id) === String(a.audience_id);
+    return '<div class="bc-audience-item' + (isSelected ? ' selected' : '') + '"' +
+        ' id="bc-aud-' + escHtml(a.audience_id) + '"' +
+        ' onclick="selectBcAudience(\'' + escHtml(a.audience_id) + '\')">' +
+      '<div class="bc-aud-name">' + escHtml(a.name || a.keyword || '（無名稱）') + '</div>' +
+      '<div class="bc-aud-meta">' +
+        '<span class="badge">' + escHtml(a.audience_id) + '</span>' +
+        '<span class="bc-aud-count">👥 ' + (a.count || 0) + ' 人</span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 function filterBcAudience() {
-  const q = (document.getElementById('bc-search').value || '').trim().toLowerCase();
-  const filtered = _broadcastAudienceData.filter(a =>
-    (a.name || '').toLowerCase().includes(q) ||
-    (a.keyword || '').toLowerCase().includes(q) ||
-    (a.audience_id || '').includes(q)
-  );
+  var q = (document.getElementById('bc-search').value || '').trim().toLowerCase();
+  var filtered = _broadcastAudienceData.filter(function(a) {
+    return (a.name || '').toLowerCase().includes(q) ||
+           (a.keyword || '').toLowerCase().includes(q) ||
+           (a.audience_id || '').includes(q);
+  });
   renderBcAudienceList(filtered);
 }
 
-function selectBcAudience(audience_id) {
-  // audience_id 從 onclick 傳入是字串，資料裡可能是數字，String() 統一比對
-  _selectedAudience = _broadcastAudienceData.find(a => String(a.audience_id) === String(audience_id));
+function selectBcAudience(audienceId) {
+  _selectedAudience = _broadcastAudienceData.find(function(a) { return String(a.audience_id) === String(audienceId); });
   if (!_selectedAudience) return;
 
-  document.querySelectorAll('.bc-audience-item').forEach(el => el.classList.remove('selected'));
-  const item = document.getElementById('bc-aud-' + audience_id);
+  document.querySelectorAll('.bc-audience-item').forEach(function(el) { el.classList.remove('selected'); });
+  var item = document.getElementById('bc-aud-' + audienceId);
   if (item) item.classList.add('selected');
 
-  const info = document.getElementById('bc-target-info');
+  var info = document.getElementById('bc-target-info');
   if (info) {
-    const name = _selectedAudience.name || _selectedAudience.keyword || audience_id;
-    info.innerHTML = `
-      <span class="target-label">目標受眾：</span>
-      <strong>${name}</strong>
-      <span class="target-count">（預計推播 <strong>${_selectedAudience.count || 0}</strong> 人）</span>
-    `;
+    var name = _selectedAudience.name || _selectedAudience.keyword || audienceId;
+    info.innerHTML =
+      '<span class="target-label">目標受眾：</span>' +
+      '<strong>' + escHtml(name) + '</strong>' +
+      '<span class="target-count">（預計推播 <strong>' + (_selectedAudience.count || 0) + '</strong> 人）</span>';
     info.className = 'bc-target-info selected';
   }
 
-  const sendBtn = document.getElementById('bc-send-btn');
+  var sendBtn = document.getElementById('bc-send-btn');
   if (sendBtn) sendBtn.disabled = false;
 }
-
-// ── 訊息編輯 ──────────────────────────────────────
 
 function addBcMessage() {
   if (_bcMessages.length >= BC_MAX_MESSAGES) {
     showToast('最多只能加 ' + BC_MAX_MESSAGES + ' 則訊息', 'warning');
     return;
   }
-  const id = Date.now();
-  _bcMessages.push({ id, type: 'text', text: '', originalContentUrl: '', previewImageUrl: '', flexJson: '' });
+  var id = Date.now();
+  _bcMessages.push({ id: id, type: 'text', text: '', originalContentUrl: '', previewImageUrl: '', flexJson: '' });
   renderBcMessages();
 }
 
@@ -365,100 +293,86 @@ function removeBcMessage(id) {
     showToast('至少需要 1 則訊息', 'warning');
     return;
   }
-  _bcMessages = _bcMessages.filter(m => m.id !== id);
+  _bcMessages = _bcMessages.filter(function(m) { return m.id !== id; });
   renderBcMessages();
 }
 
 function renderBcMessages() {
-  const container = document.getElementById('bc-messages-container');
+  var container = document.getElementById('bc-messages-container');
   if (!container) return;
 
-  container.innerHTML = _bcMessages.map((m, idx) => `
-    <div class="bc-msg-block" id="bc-msg-${m.id}">
-      <div class="bc-msg-header">
-        <span class="bc-msg-index">訊息 ${idx + 1}</span>
-        <div class="bc-msg-type-tabs">
-          <button class="type-tab${m.type === 'image' ? ' active' : ''}" onclick="setBcMsgType(${m.id},'image')">圖片</button>
-          <button class="type-tab${m.type === 'flex'  ? ' active' : ''}" onclick="setBcMsgType(${m.id},'flex')">Flex</button>
-        </div>
-        <button class="bc-msg-remove" onclick="removeBcMessage(${m.id})" title="移除此訊息">✕</button>
-      </div>
-      <div class="bc-msg-body">
-        ${renderMsgInput(m)}
-      </div>
-    </div>
-  `).join('');
+  container.innerHTML = _bcMessages.map(function(m, idx) {
+    return '<div class="bc-msg-block" id="bc-msg-' + m.id + '">' +
+      '<div class="bc-msg-header">' +
+        '<span class="bc-msg-index">訊息 ' + (idx + 1) + '</span>' +
+        '<div class="bc-msg-type-tabs">' +
+          '<button class="type-tab' + (m.type === 'image' ? ' active' : '') + '" onclick="setBcMsgType(' + m.id + ',\'image\')">圖片</button>' +
+          '<button class="type-tab' + (m.type === 'flex'  ? ' active' : '') + '" onclick="setBcMsgType(' + m.id + ',\'flex\')">Flex</button>' +
+        '</div>' +
+        '<button class="bc-msg-remove" onclick="removeBcMessage(' + m.id + ')" title="移除此訊息">✕</button>' +
+      '</div>' +
+      '<div class="bc-msg-body">' + renderMsgInput(m) + '</div>' +
+    '</div>';
+  }).join('');
 
-  const addBtn = document.getElementById('add-msg-btn');
+  var addBtn = document.getElementById('add-msg-btn');
   if (addBtn) addBtn.disabled = _bcMessages.length >= BC_MAX_MESSAGES;
 }
 
 function renderMsgInput(m) {
   if (m.type === 'text') {
-    const escaped = (m.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    return `<textarea class="bc-textarea" rows="4"
-      placeholder="輸入文字訊息…"
-      oninput="saveBcMsgValue(${m.id},'text',this.value)"
-    >${escaped}</textarea>`;
+    return '<textarea class="bc-textarea" rows="4" placeholder="輸入文字訊息…" ' +
+      'oninput="saveBcMsgValue(' + m.id + ',\'text\',this.value)">' + escHtml(m.text || '') + '</textarea>';
   }
   if (m.type === 'image') {
-    return `
-      <div class="bc-input-group">
-        <label>原始圖片 URL（需為公開 https）</label>
-        <input type="text" class="bc-input"
-          placeholder="https://…/image.jpg"
-          value="${m.originalContentUrl || ''}"
-          oninput="saveBcMsgValue(${m.id},'originalContentUrl',this.value)">
-      </div>
-      <div class="bc-input-group">
-        <label>縮圖 URL（可與原始相同）</label>
-        <input type="text" class="bc-input"
-          placeholder="https://…/thumb.jpg"
-          value="${m.previewImageUrl || ''}"
-          oninput="saveBcMsgValue(${m.id},'previewImageUrl',this.value)">
-      </div>`;
+    return '' +
+      '<div class="bc-input-group">' +
+        '<label>原始圖片 URL（需為公開 https）</label>' +
+        '<input type="text" class="bc-input" placeholder="https://…/image.jpg" value="' + escHtml(m.originalContentUrl || '') + '" ' +
+          'oninput="saveBcMsgValue(' + m.id + ',\'originalContentUrl\',this.value)">' +
+      '</div>' +
+      '<div class="bc-input-group">' +
+        '<label>縮圖 URL（可與原始相同）</label>' +
+        '<input type="text" class="bc-input" placeholder="https://…/thumb.jpg" value="' + escHtml(m.previewImageUrl || '') + '" ' +
+          'oninput="saveBcMsgValue(' + m.id + ',\'previewImageUrl\',this.value)">' +
+      '</div>';
   }
   if (m.type === 'flex') {
-    const escaped = (m.flexJson || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    return `
-      <div class="flex-toolbar">
-        <a href="${FLEX_SIMULATOR_URL}" target="_blank">🔗 LINE Flex Simulator</a>
-        <button onclick="openFlexTemplateModal(${m.id})">📋 套用範本</button>
-      </div>
-      <textarea class="bc-textarea bc-textarea-mono" rows="10"
-        id="flex-textarea-${m.id}"
-        placeholder='{"type":"bubble","body":{…}}'
-        oninput="saveBcMsgValue(${m.id},'flexJson',this.value)"
-      >${escaped}</textarea>
-      <div class="flex-hint">貼上 Flex Message Simulator 產生的 JSON，或套用上方範本後修改</div>`;
+    return '' +
+      '<div class="flex-toolbar">' +
+        '<a href="' + FLEX_SIMULATOR_URL + '" target="_blank">🔗 LINE Flex Simulator</a>' +
+        '<button onclick="openFlexTemplateModal(' + m.id + ')">📋 套用範本</button>' +
+      '</div>' +
+      '<textarea class="bc-textarea bc-textarea-mono" rows="10" id="flex-textarea-' + m.id + '" ' +
+        'placeholder=\'{"type":"bubble","body":{…}}\' ' +
+        'oninput="saveBcMsgValue(' + m.id + ',\'flexJson\',this.value)">' + escHtml(m.flexJson || '') + '</textarea>' +
+      '<div class="flex-hint">貼上 Flex Message Simulator 產生的 JSON，或套用上方範本後修改</div>';
   }
   return '';
 }
 
 function setBcMsgType(id, type) {
-  const m = _bcMessages.find(m => m.id === id);
+  var m = _bcMessages.find(function(m) { return m.id === id; });
   if (!m) return;
-  m.type = (m.type === type) ? 'text' : type; // 再點一次切回文字
+  m.type = (m.type === type) ? 'text' : type;
   renderBcMessages();
 }
 
 function saveBcMsgValue(id, key, value) {
-  const m = _bcMessages.find(m => m.id === id);
+  var m = _bcMessages.find(function(m) { return m.id === id; });
   if (m) m[key] = value;
 }
 
-// ── Flex 範本 Modal ──────────────────────────────────────
-
-let _flexTemplateTargetId = null;
+var _flexTemplateTargetId = null;
 
 function openFlexTemplateModal(msgId) {
   _flexTemplateTargetId = msgId;
-  const modal = document.getElementById('flex-template-modal');
+  var modal = document.getElementById('flex-template-modal');
   if (modal) modal.style.display = 'flex';
 }
 
 function closeFlexTemplateModalDirect() {
-  const modal = document.getElementById('flex-template-modal');
+  var modal = document.getElementById('flex-template-modal');
   if (modal) modal.style.display = 'none';
   _flexTemplateTargetId = null;
 }
@@ -468,9 +382,9 @@ function closeFlexTemplateModal(event) {
 }
 
 function applyFlexTemplate(templateIdx) {
-  const tpl = FLEX_TEMPLATES[templateIdx];
+  var tpl = FLEX_TEMPLATES[templateIdx];
   if (!tpl || _flexTemplateTargetId === null) return;
-  const m = _bcMessages.find(m => m.id === _flexTemplateTargetId);
+  var m = _bcMessages.find(function(m) { return m.id === _flexTemplateTargetId; });
   if (m) {
     m.flexJson = tpl.json;
     renderBcMessages();
@@ -479,88 +393,86 @@ function applyFlexTemplate(templateIdx) {
   showToast('已套用範本「' + tpl.label + '」，可繼續修改', 'success');
 }
 
-// ── 發送推播 ──────────────────────────────────────
-
 async function submitBroadcast() {
   if (!_selectedAudience) {
     showToast('請先選擇受眾', 'warning');
     return;
   }
 
-  const messages = [];
-  for (let i = 0; i < _bcMessages.length; i++) {
-    const m = _bcMessages[i];
+  var messages = [];
+  for (var i = 0; i < _bcMessages.length; i++) {
+    var m = _bcMessages[i];
     if (m.type === 'text') {
-      const text = (m.text || '').trim();
+      var text = (m.text || '').trim();
       if (!text) { showToast('第 ' + (i + 1) + ' 則文字訊息不能為空', 'warning'); return; }
-      messages.push({ type: 'text', text });
+      messages.push({ type: 'text', text: text });
     } else if (m.type === 'image') {
-      const orig = (m.originalContentUrl || '').trim();
-      const prev = (m.previewImageUrl || '').trim();
+      var orig = (m.originalContentUrl || '').trim();
+      var prev = (m.previewImageUrl || '').trim();
       if (!orig || !prev) { showToast('第 ' + (i + 1) + ' 則圖片 URL 不能為空', 'warning'); return; }
       messages.push({ type: 'image', originalContentUrl: orig, previewImageUrl: prev });
     } else if (m.type === 'flex') {
-      let contents;
+      var contents;
       try { contents = JSON.parse(m.flexJson || ''); }
       catch (e) { showToast('第 ' + (i + 1) + ' 則 Flex JSON 格式錯誤', 'error'); return; }
-      messages.push({ type: 'flex', altText: '推播訊息', contents });
+      messages.push({ type: 'flex', altText: '推播訊息', contents: contents });
     }
   }
 
   if (!messages.length) { showToast('請至少編輯一則訊息', 'warning'); return; }
 
-  const name = _selectedAudience.name || _selectedAudience.keyword || _selectedAudience.audience_id;
-  const confirmed = await confirmDialog(
-    '確定要推播給「' + name + '」受眾嗎？\n預計發送 ' + (_selectedAudience.count || 0) + ' 人。'
+  var name = _selectedAudience.name || _selectedAudience.keyword || _selectedAudience.audience_id;
+
+  await confirmAndRun(
+    '確定要推播給「' + name + '」受眾嗎？\n預計發送 ' + (_selectedAudience.count || 0) + ' 人。',
+    async function() {
+      var res = await apiCall({
+        action: 'broadcastToAudience',
+        audience_id: _selectedAudience.audience_id,
+        messages: messages
+      });
+
+      if (res.success) {
+        var d = res.data;
+        showToast('✅ 推播完成！成功 ' + d.success + ' 人，失敗 ' + d.fail + ' 人', 'success');
+        loadBroadcastLog();
+      } else {
+        showToast(res.message || '推播失敗', 'error');
+      }
+    }
   );
-  if (!confirmed) return;
-
-  const res = await apiCall({
-    action: 'broadcastToAudience',
-    audience_id: _selectedAudience.audience_id,
-    messages
-  });
-
-  if (res.success) {
-    const d = res.data;
-    showToast('✅ 推播完成！成功 ' + d.success + ' 人，失敗 ' + d.fail + ' 人', 'success');
-    loadBroadcastLog();
-  }
 }
 
-// ── 推播紀錄 ──────────────────────────────────────
-
 async function loadBroadcastLog() {
-  const el = document.getElementById('bc-log-table');
+  var el = document.getElementById('bc-log-table');
   if (!el) return;
   el.innerHTML = '載入中…';
 
-  const res = await apiCall({ action: 'getBroadcastLog' });
+  var res = await apiCall({ action: 'getBroadcastLog' });
   if (!res.success || !res.data.list || !res.data.list.length) {
     el.innerHTML = '<p class="empty-tip">尚無推播紀錄</p>';
     return;
   }
 
-  el.innerHTML = `
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>時間</th><th>受眾ID</th><th>訊息摘要</th>
-          <th>總人數</th><th>成功</th><th>失敗</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${res.data.list.map(r => `
-          <tr>
-            <td>${r.time}</td>
-            <td><span class="badge">${r.audience_id}</span></td>
-            <td>${r.msg_summary}</td>
-            <td>${r.total}</td>
-            <td class="text-success">${r.success}</td>
-            <td class="${r.fail > 0 ? 'text-danger' : ''}">${r.fail}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
+  el.innerHTML =
+    '<table class="data-table">' +
+      '<thead>' +
+        '<tr>' +
+          '<th>時間</th><th>受眾ID</th><th>訊息摘要</th>' +
+          '<th>總人數</th><th>成功</th><th>失敗</th>' +
+        '</tr>' +
+      '</thead>' +
+      '<tbody>' +
+        res.data.list.map(function(r) {
+          return '<tr>' +
+            '<td>' + escHtml(r.time) + '</td>' +
+            '<td><span class="badge">' + escHtml(r.audience_id) + '</span></td>' +
+            '<td>' + escHtml(r.msg_summary) + '</td>' +
+            '<td>' + (r.total || 0) + '</td>' +
+            '<td class="text-success">' + (r.success || 0) + '</td>' +
+            '<td class="' + (r.fail > 0 ? 'text-danger' : '') + '">' + (r.fail || 0) + '</td>' +
+          '</tr>';
+        }).join('') +
+      '</tbody>' +
+    '</table>';
 }
