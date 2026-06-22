@@ -1,7 +1,7 @@
 // === admin.js ===
 // 路徑：js/pages/admin.js
 // 功能：系統管理者後台
-// ⚠️ 更新：新增系統設定 Tab（客服留言管理 + 聯絡資訊設定）
+// ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / openModal/closeModal / renderPager
 
 var _adminClients    = [];
 var _adminFiltered   = [];
@@ -16,7 +16,7 @@ async function loadAdmin() {
   var clientRes = await apiCall({ action: 'adminGetClientList'  });
 
   if (!clientRes.success) {
-    setContent('<div class="loading">載入失敗：' + (clientRes.message || '') + '</div>');
+    setContent('<div class="loading">載入失敗：' + escHtml(clientRes.message || '') + '</div>');
     return;
   }
 
@@ -31,9 +31,6 @@ async function loadAdmin() {
   _renderAdminPager();
 }
 
-// ────────────────────────────────────────────────────────────
-// 頁面骨架
-// ────────────────────────────────────────────────────────────
 function _buildAdminPage(stats) {
   var planBreakdown = stats.plan_breakdown || {};
   var planText = Object.keys(planBreakdown).map(function(k) {
@@ -61,16 +58,13 @@ function _buildAdminPage(stats) {
   '</div>' +
 
   '<div class="card" style="padding:12px 16px;margin-bottom:20px;font-size:13px;color:#555">' +
-    '<strong>方案分佈：</strong>' + _esc(planText) +
+    '<strong>方案分佈：</strong>' + escHtml(planText) +
   '</div>' +
 
   '<div id="adminTabContent">' + _buildClientsTab() + '</div>' +
   _buildAdminModal();
 }
 
-// ────────────────────────────────────────────────────────────
-// Tab 切換
-// ────────────────────────────────────────────────────────────
 function switchAdminTab(tab) {
   _adminTab = tab;
   var tabContent   = document.getElementById('adminTabContent');
@@ -100,9 +94,6 @@ function switchAdminTab(tab) {
   }
 }
 
-// ────────────────────────────────────────────────────────────
-// Tab 1：客戶清單
-// ────────────────────────────────────────────────────────────
 function _buildClientsTab() {
   return '<div class="card">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
@@ -117,9 +108,6 @@ function _buildClientsTab() {
   '</div>';
 }
 
-// ────────────────────────────────────────────────────────────
-// Tab 2：推薦計畫
-// ────────────────────────────────────────────────────────────
 async function _loadAdminReferral() {
   var tabContent   = document.getElementById('adminTabContent');
   if (!tabContent) return;
@@ -143,11 +131,11 @@ async function _loadAdminReferral() {
       _adminClients.filter(function(c) { return c.role !== 'admin'; }).map(function(c) {
         var refUrl = 'https://superjcosmos.github.io/LINEBOTmain/?ref=' + encodeURIComponent(c.client_id);
         return '<tr>' +
-          '<td>' + _esc(c.client_id) + '</td>' +
-          '<td>' + _esc(c.company_name || '-') + '</td>' +
-          '<td><span style="background:' + _planColor(c.plan) + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' + _capitalize(c.plan) + '</span></td>' +
-          '<td style="text-align:center"><span style="font-size:11px;color:#888;font-family:monospace">?ref=' + _esc(c.client_id) + '</span></td>' +
-          '<td style="text-align:center"><button onclick="copyRefLink(\'' + _esc(refUrl) + '\')" style="background:#06C755;color:#fff;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px">複製連結</button></td>' +
+          '<td>' + escHtml(c.client_id) + '</td>' +
+          '<td>' + escHtml(c.company_name || '-') + '</td>' +
+          '<td><span style="background:' + _planColor(c.plan) + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' + escHtml(_capitalize(c.plan)) + '</span></td>' +
+          '<td style="text-align:center"><span style="font-size:11px;color:#888;font-family:monospace">?ref=' + escHtml(c.client_id) + '</span></td>' +
+          '<td style="text-align:center"><button onclick="copyRefLink(\'' + escHtml(refUrl) + '\')" style="background:#06C755;color:#fff;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px">複製連結</button></td>' +
         '</tr>';
       }).join('') +
       '</tbody></table>' +
@@ -168,102 +156,28 @@ function copyRefLink(url) {
   });
 }
 
-// ────────────────────────────────────────────────────────────
-// Tab 3：系統設定（客服留言 + 聯絡資訊）
-// ────────────────────────────────────────────────────────────
 async function _loadAdminSettings() {
   var tabContent = document.getElementById('adminTabContent');
   if (!tabContent) return;
 
   var contactRes = await apiCall({ action: 'getContactInfo' });
-  var supportRes = await apiCall({ action: 'getSupportLog', status: 'all' });
   var d          = contactRes.success ? (contactRes.data || {}) : {};
-  var tickets    = supportRes.success && Array.isArray(supportRes.data) ? supportRes.data : [];
-  var pending    = tickets.filter(function(t) { return t.status === 'pending'; }).length;
-
-  window._allTickets = tickets;
 
   tabContent.innerHTML =
-
-    // ── 聯絡資訊設定 ──
     '<div class="card">' +
       '<div style="font-weight:600;font-size:15px;margin-bottom:8px">📬 登入頁聯絡資訊</div>' +
       '<p style="font-size:13px;color:#888;margin-bottom:16px">此資訊顯示在登入頁「聯絡我們」彈窗中。</p>' +
       '<div class="form-group"><label>Email</label>' +
-        '<input type="email" id="settingEmail" value="' + _esc(d.contact_email || '') + '" placeholder="your@email.com"></div>' +
+        '<input type="email" id="settingEmail" value="' + escHtml(d.contact_email || '') + '" placeholder="your@email.com"></div>' +
       '<div class="form-group"><label>LINE（ID 或連結）</label>' +
-        '<input type="text" id="settingLine" value="' + _esc(d.contact_line || '') + '" placeholder="@jcosmos"></div>' +
+        '<input type="text" id="settingLine" value="' + escHtml(d.contact_line || '') + '" placeholder="@jcosmos"></div>' +
       '<div class="form-group"><label>電話</label>' +
-        '<input type="text" id="settingPhone" value="' + _esc(d.contact_phone || '') + '" placeholder="0912-345-678"></div>' +
+        '<input type="text" id="settingPhone" value="' + escHtml(d.contact_phone || '') + '" placeholder="0912-345-678"></div>' +
       '<div class="form-group"><label>備註（服務時間等）</label>' +
-        '<textarea id="settingNote" rows="3" placeholder="例如：服務時間 週一至週五 09:00-18:00">' + _esc(d.contact_note || '') + '</textarea></div>' +
-      (d.updated_at ? '<p style="font-size:12px;color:#aaa;margin-bottom:12px">最後更新：' + _esc(d.updated_at) + '</p>' : '') +
+        '<textarea id="settingNote" rows="3" placeholder="例如：服務時間 週一至週五 09:00-18:00">' + escHtml(d.contact_note || '') + '</textarea></div>' +
+      (d.updated_at ? '<p style="font-size:12px;color:#aaa;margin-bottom:12px">最後更新：' + escHtml(d.updated_at) + '</p>' : '') +
       '<button class="btn btn-primary" onclick="saveContactInfo()">儲存聯絡資訊</button>' +
     '</div>';
-}
-
-function _renderTickets(tickets) {
-  if (!tickets || tickets.length === 0) return '<p class="empty">尚無留言</p>';
-  return tickets.map(function(t) {
-    var statusBadge = t.status === 'replied'
-      ? '<span style="background:#06C755;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">已回覆</span>'
-      : '<span style="background:#e74c3c;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">待回覆</span>';
-    return '<div style="border:1.5px solid #e8e8e8;border-radius:10px;padding:14px;margin-bottom:10px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
-        '<div style="font-weight:600;font-size:13px">' + _esc(t.subject) + '</div>' +
-        statusBadge +
-      '</div>' +
-      '<div style="font-size:12px;color:#888;margin-bottom:8px">' +
-        _esc(t.company || t.client_id) + '　|　' + _esc(t.email) + '　|　' + _esc(t.time) +
-      '</div>' +
-      '<div style="font-size:13px;color:#555;line-height:1.6;background:#f8f9fa;padding:10px;border-radius:6px;margin-bottom:10px">' +
-        _esc(t.message) +
-      '</div>' +
-      (t.reply
-        ? '<div style="background:#f0f9f4;padding:10px;border-radius:6px;border-left:3px solid #06C755;font-size:13px;margin-bottom:8px">' +
-            '<div style="color:#06C755;font-size:11px;font-weight:600;margin-bottom:4px">✅ 已回覆（' + _esc(t.reply_at) + '）</div>' +
-            _esc(t.reply) +
-          '</div>'
-        : '') +
-      (t.status !== 'replied'
-        ? '<div style="display:flex;gap:8px;align-items:center">' +
-            '<input type="text" id="replyInput_' + _esc(t.id) + '" placeholder="輸入回覆內容..."' +
-              ' style="flex:1;padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:13px;outline:none">' +
-            '<button onclick="sendReply(\'' + _esc(t.id) + '\')"' +
-              ' style="background:#06C755;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;white-space:nowrap">' +
-              '送出回覆' +
-            '</button>' +
-          '</div>'
-        : '') +
-    '</div>';
-  }).join('');
-}
-
-function _filterSupport(status) {
-  var all      = window._allTickets || [];
-  var filtered = status === 'all' ? all : all.filter(function(t) { return t.status === status; });
-  var list     = document.getElementById('supportTicketList');
-  if (list) list.innerHTML = _renderTickets(filtered);
-  ['All','Pending','Replied'].forEach(function(s) {
-    var btn = document.getElementById('sf' + s);
-    if (!btn) return;
-    var isActive = s.toLowerCase() === status;
-    btn.style.background = isActive ? '#1a1a2e' : '#fff';
-    btn.style.color      = isActive ? '#fff'    : '#444';
-  });
-}
-
-async function sendReply(ticketId) {
-  var input = document.getElementById('replyInput_' + ticketId);
-  var reply = input ? input.value.trim() : '';
-  if (!reply) { showToast('請填寫回覆內容', 'error'); return; }
-  var res = await apiCall({ action: 'replySupport', id: ticketId, reply: reply });
-  if (res.success) {
-    showToast(res.data.message || '回覆已送出', 'success');
-    _loadAdminSettings();
-  } else {
-    showToast(res.message || '回覆失敗', 'error');
-  }
 }
 
 async function saveContactInfo() {
@@ -282,9 +196,6 @@ async function saveContactInfo() {
   }
 }
 
-// ────────────────────────────────────────────────────────────
-// 客戶清單表格渲染
-// ────────────────────────────────────────────────────────────
 function _renderAdminTable() {
   var wrap = document.getElementById('adminTableWrap');
   var hint = document.getElementById('adminTotalHint');
@@ -301,13 +212,13 @@ function _renderAdminTable() {
       : '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#e74c3c;margin-right:5px"></span>';
     var expireStyle = c.is_expired ? 'color:#e74c3c;font-weight:600' : '';
     return '<tr onclick="openAdminDetail(' + absIdx + ')" style="cursor:pointer">' +
-      '<td>' + statusDot + _esc(c.client_id) + '</td>' +
-      '<td>' + _esc(c.company_name || '-') + '</td>' +
-      '<td style="font-size:12px;color:#888">' + _esc(c.email) + '</td>' +
-      '<td><span style="background:' + _planColor(c.plan) + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' + _capitalize(c.plan) + '</span></td>' +
-      '<td style="' + expireStyle + '">' + (c.expire_date || '-') + '</td>' +
+      '<td>' + statusDot + escHtml(c.client_id) + '</td>' +
+      '<td>' + escHtml(c.company_name || '-') + '</td>' +
+      '<td style="font-size:12px;color:#888">' + escHtml(c.email) + '</td>' +
+      '<td><span style="background:' + _planColor(c.plan) + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' + escHtml(_capitalize(c.plan)) + '</span></td>' +
+      '<td style="' + expireStyle + '">' + escHtml(c.expire_date || '-') + '</td>' +
       '<td style="text-align:center;font-weight:600;color:#06C755">' + (c.user_count || 0) + '</td>' +
-      '<td style="font-size:11px;color:#aaa">' + (c.last_activity || '-') + '</td>' +
+      '<td style="font-size:11px;color:#aaa">' + escHtml(c.last_activity || '-') + '</td>' +
     '</tr>';
   }).join('');
   wrap.innerHTML =
@@ -318,16 +229,7 @@ function _renderAdminTable() {
 }
 
 function _renderAdminPager() {
-  var pager = document.getElementById('adminPager');
-  if (!pager) return;
-  var totalPages = Math.ceil(_adminFiltered.length / _adminPageSize);
-  if (totalPages <= 1) { pager.innerHTML = ''; return; }
-  var btns = '';
-  for (var p = 1; p <= totalPages; p++) {
-    var active = p === _adminPage ? 'background:#1a1a2e;color:#fff;' : 'background:#f0f0f0;color:#444;';
-    btns += '<button onclick="goAdminPage(' + p + ')" style="' + active + 'border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px">' + p + '</button>';
-  }
-  pager.innerHTML = btns;
+  renderPager('adminPager', _adminFiltered.length, _adminPage, _adminPageSize, goAdminPage);
 }
 
 function goAdminPage(p) { _adminPage = p; _renderAdminTable(); _renderAdminPager(); }
@@ -346,9 +248,6 @@ function filterAdmin() {
   _renderAdminPager();
 }
 
-// ────────────────────────────────────────────────────────────
-// 詳情 Modal
-// ────────────────────────────────────────────────────────────
 function _buildAdminModal() {
   return '<div class="modal-overlay" id="adminEditModal">' +
     '<div class="modal" style="max-width:500px">' +
@@ -371,7 +270,7 @@ function _buildAdminModal() {
       '<div class="modal-footer" style="justify-content:space-between">' +
         '<button class="btn" style="background:#3498db;color:#fff" onclick="impersonateClient()">👁 切換視角</button>' +
         '<div style="display:flex;gap:8px">' +
-          '<button class="btn-cancel" onclick="closeAdminModal()">取消</button>' +
+          '<button class="btn-cancel" onclick="closeModal(\'adminEditModal\')">取消</button>' +
           '<button class="btn btn-primary" onclick="saveAdminClient()">儲存</button>' +
         '</div>' +
       '</div>' +
@@ -390,7 +289,7 @@ async function openAdminDetail(idx) {
   document.getElementById('adminStatus').value      = c.status       || 'active';
   var detailBox = document.getElementById('adminDetailStats');
   detailBox.innerHTML = '<div style="color:#aaa">載入中...</div>';
-  document.getElementById('adminEditModal').style.display = 'flex';
+  openModal('adminEditModal');
   var res = await apiCall({ action: 'adminGetClientDetail', target_client_id: c.client_id });
   if (res.success) {
     var s = res.data.stats || {};
@@ -405,11 +304,6 @@ async function openAdminDetail(idx) {
   }
 }
 
-function closeAdminModal() {
-  document.getElementById('adminEditModal').style.display = 'none';
-  _editingClientId = null;
-}
-
 async function saveAdminClient() {
   if (!_editingClientId) return;
   var res = await apiCall({
@@ -422,16 +316,13 @@ async function saveAdminClient() {
   });
   if (res.success) {
     showToast('客戶資料已更新', 'success');
-    closeAdminModal();
+    closeModal('adminEditModal');
     loadAdmin();
   } else {
     showToast(res.message || '更新失敗', 'error');
   }
 }
 
-// ────────────────────────────────────────────────────────────
-// 切換視角
-// ────────────────────────────────────────────────────────────
 function impersonateClient() {
   if (!_editingClientId) return;
   var c = _adminClients.find(function(x) { return x.client_id === _editingClientId; });
@@ -450,10 +341,9 @@ function impersonateClient() {
   localStorage.setItem('plan',         c.plan);
   localStorage.setItem('role',         'client_preview');
   localStorage.setItem('company_name', c.company_name || c.client_id);
-  closeAdminModal();
+  closeModal('adminEditModal');
   _showImpersonateBar(c.company_name || c.client_id);
   buildSidebarMenu();
-  // impersonateClient() 裡，buildSidebarMenu() 之後加入
   var supportBtn = document.getElementById('sidebarSupportBtn');
   if (supportBtn) supportBtn.style.display = 'block';
   navigateTo('dashboard');
@@ -467,7 +357,7 @@ function _showImpersonateBar(name) {
   bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#e67e22;color:#fff;' +
     'text-align:center;padding:8px 16px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:16px;';
   bar.innerHTML =
-    '<span>👁 目前以「' + _esc(name) + '」的視角瀏覽中</span>' +
+    '<span>👁 目前以「' + escHtml(name) + '」的視角瀏覽中</span>' +
     '<button onclick="exitImpersonate()" style="background:#fff;color:#e67e22;border:none;padding:4px 14px;border-radius:6px;cursor:pointer;font-weight:600">返回管理後台</button>';
   document.body.prepend(bar);
 }
@@ -489,15 +379,11 @@ function exitImpersonate() {
   var bar = document.getElementById('impersonateBar');
   if (bar) bar.remove();
   buildSidebarMenu();
-  // exitImpersonate() 裡，buildSidebarMenu() 之後加入
   var supportBtn = document.getElementById('sidebarSupportBtn');
   if (supportBtn) supportBtn.style.display = 'none';
   navigateTo('admin');
 }
 
-// ────────────────────────────────────────────────────────────
-// 工具函式
-// ────────────────────────────────────────────────────────────
 function _capitalize(str) {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
@@ -514,9 +400,4 @@ function _adminCard(label, value, icon, color) {
     '<div style="font-size:26px;font-weight:700;color:' + color + '">' + value + '</div>' +
     '<div style="font-size:12px;color:#888;margin-top:4px">' + label + '</div>' +
   '</div>';
-}
-
-function _esc(s) {
-  if (s === null || s === undefined) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
