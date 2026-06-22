@@ -409,7 +409,7 @@ async function submitAdjustPoints() {
   if (!userId) { showToast('請輸入 user_id', 'error'); return; }
   if (points <= 0) { showToast('請輸入有效點數', 'error'); return; }
 
-  var res = await apiCall({ action: 'adjustLoyaltyPoints', card_id: cardId, user_id: userId, display_name: displayName, action: action, points: points, note: note });
+  var res = await apiCall({ action: 'adjustLoyaltyPoints', card_id: cardId, user_id: userId, display_name: displayName, point_action: action, points: points, note: note });
   if (res.success) {
     showToast('點數已調整，新餘額：' + res.data.balance, 'success');
     closeAdjustModal();
