@@ -2,7 +2,7 @@
 // 檔案：js/auth.js
 // 路徑：js/auth.js
 // 功能：登入/登出/Session、忘記密碼三步驟、role 分流
-// ⚠️ 更新：authState 加入 role / company_name，enterMainPage 依 role 分流
+// ⚠️ 修正：登入成功/登出/showLoginError 時清空密碼欄位，避免殘留在 DOM 中（資安問題）
 // ============================================================
 
 var authState = {
@@ -10,8 +10,8 @@ var authState = {
   clientId:     localStorage.getItem("clientId")     || null,
   plan:         localStorage.getItem("plan")          || null,
   email:        localStorage.getItem("email")         || null,
-  role:         localStorage.getItem("role")          || "client",         // ← 新增
-  company_name: localStorage.getItem("company_name")  || "",               // ← 新增
+  role:         localStorage.getItem("role")          || "client",
+  company_name: localStorage.getItem("company_name")  || "",
   features:     JSON.parse(localStorage.getItem("features") || "{}")
 };
 
@@ -43,30 +43,35 @@ async function login() {
     var result = await apiCall({ action: "login", email: email, password: password });
 
     if (result.success) {
-      // ── ⚠️ 你的 API 回傳在 result.data 裡 ──
-      var d = result.data || result; // 相容舊版（直接在 result 上）和新版（在 result.data 上）
+      var d = result.data || result;
 
       localStorage.setItem("sessionToken", d.sessionToken  || "");
       localStorage.setItem("clientId",     d.clientId      || "");
       localStorage.setItem("plan",         d.plan          || "");
       localStorage.setItem("email",        email);
-      localStorage.setItem("role",         d.role          || "client"); // ← 新增
-      localStorage.setItem("company_name", d.company_name  || "");       // ← 新增
+      localStorage.setItem("role",         d.role          || "client");
+      localStorage.setItem("company_name", d.company_name  || "");
       localStorage.setItem("features",     JSON.stringify(d.features || {}));
 
       authState.sessionToken = d.sessionToken  || "";
       authState.clientId     = d.clientId      || "";
       authState.plan         = d.plan          || "";
       authState.email        = email;
-      authState.role         = d.role          || "client"; // ← 新增
-      authState.company_name = d.company_name  || "";       // ← 新增
+      authState.role         = d.role          || "client";
+      authState.company_name = d.company_name  || "";
       authState.features     = d.features      || {};
+
+      // ⚠️ 資安：登入成功後立即清空密碼欄位，避免殘留在 DOM 中
+      document.getElementById("inputPassword").value = "";
 
       enterMainPage();
     } else {
+      // ⚠️ 資安：登入失敗也清空密碼欄位，避免錯誤密碼殘留畫面上
+      document.getElementById("inputPassword").value = "";
       showLoginError(result.message);
     }
   } catch (err) {
+    document.getElementById("inputPassword").value = "";
     showLoginError("連線失敗，請稍後再試");
   }
 
@@ -108,8 +113,8 @@ function clearSession() {
   authState.clientId     = null;
   authState.plan         = null;
   authState.email        = null;
-  authState.role         = "client"; // ← 新增
-  authState.company_name = "";       // ← 新增
+  authState.role         = "client";
+  authState.company_name = "";
   authState.features     = {};
 }
 
@@ -124,11 +129,16 @@ function showLoginError(msg) {
 
 // ────────────────────────────────────────────────────────────
 // 切換到登入頁
+// ⚠️ 資安：每次切回登入頁時清空密碼欄位（包含登出、忘記密碼取消返回等情境）
 // ────────────────────────────────────────────────────────────
 function showLoginPage() {
   document.getElementById("loginPage").style.display          = "flex";
   document.getElementById("mainPage").style.display           = "none";
   document.getElementById("forgotPasswordPage").style.display = "none";
+
+  var pwdEl = document.getElementById("inputPassword");
+  if (pwdEl) pwdEl.value = "";
+
   _resetForgotFlow();
 }
 
@@ -138,49 +148,42 @@ function showLoginPage() {
 function enterMainPage() {
   document.getElementById("loginPage").style.display          = "none";
   document.getElementById("forgotPasswordPage").style.display = "none";
-  document.getElementById("mainPage").style.display           = "block";  // 你原本是 "block"，保留
+  document.getElementById("mainPage").style.display           = "block";
 
-  // 側邊欄顯示名稱：admin 顯示公司名稱或 email，client 顯示 email
   var sidebarEmailEl = document.getElementById("sidebarEmail");
   if (sidebarEmailEl) {
     sidebarEmailEl.textContent = authState.company_name || authState.email || "";
   }
 
-  // 方案標籤：admin 顯示特殊標記
   var planEl = document.getElementById("sidebarPlan");
   if (planEl) {
     if (authState.role === "admin") {
       planEl.textContent = "🛡 系統管理者";
       planEl.className   = "plan";
-      planEl.style.color = "#ffffff";  // ← 加這行
+      planEl.style.color = "#ffffff";
     } else {
       planEl.textContent = (authState.plan || '').charAt(0).toUpperCase() +
                      (authState.plan || '').slice(1).toLowerCase();
       planEl.className   = "plan plan-" + (authState.plan || "");
-      planEl.style.color = "";  // 恢復預設
+      planEl.style.color = "";
     }
   }
 
   buildSidebarMenu();
 
-  // enterMainPage() 裡，buildSidebarMenu() 之後加入：
   var supportBtn = document.getElementById('sidebarSupportBtn');
   if (supportBtn) {
     supportBtn.style.display = authState.role === 'admin' ? 'none' : 'block';
   }
-  
 
   var versionEl = document.getElementById('sidebarVersion');
   if (versionEl) versionEl.textContent = CONFIG.VERSION;
 
-  // ── role 分流 ──
   if (authState.role === "admin") {
     navigateTo("admin");
   } else if (authState.role === "client_preview") {
-    // 切換視角模式（admin 預覽某客戶）
     navigateTo("dashboard");
   } else {
-    // 一般客戶：進第一個有權限的頁面（你原本邏輯）
     var firstPage = null;
     Object.keys(PAGES).forEach(function (key) {
       if (!firstPage && hasFeature(key)) firstPage = key;
@@ -190,10 +193,7 @@ function enterMainPage() {
 }
 
 // ============================================================
-// 忘記密碼流程（完整保留原版）
-// Step 1：輸入 Email → 寄 OTP
-// Step 2：輸入 OTP 驗證碼
-// Step 3：設定新密碼
+// 忘記密碼流程
 // ============================================================
 
 var _forgotState = {
@@ -206,9 +206,6 @@ function _resetForgotFlow() {
   _forgotState.resetToken = "";
 }
 
-// ────────────────────────────────────────────────────────────
-// 顯示忘記密碼頁（從登入頁進入）
-// ────────────────────────────────────────────────────────────
 function showForgotPassword() {
   document.getElementById("loginPage").style.display          = "none";
   document.getElementById("forgotPasswordPage").style.display = "flex";
@@ -216,9 +213,6 @@ function showForgotPassword() {
   _showForgotStep(1);
 }
 
-// ────────────────────────────────────────────────────────────
-// 切換步驟
-// ────────────────────────────────────────────────────────────
 function _showForgotStep(step) {
   [1, 2, 3].forEach(function (n) {
     var el = document.getElementById("forgotStep" + n);
@@ -229,9 +223,6 @@ function _showForgotStep(step) {
   if (focusEl) setTimeout(function () { focusEl.focus(); }, 50);
 }
 
-// ────────────────────────────────────────────────────────────
-// Step 1：寄送 OTP
-// ────────────────────────────────────────────────────────────
 async function submitForgotPassword() {
   var emailEl = document.getElementById("forgotEmail");
   var email   = emailEl ? emailEl.value.trim() : "";
@@ -262,9 +253,6 @@ async function submitForgotPassword() {
   if (btn) { btn.disabled = false; btn.textContent = "寄送驗證碼"; }
 }
 
-// ────────────────────────────────────────────────────────────
-// Step 2：重新寄送 OTP
-// ────────────────────────────────────────────────────────────
 async function resendOtp() {
   if (!_forgotState.email) { _showForgotError(2, "找不到 Email，請重新操作"); return; }
 
@@ -287,9 +275,6 @@ async function resendOtp() {
   if (btn) { btn.disabled = false; btn.textContent = "重新寄送"; }
 }
 
-// ────────────────────────────────────────────────────────────
-// Step 2：驗證 OTP
-// ────────────────────────────────────────────────────────────
 async function submitVerifyOtp() {
   var otpEl = document.getElementById("otpInput");
   var otp   = otpEl ? otpEl.value.trim() : "";
@@ -317,9 +302,6 @@ async function submitVerifyOtp() {
   if (btn) { btn.disabled = false; btn.textContent = "驗證"; }
 }
 
-// ────────────────────────────────────────────────────────────
-// Step 3：重設密碼
-// ────────────────────────────────────────────────────────────
 async function submitResetPassword() {
   var newPassEl     = document.getElementById("newPassword");
   var confirmPassEl = document.getElementById("confirmPassword");
@@ -346,6 +328,9 @@ async function submitResetPassword() {
     });
     if (res.success) {
       showToast((res.data && res.data.message) ? res.data.message : "密碼已重設成功，請重新登入", "success");
+      // ⚠️ 資安：重設成功後清空新密碼欄位
+      if (newPassEl)     newPassEl.value     = "";
+      if (confirmPassEl) confirmPassEl.value = "";
       _resetForgotFlow();
       setTimeout(function () { showLoginPage(); }, 1500);
     } else {
@@ -358,9 +343,6 @@ async function submitResetPassword() {
   if (btn) { btn.disabled = false; btn.textContent = "確認重設密碼"; }
 }
 
-// ────────────────────────────────────────────────────────────
-// 密碼強度即時提示
-// ────────────────────────────────────────────────────────────
 function updatePasswordStrength() {
   var password = document.getElementById("newPassword").value;
   var el       = document.getElementById("passwordStrength");
@@ -387,9 +369,6 @@ function updatePasswordStrength() {
   el.style.color = level.color;
 }
 
-// ────────────────────────────────────────────────────────────
-// 內部：顯示各步驟錯誤訊息
-// ────────────────────────────────────────────────────────────
 function _showForgotError(step, msg) {
   var el = document.getElementById("forgotStep" + step + "Error");
   if (!el) return;
