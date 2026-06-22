@@ -1,4 +1,5 @@
 // js/pages/richmenu.js
+// ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / openModal/closeModal
 
 async function loadRichMenu() {
   setContent('<div class="loading">載入中...</div>');
@@ -6,7 +7,7 @@ async function loadRichMenu() {
   var result = await apiCall({ action: "getRichMenuList" });
 
   if (!result.success) {
-    setContent('<div class="loading">載入失敗：' + result.message + '</div>');
+    setContent('<div class="loading">載入失敗：' + escHtml(result.message) + '</div>');
     return;
   }
 
@@ -14,26 +15,26 @@ async function loadRichMenu() {
     var isDefault = row.is_default === "是"
       ? '<span class="tag tag-active">預設</span>'
       : '<button class="btn btn-sync" onclick="setDefault(\'' +
-          row.rich_menu_id + '\',' + row.index + ')">設為預設</button>';
+          escHtml(row.rich_menu_id) + '\',' + row.index + ')">設為預設</button>';
 
     var thumbnail = row.image_url
-      ? '<img src="' + row.image_url + '" style="width:80px;height:30px;object-fit:cover;border-radius:4px">'
+      ? '<img src="' + escHtml(row.image_url) + '" style="width:80px;height:30px;object-fit:cover;border-radius:4px">'
       : '<span style="color:#aaa;font-size:12px">未上傳</span>';
 
     return '<tr>' +
       '<td>' + thumbnail + '</td>' +
-      '<td>' + row.name + '</td>' +
-      '<td>' + row.layout + '</td>' +
-      '<td>' + row.display_text + '</td>' +
+      '<td>' + escHtml(row.name) + '</td>' +
+      '<td>' + escHtml(row.layout) + '</td>' +
+      '<td>' + escHtml(row.display_text) + '</td>' +
       '<td>' + isDefault + '</td>' +
       '<td>' +
         '<button class="btn btn-edit" ' +
           'onclick="editRichMenu(' + row.index + ',\'' +
           encodeURIComponent(JSON.stringify(row)) + '\')">編輯</button> ' +
         '<button class="btn btn-primary" ' +
-          'onclick="openUploadModal(\'' + row.rich_menu_id + '\',' + row.index + ')">上傳圖片</button> ' +
+          'onclick="openUploadModal(\'' + escHtml(row.rich_menu_id) + '\',' + row.index + ')">上傳圖片</button> ' +
         '<button class="btn btn-danger" ' +
-          'onclick="deleteRichMenu(\'' + row.rich_menu_id + '\',' + row.index + ')">刪除</button>' +
+          'onclick="deleteRichMenu(\'' + escHtml(row.rich_menu_id) + '\',' + row.index + ')">刪除</button>' +
       '</td>' +
     '</tr>';
   }).join("");
@@ -66,7 +67,7 @@ async function loadRichMenu() {
 }
 
 // ==========================================
-// Modal HTML
+// Modal HTML（預先建立於骨架中，預設隱藏）
 // ==========================================
 function _buildRmCreateModal() {
   return (
@@ -99,7 +100,7 @@ function _buildRmCreateModal() {
         '<div id="buttonFields"></div>' +
 
         '<div class="modal-footer">' +
-          '<button class="btn-cancel" onclick="closeRmCreateModal()">取消</button>' +
+          '<button class="btn-cancel" onclick="closeModal(\'rmCreateModal\')">取消</button>' +
           '<button class="btn btn-primary" onclick="saveRichMenu()">儲存</button>' +
         '</div>' +
       '</div>' +
@@ -120,7 +121,7 @@ function _buildUploadModal() {
           '<input type="file" id="rmImageFile" accept="image/jpeg,image/png">' +
         '</div>' +
         '<div class="modal-footer">' +
-          '<button class="btn-cancel" onclick="closeUploadModal()">取消</button>' +
+          '<button class="btn-cancel" onclick="closeModal(\'rmUploadModal\')">取消</button>' +
           '<button class="btn btn-primary" onclick="uploadImage()">上傳</button>' +
         '</div>' +
       '</div>' +
@@ -199,14 +200,8 @@ function openRmCreateModal() {
   document.getElementById("rmName").value        = "";
   document.getElementById("rmDisplayText").value = "開啟選單";
   document.getElementById("rmLayout").value      = "large_6";
-  document.getElementById("rmCreateModal").classList.add("show");
+  openModal('rmCreateModal');
   updateButtonFields();
-}
-
-function closeRmCreateModal() {
-  document.getElementById("rmCreateModal").classList.remove("show");
-  rmEditIndex = null;
-  rmEditId    = null;
 }
 
 function editRichMenu(index, rowJson) {
@@ -219,7 +214,7 @@ function editRichMenu(index, rowJson) {
   document.getElementById("rmName").value        = row.name;
   document.getElementById("rmDisplayText").value = row.display_text;
   document.getElementById("rmLayout").value      = row.layout;
-  document.getElementById("rmCreateModal").classList.add("show");
+  openModal('rmCreateModal');
 
   updateButtonFields();
 
@@ -293,7 +288,7 @@ async function saveRichMenu() {
   var result = await apiCall(payload);
 
   if (result.success) {
-    closeRmCreateModal();
+    closeModal('rmCreateModal');
     showToast(rmEditIndex !== null ? "更新成功，請重新上傳圖片" : "建立成功，請上傳圖片");
     loadRichMenu();
   } else {
@@ -310,11 +305,11 @@ var currentRichMenuIdx = null;
 function openUploadModal(richMenuId, index) {
   currentRichMenuId  = richMenuId;
   currentRichMenuIdx = index;
-  document.getElementById("rmUploadModal").classList.add("show");
+  openModal('rmUploadModal');
 }
 
 function closeUploadModal() {
-  document.getElementById("rmUploadModal").classList.remove("show");
+  closeModal('rmUploadModal');
   document.getElementById("rmImageFile").value = "";
   currentRichMenuId  = null;
   currentRichMenuIdx = null;
@@ -364,38 +359,38 @@ async function uploadImage() {
 // 設為預設
 // ==========================================
 async function setDefault(richMenuId, index) {
-  if (!confirmDialog("確定要將此圖文選單設為所有用戶的預設嗎？")) return;
+  await confirmAndRun("確定要將此圖文選單設為所有用戶的預設嗎？", async function() {
+    var result = await apiCall({
+      action:       "setDefaultRichMenu",
+      rich_menu_id: richMenuId,
+      index:        index
+    });
 
-  var result = await apiCall({
-    action:       "setDefaultRichMenu",
-    rich_menu_id: richMenuId,
-    index:        index
+    if (result.success) {
+      showToast("已設為預設圖文選單");
+      loadRichMenu();
+    } else {
+      showToast(result.message, "error");
+    }
   });
-
-  if (result.success) {
-    showToast("已設為預設圖文選單");
-    loadRichMenu();
-  } else {
-    showToast(result.message, "error");
-  }
 }
 
 // ==========================================
 // 刪除
 // ==========================================
 async function deleteRichMenu(richMenuId, index) {
-  if (!confirmDialog("確定要刪除此圖文選單嗎？")) return;
+  await confirmAndRun("確定要刪除此圖文選單嗎？", async function() {
+    var result = await apiCall({
+      action:       "deleteRichMenu",
+      rich_menu_id: richMenuId,
+      index:        index
+    });
 
-  var result = await apiCall({
-    action:       "deleteRichMenu",
-    rich_menu_id: richMenuId,
-    index:        index
+    if (result.success) {
+      showToast("已刪除");
+      loadRichMenu();
+    } else {
+      showToast(result.message, "error");
+    }
   });
-
-  if (result.success) {
-    showToast("已刪除");
-    loadRichMenu();
-  } else {
-    showToast(result.message, "error");
-  }
 }
