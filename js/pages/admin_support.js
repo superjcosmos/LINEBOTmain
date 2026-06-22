@@ -1,6 +1,7 @@
 // === admin_support.js ===
 // 路徑：js/pages/admin_support.js
 // 功能：管理者客服留言獨立頁面（側邊欄直接進入）
+// ⚠️ 已套用 CODE_STYLE.md 規範：escHtml
 
 var _supportAll      = [];
 var _supportFiltered = [];
@@ -13,7 +14,6 @@ async function loadAdminSupport() {
   _supportFilter   = 'all';
   _supportFiltered = _supportAll.slice();
 
-  // 更新側邊欄徽章
   _updateSupportBadge(_supportAll.filter(function(t){ return t.status === 'pending'; }).length);
 
   setContent(_buildSupportAdminPage());
@@ -52,33 +52,33 @@ function _renderSupportList(tickets) {
 
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">' +
         '<div>' +
-          '<div style="font-weight:600;font-size:15px;margin-bottom:4px">' + _escSup(t.subject) + '</div>' +
+          '<div style="font-weight:600;font-size:15px;margin-bottom:4px">' + escHtml(t.subject) + '</div>' +
           '<div style="font-size:12px;color:#888">' +
-            '<span style="margin-right:12px">🏢 ' + _escSup(t.company || t.client_id) + '</span>' +
-            '<span style="margin-right:12px">📧 ' + _escSup(t.email) + '</span>' +
-            '<span>🕐 ' + _escSup(t.time) + '</span>' +
+            '<span style="margin-right:12px">🏢 ' + escHtml(t.company || t.client_id) + '</span>' +
+            '<span style="margin-right:12px">📧 ' + escHtml(t.email) + '</span>' +
+            '<span>🕐 ' + escHtml(t.time) + '</span>' +
           '</div>' +
         '</div>' +
         statusBadge +
       '</div>' +
 
       '<div style="background:#f8f9fa;border-radius:8px;padding:12px;font-size:13px;color:#444;line-height:1.7;margin-bottom:' + (isPending ? '12px' : '0') + '">' +
-        _escSup(t.message) +
+        escHtml(t.message) +
       '</div>' +
 
       (t.reply
         ? '<div style="background:#f0f9f4;border-radius:8px;padding:12px;font-size:13px;margin-top:10px;border-left:3px solid #06C755">' +
-            '<div style="font-size:11px;color:#06C755;font-weight:600;margin-bottom:4px">✅ 已回覆（' + _escSup(t.reply_at) + '）</div>' +
-            '<div style="color:#333;line-height:1.7">' + _escSup(t.reply) + '</div>' +
+            '<div style="font-size:11px;color:#06C755;font-weight:600;margin-bottom:4px">✅ 已回覆（' + escHtml(t.reply_at) + '）</div>' +
+            '<div style="color:#333;line-height:1.7">' + escHtml(t.reply) + '</div>' +
           '</div>'
         : '') +
 
       (isPending
         ? '<div style="display:flex;gap:8px;align-items:center;margin-top:12px">' +
-            '<input type="text" id="replyInput_' + _escSup(t.id) + '" placeholder="輸入回覆內容，送出後將 Email 通知客戶..."' +
+            '<input type="text" id="replyInput_' + escHtml(t.id) + '" placeholder="輸入回覆內容，送出後將 Email 通知客戶..."' +
               ' style="flex:1;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none"' +
-              ' onkeydown="if(event.key===\'Enter\')replySupportMsg(\'' + _escSup(t.id) + '\')">' +
-            '<button onclick="replySupportMsg(\'' + _escSup(t.id) + '\')"' +
+              ' onkeydown="if(event.key===\'Enter\')replySupportMsg(\'' + escHtml(t.id) + '\')">' +
+            '<button onclick="replySupportMsg(\'' + escHtml(t.id) + '\')"' +
               ' style="background:#06C755;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap">' +
               '送出回覆' +
             '</button>' +
@@ -122,13 +122,12 @@ async function replySupportMsg(ticketId) {
 
   if (res.success) {
     showToast(res.data.message || '回覆已送出', 'success');
-    loadAdminSupport(); // 重新整理並更新徽章
+    loadAdminSupport();
   } else {
     showToast(res.message || '回覆失敗', 'error');
   }
 }
 
-// ── 更新側邊欄徽章 ──
 function _updateSupportBadge(count) {
   var badge = document.getElementById('supportNavBadge');
   if (!badge) return;
@@ -138,9 +137,4 @@ function _updateSupportBadge(count) {
   } else {
     badge.style.display = 'none';
   }
-}
-
-function _escSup(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
