@@ -1,7 +1,7 @@
 // === referral.js ===
 // 路徑：js/pages/referral.js
 // 功能：推薦碼管理頁
-// ⚠️ 更新：獎勵設定儲存後顯示當前設定，不再消失
+// ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / openModal/closeModal / renderPager
 
 var _referralAll      = [];
 var _referralFiltered = [];
@@ -37,14 +37,13 @@ function _buildReferralPage(stats, ranking, settings) {
     var medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : (idx + 1) + '.';
     return '<tr>' +
       '<td style="text-align:center;font-size:16px">' + medal + '</td>' +
-      '<td>' + _esc(r.display_name || r.uid) + '</td>' +
-      '<td><span style="font-family:monospace;background:#f0f0f0;padding:2px 8px;border-radius:4px">' + _esc(r.referral_code) + '</span></td>' +
+      '<td>' + escHtml(r.display_name || r.uid) + '</td>' +
+      '<td><span style="font-family:monospace;background:#f0f0f0;padding:2px 8px;border-radius:4px">' + escHtml(r.referral_code) + '</span></td>' +
       '<td style="text-align:center;font-weight:600;color:#06C755">' + r.referral_count + '</td>' +
       '<td style="text-align:center">' + r.total_points + '</td>' +
     '</tr>';
   }).join('');
 
-  // 目前獎勵設定顯示區
   var hasSettings = settings.prefix || settings.referee_discount_msg;
   var settingsDisplay = hasSettings
     ? '<div class="card" style="margin-bottom:20px;padding:14px 18px">' +
@@ -55,7 +54,7 @@ function _buildReferralPage(stats, ranking, settings) {
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:13px">' +
           '<div style="background:#f8f9fa;border-radius:8px;padding:10px">' +
             '<div style="color:#888;font-size:11px;margin-bottom:4px">推薦碼前綴</div>' +
-            '<div style="font-weight:600;font-family:monospace;font-size:16px;color:#1a1a2e">' + _esc(settings.prefix || 'REF') + '-XXXX</div>' +
+            '<div style="font-weight:600;font-family:monospace;font-size:16px;color:#1a1a2e">' + escHtml(settings.prefix || 'REF') + '-XXXX</div>' +
           '</div>' +
           '<div style="background:#f8f9fa;border-radius:8px;padding:10px">' +
             '<div style="color:#888;font-size:11px;margin-bottom:4px">推薦人每次獲得</div>' +
@@ -63,7 +62,7 @@ function _buildReferralPage(stats, ranking, settings) {
           '</div>' +
           '<div style="background:#f8f9fa;border-radius:8px;padding:10px">' +
             '<div style="color:#888;font-size:11px;margin-bottom:4px">被推薦人訊息</div>' +
-            '<div style="font-size:12px;color:#555;white-space:pre-wrap;max-height:40px;overflow:hidden">' + _esc(settings.referee_discount_msg || '（未設定）') + '</div>' +
+            '<div style="font-size:12px;color:#555;white-space:pre-wrap;max-height:40px;overflow:hidden">' + escHtml(settings.referee_discount_msg || '（未設定）') + '</div>' +
           '</div>' +
         '</div>' +
       '</div>'
@@ -79,10 +78,8 @@ function _buildReferralPage(stats, ranking, settings) {
     '<h2 class="page-title" style="margin-bottom:0">推薦碼管理</h2>' +
   '</div>' +
 
-  // 目前設定顯示
   settingsDisplay +
 
-  // KPI 卡片
   '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">' +
     _refCard('總推薦事件',  stats.total_events   || 0, '📨', '#1a1a2e') +
     _refCard('成功完成',    stats.completed      || 0, '✅', '#06C755') +
@@ -90,7 +87,6 @@ function _buildReferralPage(stats, ranking, settings) {
     _refCard('累計點數',    stats.total_points   || 0, '⭐', '#f39c12') +
   '</div>' +
 
-  // 排行榜 + 用戶清單
   '<div style="display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:24px">' +
     '<div class="card">' +
       '<div style="font-weight:600;font-size:15px;margin-bottom:12px">🏆 推薦排行榜 Top 10</div>' +
@@ -114,7 +110,6 @@ function _buildReferralPage(stats, ranking, settings) {
     '</div>' +
   '</div>' +
 
-  // 獎勵設定 Modal
   '<div class="modal-overlay" id="referralSettingsModal">' +
     '<div class="modal" style="max-width:480px">' +
       '<h3>⚙ 推薦獎勵設定</h3>' +
@@ -122,7 +117,7 @@ function _buildReferralPage(stats, ranking, settings) {
         '<label>推薦碼前綴（大寫英文，例如 REF、VIP、JOIN）</label>' +
         '<input type="text" id="refPrefix" placeholder="REF" maxlength="8"' +
           ' style="text-transform:uppercase"' +
-          ' value="' + _esc(settings.prefix || 'REF') + '">' +
+          ' value="' + escHtml(settings.prefix || 'REF') + '">' +
       '</div>' +
       '<div class="form-group">' +
         '<label>推薦人每次獲得點數</label>' +
@@ -132,11 +127,11 @@ function _buildReferralPage(stats, ranking, settings) {
       '<div class="form-group">' +
         '<label>被推薦人收到的 LINE 訊息（折扣碼請直接寫在訊息中）</label>' +
         '<textarea id="refDiscountMsg" rows="4" placeholder="恭喜！您已獲得 9 折優惠碼：DISCOUNT10，下次消費使用！">' +
-          _esc(settings.referee_discount_msg || '') +
+          escHtml(settings.referee_discount_msg || '') +
         '</textarea>' +
       '</div>' +
       '<div class="modal-footer">' +
-        '<button class="btn-cancel" onclick="closeReferralSettingsModal()">取消</button>' +
+        '<button class="btn-cancel" onclick="closeModal(\'referralSettingsModal\')">取消</button>' +
         '<button class="btn btn-primary" onclick="saveReferralSettings()">儲存設定</button>' +
       '</div>' +
     '</div>' +
@@ -162,9 +157,9 @@ function _renderReferralTable() {
   var page  = _referralFiltered.slice(start, Math.min(start + _referralPageSize, total));
   var rows = page.map(function(r) {
     return '<tr>' +
-      '<td>' + _esc(r.display_name || '-') + '</td>' +
-      '<td style="font-size:11px;color:#888;max-width:120px;overflow:hidden;text-overflow:ellipsis">' + _esc(r.uid) + '</td>' +
-      '<td><span style="font-family:monospace;background:#f0f0f0;padding:2px 8px;border-radius:4px">' + _esc(r.referral_code) + '</span></td>' +
+      '<td>' + escHtml(r.display_name || '-') + '</td>' +
+      '<td style="font-size:11px;color:#888;max-width:120px;overflow:hidden;text-overflow:ellipsis">' + escHtml(r.uid) + '</td>' +
+      '<td><span style="font-family:monospace;background:#f0f0f0;padding:2px 8px;border-radius:4px">' + escHtml(r.referral_code) + '</span></td>' +
       '<td style="text-align:center;font-weight:600;color:#06C755">' + r.referral_count + '</td>' +
       '<td style="text-align:center">' + r.total_points + '</td>' +
     '</tr>';
@@ -177,16 +172,7 @@ function _renderReferralTable() {
 }
 
 function _renderReferralPager() {
-  var pager = document.getElementById('referralPager');
-  if (!pager) return;
-  var totalPages = Math.ceil(_referralFiltered.length / _referralPageSize);
-  if (totalPages <= 1) { pager.innerHTML = ''; return; }
-  var btns = '';
-  for (var p = 1; p <= totalPages; p++) {
-    var active = p === _referralPage ? 'background:#1a1a2e;color:#fff;' : 'background:#f0f0f0;color:#444;';
-    btns += '<button onclick="goReferralPage(' + p + ')" style="' + active + 'border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px">' + p + '</button>';
-  }
-  pager.innerHTML = btns;
+  renderPager('referralPager', _referralFiltered.length, _referralPage, _referralPageSize, goReferralPage);
 }
 
 function goReferralPage(p) { _referralPage = p; _renderReferralTable(); _renderReferralPager(); }
@@ -207,20 +193,13 @@ function filterReferral() {
 
 function openReferralSettingsModal() {
   var s = _referralSettings;
-  // 用當前設定填入 Modal 欄位
   var prefixEl = document.getElementById('refPrefix');
   var pointsEl = document.getElementById('refPoints');
   var msgEl    = document.getElementById('refDiscountMsg');
   if (prefixEl) prefixEl.value = s.prefix              || 'REF';
   if (pointsEl) pointsEl.value = s.referrer_points     || 1;
   if (msgEl)    msgEl.value    = s.referee_discount_msg || '';
-  var m = document.getElementById('referralSettingsModal');
-  if (m) m.style.display = 'flex';
-}
-
-function closeReferralSettingsModal() {
-  var m = document.getElementById('referralSettingsModal');
-  if (m) m.style.display = 'none';
+  openModal('referralSettingsModal');
 }
 
 async function saveReferralSettings() {
@@ -237,16 +216,10 @@ async function saveReferralSettings() {
   });
   if (res.success) {
     showToast('設定已儲存', 'success');
-    closeReferralSettingsModal();
-    // 更新本地快取，讓頁面立即反映
+    closeModal('referralSettingsModal');
     _referralSettings = { prefix: prefix, referrer_points: points, referee_discount_msg: discMsg };
-    loadReferral(); // 重新整理頁面
+    loadReferral();
   } else {
     showToast(res.message || '儲存失敗', 'error');
   }
-}
-
-function _esc(s) {
-  if (s === null || s === undefined) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
