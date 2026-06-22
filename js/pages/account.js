@@ -56,6 +56,10 @@ async function submitChangePassword() {
     closeGlobalModal();
     setTimeout(function() { logout(); }, 1500);
   } else {
+    // ⚠️ 資安：修改失敗時清空欄位，避免密碼殘留在 DOM 中
+    document.getElementById('cp-old').value     = '';
+    document.getElementById('cp-new').value     = '';
+    document.getElementById('cp-confirm').value = '';
     showToast(res.message || '修改失敗', 'error');
   }
 }
