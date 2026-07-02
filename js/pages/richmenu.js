@@ -1,5 +1,9 @@
 // js/pages/richmenu.js
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / openModal/closeModal
+// ⚠️ 架構調整（2026-07）：縮圖不再用 image_url 靜態網址（原本來自 Drive）。
+//    後端 RichMenuSettings 的第 4 欄已正名為 has_image（布林旗標，是否已上傳）。
+//    縮圖改為 render 完成後呼叫 loadThumbnails()，逐一向後端要 Base64 圖片資料，
+//    組成 data URI 塞進對應 <img>。
 
 async function loadRichMenu() {
   setContent('<div class="loading">載入中...</div>');
@@ -17,8 +21,11 @@ async function loadRichMenu() {
       : '<button class="btn btn-sync" onclick="setDefault(\'' +
           escHtml(row.rich_menu_id) + '\',' + row.index + ')">設為預設</button>';
 
-    var thumbnail = row.image_url
-      ? '<img src="' + escHtml(row.image_url) + '" style="width:80px;height:30px;object-fit:cover;border-radius:4px">'
+    // has_image 為 true 時先放預留位置（灰底、無 src），
+    // 實際圖片由下方 loadThumbnails() 非同步取得後才填入
+    var thumbnail = row.has_image
+      ? '<img id="rmThumb_' + row.index + '" data-rich-menu-id="' + escHtml(row.rich_menu_id) +
+          '" style="width:80px;height:30px;object-fit:cover;border-radius:4px;background:#f2f2f2">'
       : '<span style="color:#aaa;font-size:12px">未上傳</span>';
 
     return '<tr>' +
@@ -64,6 +71,24 @@ async function loadRichMenu() {
   );
 
   updateButtonFields();
+  loadThumbnails();
+}
+
+// ==========================================
+// 縮圖載入（Base64，取代原本的 image_url 靜態連結）
+// ==========================================
+// 逐一向後端取得已上傳圖片的圖文選單縮圖，失敗時保留灰底空白即可，
+// 不特別顯示錯誤訊息，避免干擾列表整體可讀性（單一縮圖失敗不影響其他列）
+function loadThumbnails() {
+  var imgs = document.querySelectorAll('img[data-rich-menu-id]');
+  imgs.forEach(function(img) {
+    var richMenuId = img.getAttribute('data-rich-menu-id');
+    apiCall({ action: "getRichMenuImageData", rich_menu_id: richMenuId }).then(function(result) {
+      if (result.success) {
+        img.src = 'data:' + result.data.mime_type + ';base64,' + result.data.data;
+      }
+    });
+  });
 }
 
 // ==========================================
