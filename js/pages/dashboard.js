@@ -135,7 +135,8 @@ function drawLineChart(canvasId, data, color) {
     ctx.fillStyle  = '#888';
     ctx.font       = '10px sans-serif';
     ctx.textAlign  = 'center';
-    ctx.fillText(d.date.slice(-5), x, H - PAD.bottom + 14);
+    var parts = d.date.split('/');
+    ctx.fillText(parts[1] + '/' + parts[2], x, H - PAD.bottom + 14);
   });
 }
 
