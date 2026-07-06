@@ -4,6 +4,8 @@
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / openModal/closeModal / renderPager
 
 var _adminClients    = [];
+var _referralProgramClients = [];
+var _referralProgramLogs    = [];
 var _adminFiltered   = [];
 var _adminPage       = 1;
 var _adminPageSize   = 15;
@@ -109,40 +111,75 @@ function _buildClientsTab() {
 }
 
 async function _loadAdminReferral() {
-  var tabContent   = document.getElementById('adminTabContent');
+  var tabContent = document.getElementById('adminTabContent');
   if (!tabContent) return;
-  var totalClients = _adminClients.filter(function(c) { return c.role !== 'admin'; }).length;
+
+  tabContent.innerHTML = '<div class="loading">載入推薦計畫...</div>';
+  var res = await apiCall({ action: 'adminGetReferralProgramData' });
+  if (!res.success) {
+    tabContent.innerHTML = '<div class="loading">載入失敗：' + escHtml(res.message || '') + '</div>';
+    return;
+  }
+
+  _referralProgramClients = res.data.clients || [];
+  _referralProgramLogs    = res.data.logs    || [];
+
+  var totalClients   = _referralProgramClients.length;
+  var totalReferrals = _referralProgramLogs.filter(function(l) { return l.type === 'referral'; }).length;
+
+  var clientRows = _referralProgramClients.map(function(c) {
+    var refUrl = 'https://superjcosmos.github.io/LINEBOTmain/?ref=' + encodeURIComponent(c.client_id);
+    return '<tr>' +
+      '<td>' + escHtml(c.client_id) + '</td>' +
+      '<td>' + escHtml(c.company_name || '-') + '</td>' +
+      '<td><span style="background:' + _planColor(c.plan) + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' + escHtml(_capitalize(c.plan)) + '</span></td>' +
+      '<td style="text-align:center;font-weight:600;color:#06C755">' + c.referral_count + '</td>' +
+      '<td style="text-align:center;font-weight:600;color:#f39c12">' + c.referral_credit + '</td>' +
+      '<td style="text-align:center"><button onclick="copyRefLink(\'' + escHtml(refUrl) + '\')" style="background:#06C755;color:#fff;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px">複製連結</button></td>' +
+    '</tr>';
+  }).join('');
+
+  var logRows = _referralProgramLogs.map(function(l) {
+    var typeLabel = l.type === 'referral' ? '推薦成功' : 'Bug 回報';
+    return '<tr>' +
+      '<td style="font-size:12px;color:#888">' + escHtml(l.time) + '</td>' +
+      '<td>' + escHtml(typeLabel) + '</td>' +
+      '<td>' + escHtml(l.referrer_client_id) + '</td>' +
+      '<td>' + escHtml(l.related_client_id || '-') + '</td>' +
+      '<td style="text-align:center">' + l.points + '</td>' +
+      '<td style="text-align:center">' + l.balance_after + '</td>' +
+      '<td style="font-size:12px;color:#888">' + escHtml(l.note || '-') + '</td>' +
+    '</tr>';
+  }).join('');
 
   tabContent.innerHTML =
     '<div class="card" style="margin-bottom:20px">' +
-      '<div style="font-weight:600;font-size:15px;margin-bottom:16px">🎯 我的 SaaS 推薦計畫</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+        '<div style="font-weight:600;font-size:15px">🎯 我的 SaaS 推薦計畫</div>' +
+        '<button class="btn btn-primary" onclick="openReferralRecordModal()">+ 新增紀錄</button>' +
+      '</div>' +
       '<div style="background:#f0f9f4;border-radius:8px;padding:14px;margin-bottom:20px;font-size:13px;color:#2d6a4f;border-left:4px solid #06C755">' +
-        '<strong>運作方式：</strong>為每位客戶產生一組推薦連結，當他們推薦新客戶成功開通，雙方皆可獲得你設定的獎勵。' +
+        '<strong>運作方式：</strong>客戶可分享自己的推薦連結，或請被推薦客戶於 onboarding 表單填上推薦人客戶ID。實際是否算推薦成功、是否給予獎勵，由您人工確認後於此新增紀錄。' +
       '</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">' +
-        _adminCard('目前客戶數', totalClients, '🏢', '#1a1a2e') +
-        _adminCard('推薦成功數', 0,            '🎉', '#06C755') +
-        _adminCard('待開通',     0,            '⏳', '#f39c12') +
+      '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:24px">' +
+        _adminCard('目前客戶數', totalClients,   '🏢', '#1a1a2e') +
+        _adminCard('推薦成功數', totalReferrals, '🎉', '#06C755') +
       '</div>' +
-      '<div style="font-weight:600;font-size:14px;margin-bottom:12px">📋 客戶推薦連結管理</div>' +
+      '<div style="font-weight:600;font-size:14px;margin-bottom:12px">📋 客戶推薦連結與點數</div>' +
       '<table class="table"><thead><tr>' +
-        '<th>客戶ID</th><th>公司名稱</th><th>方案</th><th style="text-align:center">推薦連結</th><th style="text-align:center">操作</th>' +
-      '</tr></thead><tbody>' +
-      _adminClients.filter(function(c) { return c.role !== 'admin'; }).map(function(c) {
-        var refUrl = 'https://superjcosmos.github.io/LINEBOTmain/?ref=' + encodeURIComponent(c.client_id);
-        return '<tr>' +
-          '<td>' + escHtml(c.client_id) + '</td>' +
-          '<td>' + escHtml(c.company_name || '-') + '</td>' +
-          '<td><span style="background:' + _planColor(c.plan) + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' + escHtml(_capitalize(c.plan)) + '</span></td>' +
-          '<td style="text-align:center"><span style="font-size:11px;color:#888;font-family:monospace">?ref=' + escHtml(c.client_id) + '</span></td>' +
-          '<td style="text-align:center"><button onclick="copyRefLink(\'' + escHtml(refUrl) + '\')" style="background:#06C755;color:#fff;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px">複製連結</button></td>' +
-        '</tr>';
-      }).join('') +
-      '</tbody></table>' +
-      '<div style="margin-top:20px;padding:14px;background:#f8f9fa;border-radius:8px;font-size:12px;color:#888">' +
-        '💡 <strong>未來可擴充：</strong>自動偵測 ?ref= 參數 → 記錄推薦來源 → 開通後自動給予推薦獎勵' +
-      '</div>' +
-    '</div>';
+        '<th>客戶ID</th><th>公司名稱</th><th>方案</th>' +
+        '<th style="text-align:center">推薦成功次數</th><th style="text-align:center">目前推薦點數</th>' +
+        '<th style="text-align:center">推薦連結</th>' +
+      '</tr></thead><tbody>' + (clientRows || '<tr><td colspan="6" class="empty">尚無客戶資料</td></tr>') + '</tbody></table>' +
+    '</div>' +
+    '<div class="card">' +
+      '<div style="font-weight:600;font-size:14px;margin-bottom:12px">📜 推薦計畫歷史紀錄</div>' +
+      '<table class="table"><thead><tr>' +
+        '<th>時間</th><th>類型</th><th>推薦人</th><th>被推薦人</th>' +
+        '<th style="text-align:center">點數</th><th style="text-align:center">餘額</th><th>備註</th>' +
+      '</tr></thead><tbody>' + (logRows || '<tr><td colspan="7" class="empty">尚無紀錄</td></tr>') + '</tbody></table>' +
+    '</div>' +
+    _buildReferralRecordModal();
 }
 
 function copyRefLink(url) {
@@ -153,6 +190,73 @@ function copyRefLink(url) {
     ta.value = url; document.body.appendChild(ta); ta.select();
     document.execCommand('copy'); document.body.removeChild(ta);
     showToast('推薦連結已複製！', 'success');
+  });
+}
+
+function _buildReferralRecordModal() {
+  var options = _referralProgramClients.map(function(c) {
+    return '<option value="' + escHtml(c.client_id) + '">' + escHtml(c.client_id + '　' + (c.company_name || '')) + '</option>';
+  }).join('');
+
+  return '<div class="modal-overlay" id="referralRecordModal">' +
+    '<div class="modal" style="max-width:480px">' +
+      '<h3>+ 新增推薦計畫紀錄</h3>' +
+      '<div class="form-group"><label>類型</label>' +
+        '<select id="refRecType">' +
+          '<option value="referral">推薦成功（客戶A推薦客戶B）</option>' +
+          '<option value="bug_report">Bug 回報獎勵</option>' +
+        '</select></div>' +
+      '<div class="form-group"><label>推薦人（獲得點數的客戶）</label>' +
+        '<select id="refRecClientSelect">' + options + '</select></div>' +
+      '<div class="form-group"><label>被推薦客戶ID（僅「推薦成功」需填寫）</label>' +
+        '<input type="text" id="refRecRelated" placeholder="例如：C0003"></div>' +
+      '<div class="form-group"><label>點數</label>' +
+        '<input type="number" id="refRecPoints" placeholder="例如：1"></div>' +
+      '<div class="form-group"><label>備註</label>' +
+        '<textarea id="refRecNote" rows="2" placeholder="選填，例如：介紹餐飲業客戶成功簽約"></textarea></div>' +
+      '<div class="modal-footer">' +
+        '<button class="btn-cancel" onclick="closeModal(\'referralRecordModal\')">取消</button>' +
+        '<button class="btn btn-primary" onclick="submitReferralRecord()">送出</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function openReferralRecordModal() {
+  document.getElementById('refRecType').value    = 'referral';
+  document.getElementById('refRecRelated').value = '';
+  document.getElementById('refRecPoints').value  = '';
+  document.getElementById('refRecNote').value    = '';
+  openModal('referralRecordModal');
+}
+
+function submitReferralRecord() {
+  var type     = document.getElementById('refRecType').value;
+  var referrer = document.getElementById('refRecClientSelect').value;
+  var related  = (document.getElementById('refRecRelated').value || '').trim();
+  var points   = parseInt(document.getElementById('refRecPoints').value, 10);
+  var note     = (document.getElementById('refRecNote').value || '').trim();
+
+  if (!referrer) { showToast('請選擇推薦人客戶', 'error'); return; }
+  if (type === 'referral' && !related) { showToast('推薦成功需填寫被推薦客戶ID', 'error'); return; }
+  if (!points) { showToast('請填寫點數', 'error'); return; }
+
+  confirmAndRun('確定要新增這筆紀錄，並將 ' + points + ' 點寫入 ' + referrer + ' 的推薦點數餘額嗎？', async function() {
+    var res = await apiCall({
+      action:             'adminAddReferralRecord',
+      type:               type,
+      referrer_client_id: referrer,
+      related_client_id:  related,
+      points:             points,
+      note:               note
+    });
+    if (res.success) {
+      showToast('紀錄已新增，' + referrer + ' 新餘額：' + res.data.balance_after, 'success');
+      closeModal('referralRecordModal');
+      _loadAdminReferral();
+    } else {
+      showToast(res.message || '新增失敗', 'error');
+    }
   });
 }
 
