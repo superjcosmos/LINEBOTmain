@@ -21,6 +21,10 @@ body{background:#0d1117;display:flex;flex-direction:column;align-items:center;ju
 .scene.flipped .card-inner{transform:rotateY(180deg)}
 
 .face{position:absolute;inset:0;border-radius:20px;backface-visibility:hidden;overflow:hidden}
+.scene .front{pointer-events:auto}
+.scene .back{pointer-events:none}
+.scene.flipped .front{pointer-events:none}
+.scene.flipped .back{pointer-events:auto}
 .front{background:#1a1a2e}
 .back{background:#111827;transform:rotateY(180deg)}
 
@@ -58,6 +62,8 @@ body{background:#0d1117;display:flex;flex-direction:column;align-items:center;ju
 .contact-block .c-label{font-size:10px;color:rgba(200,237,221,.55)}
 .contact-block .c-email{font-size:11.5px;color:#c8eedd;margin-top:2px}
 .contact-block .c-owner{font-size:10px;color:rgba(200,237,221,.4);margin-top:2px}
+.contact-block .c-line{font-size:11.5px;color:#06C755;margin-top:2px;text-decoration:none;display:block;font-weight:600}
+.contact-block .c-line:hover{text-decoration:underline}  
 .cta{background:#06C755;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:500;cursor:pointer;letter-spacing:.3px;text-decoration:none;display:inline-block}
 .cta:hover{background:#05b34c}
 
