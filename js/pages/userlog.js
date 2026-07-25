@@ -98,7 +98,7 @@ function _buildUserLogTable(data) {
       '<th>時間</th>' +
       '<th>名稱</th>' +
       '<th>UserID</th>' +
-      '<th>關鍵字</th>' +
+      '<th>訊息內容</th>' +
       '<th>狀態</th>' +
     '</tr></thead>' +
     '<tbody>' +
