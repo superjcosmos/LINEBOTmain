@@ -1,7 +1,9 @@
-  // ============================================================
+// ============================================================
 // js/pages/tag.js
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / renderPager
-// ⚠️ 本次新增：受眾勾選連結（搜尋+勾選式），比照 audience.js 同款寫法
+// ⚠️ 效能優化：getAudienceList 改為打開 Modal 時才呼叫（延遲載入），
+//    不擋標籤列表頁的載入速度
+// ⚠️ Modal 已加 max-height:85vh + overflow-y:auto，避免勾選清單過長卡死畫面
 // ============================================================
 
 var _tagAll      = [];
@@ -9,33 +11,15 @@ var _tagFiltered  = [];
 var _tagPage      = 1;
 var _tagPageSize  = 20;
 var tagEditId     = null;
-var _tagAudienceOptionsHtml = '';
 
 async function loadTag() {
   setContent('<div class="loading">載入中...</div>');
 
-  var result         = await apiCall({ action: 'getTagList' });
-  var audienceResult = await apiCall({ action: 'getAudienceList' });
+  var result = await apiCall({ action: 'getTagList' });
 
   if (!result.success) {
     setContent('<div class="empty">載入失敗：' + escHtml(result.message) + '</div>');
     return;
-  }
-
-  _tagAudienceOptionsHtml = '';
-  if (audienceResult.success) {
-    audienceResult.data.forEach(function(a) {
-      _tagAudienceOptionsHtml +=
-        '<label class="tag-audience-check-item" data-label="' + escHtml((a.name || '').toLowerCase()) + '" ' +
-          'style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px;cursor:pointer;">' +
-          '<input type="checkbox" value="' + escHtml(a.audience_id) + '" class="tagAudienceCheckbox" ' +
-            'style="width:auto;margin:0;">' +
-          escHtml(a.name) +
-        '</label>';
-    });
-  }
-  if (!_tagAudienceOptionsHtml) {
-    _tagAudienceOptionsHtml = '<p style="color:#999;font-size:13px;margin:0;">目前沒有受眾，請先到「受眾管理」建立</p>';
   }
 
   _tagAll      = result.data || [];
@@ -110,7 +94,7 @@ function _buildTagShell() {
                     'border-radius:8px;font-size:13px;margin-bottom:8px;box-sizing:border-box;">' +
           '<div id="tagAudienceCheckList" style="max-height:160px;overflow-y:auto;' +
                'border:1px solid #e0e0e0;border-radius:8px;padding:8px;">' +
-            _tagAudienceOptionsHtml +
+            '<p style="color:#999;font-size:13px;margin:0;">載入受眾中...</p>' +
           '</div>' +
         '</div>' +
 
@@ -120,6 +104,27 @@ function _buildTagShell() {
         '</div>' +
       '</div>' +
     '</div>';
+}
+
+// ── 延遲載入：只有打開 Modal 時才呼叫 getAudienceList，不擋列表頁載入速度 ──
+async function _loadTagAudienceCheckboxOptions() {
+  var listEl = document.getElementById('tagAudienceCheckList');
+  listEl.innerHTML = '<p style="color:#999;font-size:13px;margin:0;">載入受眾中...</p>';
+
+  var audienceResult = await apiCall({ action: 'getAudienceList' });
+  var html = '';
+  if (audienceResult.success) {
+    audienceResult.data.forEach(function(a) {
+      html +=
+        '<label class="tag-audience-check-item" data-label="' + escHtml((a.name || '').toLowerCase()) + '" ' +
+          'style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px;cursor:pointer;">' +
+          '<input type="checkbox" value="' + escHtml(a.audience_id) + '" class="tagAudienceCheckbox" ' +
+            'style="width:auto;margin:0;">' +
+          escHtml(a.name) +
+        '</label>';
+    });
+  }
+  listEl.innerHTML = html || '<p style="color:#999;font-size:13px;margin:0;">目前沒有受眾，請先到「受眾管理」建立</p>';
 }
 
 function filterTagAudienceCheckboxes() {
@@ -206,7 +211,7 @@ function gotoTagPage(page) {
   _renderTagPager();
 }
 
-function openCreateTagModal() {
+async function openCreateTagModal() {
   tagEditId = null;
   document.getElementById('tagModalTitle').textContent = '建立標籤';
   document.getElementById('tagSaveBtn').textContent     = '建立';
@@ -215,12 +220,10 @@ function openCreateTagModal() {
   document.getElementById('tagKeyword').value  = '';
   document.getElementById('tagStatus').value   = 'active';
   document.getElementById('tagNote').value     = '';
-
-  document.querySelectorAll('.tagAudienceCheckbox').forEach(function(cb) { cb.checked = false; });
   document.getElementById('tagAudienceSearch').value = '';
-  filterTagAudienceCheckboxes();
 
   openModal('tagModal');
+  await _loadTagAudienceCheckboxOptions();
 }
 
 function closeCreateTagModal() {
@@ -238,12 +241,10 @@ async function editTag(tagId, rowJson) {
   document.getElementById('tagKeyword').value  = row.keyword  || '';
   document.getElementById('tagStatus').value   = row.status   || 'active';
   document.getElementById('tagNote').value     = row.note     || '';
-
-  document.querySelectorAll('.tagAudienceCheckbox').forEach(function(cb) { cb.checked = false; });
   document.getElementById('tagAudienceSearch').value = '';
-  filterTagAudienceCheckboxes();
 
   openModal('tagModal');
+  await _loadTagAudienceCheckboxOptions();
 
   var linkResult = await apiCall({ action: 'getTagAudienceLinks', tag_id: tagId });
   if (linkResult.success) {
