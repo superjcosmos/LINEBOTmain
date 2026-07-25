@@ -1,4 +1,4 @@
-// ============================================================
+  // ============================================================
 // js/pages/tag.js
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / renderPager
 // ⚠️ 本次新增：受眾勾選連結（搜尋+勾選式），比照 audience.js 同款寫法
@@ -71,7 +71,7 @@ function _buildTagShell() {
     '</div>' +
 
     '<div class="modal-overlay" id="tagModal">' +
-      '<div class="modal">' +
+      '<div class="modal" style="max-height:85vh;overflow-y:auto;">' +
         '<h3 id="tagModalTitle">建立標籤</h3>' +
 
         '<div class="form-group">' +
