@@ -11,6 +11,8 @@ var PAGES = {
   userlog:   { label: '用戶記錄', icon: '📋', load: function() { loadUserLog();   }, feature: 'userlog'   },
   reply:     { label: '自動回覆', icon: '💬', load: function() { loadReply();     }, feature: 'reply'     },
   audience:  { label: '受眾管理', icon: '👥', load: function() { loadAudience();  }, feature: 'audience'  },
+  tag:       { label: '標籤管理',       icon: '🏷️', load: function() { loadTag();          }, feature: 'tag'          },
+  useroverview: { label: 'User Overview', icon: '👤', load: function() { loadUserOverview(); }, feature: 'useroverview' },
   richmenu:  { label: '圖文選單', icon: '🖼️', load: function() { loadRichMenu();  }, feature: 'richmenu'  },
   lottery:   { label: '小遊戲',   icon: '🎮', load: function() { loadLottery();   }, feature: 'lottery'   },
   broadcast: { label: '推播管理', icon: '📢', load: function() { loadBroadcast(); }, feature: 'broadcast' },
