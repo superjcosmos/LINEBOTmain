@@ -1,27 +1,30 @@
 // ============================================================
 // js/pages/audience.js
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / renderPager
-// ⚠️ 本次新增：標籤勾選連結（搜尋+勾選式），比照移植指南前端注意事項：
-//    checkbox 加 inline style 避免被全域 .form-group input 撐爆版面，
-//    搜尋過濾用 display:none/block 隱藏既有 DOM，不重新渲染（避免清掉已勾選狀態）
+// ⚠️ 效能優化：getTagList 改為打開 Modal 時才呼叫（延遲載入），
+//    getAudienceList／getRichMenuList 改用 Promise.all 平行呼叫，
+//    避免受眾列表頁載入時被不必要的標籤資料拖慢
+// ⚠️ Modal 已加 max-height:85vh + overflow-y:auto，避免勾選清單過長卡死畫面
 // ============================================================
 
-var _audienceAll        = [];
-var _audienceFiltered    = [];
-var _audiencePage        = 1;
-var _audiencePageSize    = 20;
-var _audienceRmOptions   = '';
-var _audienceTagOptionsHtml = '';
-var audienceEditIndex    = null;
-var currentAudienceId    = null;
+var _audienceAll      = [];
+var _audienceFiltered = [];
+var _audiencePage     = 1;
+var _audiencePageSize = 20;
+var _audienceRmOptions = '';
+var audienceEditIndex  = null;
+var currentAudienceId  = null;
 var _currentEditingAudienceId = null;
 
 async function loadAudience() {
   setContent('<div class="loading">載入中...</div>');
 
-  var audienceResult = await apiCall({ action: 'getAudienceList' });
-  var richMenuResult = await apiCall({ action: 'getRichMenuList' });
-  var tagResult       = await apiCall({ action: 'getTagList' });
+  var results = await Promise.all([
+    apiCall({ action: 'getAudienceList' }),
+    apiCall({ action: 'getRichMenuList' })
+  ]);
+  var audienceResult = results[0];
+  var richMenuResult = results[1];
 
   if (!audienceResult.success) {
     setContent('<div class="empty">載入失敗：' + escHtml(audienceResult.message) + '</div>');
@@ -40,22 +43,6 @@ async function loadAudience() {
     richMenuResult.data.forEach(function(rm) {
       _audienceRmOptions += '<option value="' + escHtml(rm.rich_menu_id) + '">' + escHtml(rm.name) + '</option>';
     });
-  }
-
-  _audienceTagOptionsHtml = '';
-  if (tagResult.success) {
-    tagResult.data.filter(function(t) { return t.status === 'active'; }).forEach(function(t) {
-      _audienceTagOptionsHtml +=
-        '<label class="audience-tag-check-item" data-label="' + escHtml((t.tag_name || '').toLowerCase()) + '" ' +
-          'style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px;cursor:pointer;">' +
-          '<input type="checkbox" value="' + escHtml(t.tag_id) + '" class="audienceTagCheckbox" ' +
-            'style="width:auto;margin:0;">' +
-          escHtml(t.tag_name) +
-        '</label>';
-    });
-  }
-  if (!_audienceTagOptionsHtml) {
-    _audienceTagOptionsHtml = '<p style="color:#999;font-size:13px;margin:0;">目前沒有標籤，請先到「標籤管理」建立</p>';
   }
 
   _audienceAll      = audienceResult.data || [];
@@ -117,7 +104,7 @@ function _buildAudienceShell() {
                     'border-radius:8px;font-size:13px;margin-bottom:8px;box-sizing:border-box;">' +
           '<div id="audienceTagCheckList" style="max-height:160px;overflow-y:auto;' +
                'border:1px solid #e0e0e0;border-radius:8px;padding:8px;">' +
-            _audienceTagOptionsHtml +
+            '<p style="color:#999;font-size:13px;margin:0;">載入標籤中...</p>' +
           '</div>' +
         '</div>' +
 
@@ -163,6 +150,27 @@ function _buildAudienceShell() {
         '</div>' +
       '</div>' +
     '</div>';
+}
+
+// ── 延遲載入：只有打開 Modal 時才呼叫 getTagList，不擋列表頁載入速度 ──
+async function _loadAudienceTagCheckboxOptions() {
+  var listEl = document.getElementById('audienceTagCheckList');
+  listEl.innerHTML = '<p style="color:#999;font-size:13px;margin:0;">載入標籤中...</p>';
+
+  var tagResult = await apiCall({ action: 'getTagList' });
+  var html = '';
+  if (tagResult.success) {
+    tagResult.data.filter(function(t) { return t.status === 'active'; }).forEach(function(t) {
+      html +=
+        '<label class="audience-tag-check-item" data-label="' + escHtml((t.tag_name || '').toLowerCase()) + '" ' +
+          'style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px;cursor:pointer;">' +
+          '<input type="checkbox" value="' + escHtml(t.tag_id) + '" class="audienceTagCheckbox" ' +
+            'style="width:auto;margin:0;">' +
+          escHtml(t.tag_name) +
+        '</label>';
+    });
+  }
+  listEl.innerHTML = html || '<p style="color:#999;font-size:13px;margin:0;">目前沒有標籤，請先到「標籤管理」建立</p>';
 }
 
 function filterAudienceTagCheckboxes() {
@@ -268,7 +276,7 @@ function gotoAudiencePage(page) {
   _renderAudiencePager();
 }
 
-function openCreateModal() {
+async function openCreateModal() {
   audienceEditIndex = null;
   _currentEditingAudienceId = null;
   document.getElementById('audienceModalTitle').textContent = '建立受眾';
@@ -280,12 +288,10 @@ function openCreateModal() {
   document.getElementById('audReplyContent').value      = '';
   document.getElementById('audReplyField').style.display = 'none';
   document.getElementById('autoReplySection').style.display = 'block';
-
-  document.querySelectorAll('.audienceTagCheckbox').forEach(function(cb) { cb.checked = false; });
   document.getElementById('audienceTagSearch').value = '';
-  filterAudienceTagCheckboxes();
 
   openModal('createModal');
+  await _loadAudienceTagCheckboxOptions();
 }
 
 function closeCreateModal() {
@@ -304,12 +310,10 @@ async function editAudience(index, rowJson) {
   document.getElementById('audienceKeyword').value  = row.keyword      || '';
   document.getElementById('audienceRichMenu').value = row.rich_menu_id || '';
   document.getElementById('autoReplySection').style.display = 'none';
-
-  document.querySelectorAll('.audienceTagCheckbox').forEach(function(cb) { cb.checked = false; });
   document.getElementById('audienceTagSearch').value = '';
-  filterAudienceTagCheckboxes();
 
   openModal('createModal');
+  await _loadAudienceTagCheckboxOptions();
 
   var linkResult = await apiCall({ action: 'getAudienceTagLinks', audience_id: row.audience_id });
   if (linkResult.success) {
