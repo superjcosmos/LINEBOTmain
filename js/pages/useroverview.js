@@ -38,7 +38,7 @@ async function loadUserOverview() {
 
 function _buildUoShell() {
   return '' +
-    '<h2 class="page-title">User Overview</h2>' +
+    '<h2 class="page-title">用戶總覽</h2>' +
     '<div class="card">' +
       '<div class="toolbar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
         '<input type="text" id="uoSearch"' +
