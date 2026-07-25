@@ -1,21 +1,27 @@
 // ============================================================
 // js/pages/audience.js
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / renderPager
+// ⚠️ 本次新增：標籤勾選連結（搜尋+勾選式），比照移植指南前端注意事項：
+//    checkbox 加 inline style 避免被全域 .form-group input 撐爆版面，
+//    搜尋過濾用 display:none/block 隱藏既有 DOM，不重新渲染（避免清掉已勾選狀態）
 // ============================================================
 
-var _audienceAll      = [];
-var _audienceFiltered = [];
-var _audiencePage     = 1;
-var _audiencePageSize = 20;
-var _audienceRmOptions = '';
-var audienceEditIndex  = null;
-var currentAudienceId  = null;
+var _audienceAll        = [];
+var _audienceFiltered    = [];
+var _audiencePage        = 1;
+var _audiencePageSize    = 20;
+var _audienceRmOptions   = '';
+var _audienceTagOptionsHtml = '';
+var audienceEditIndex    = null;
+var currentAudienceId    = null;
+var _currentEditingAudienceId = null;
 
 async function loadAudience() {
   setContent('<div class="loading">載入中...</div>');
 
   var audienceResult = await apiCall({ action: 'getAudienceList' });
   var richMenuResult = await apiCall({ action: 'getRichMenuList' });
+  var tagResult       = await apiCall({ action: 'getTagList' });
 
   if (!audienceResult.success) {
     setContent('<div class="empty">載入失敗：' + escHtml(audienceResult.message) + '</div>');
@@ -34,6 +40,22 @@ async function loadAudience() {
     richMenuResult.data.forEach(function(rm) {
       _audienceRmOptions += '<option value="' + escHtml(rm.rich_menu_id) + '">' + escHtml(rm.name) + '</option>';
     });
+  }
+
+  _audienceTagOptionsHtml = '';
+  if (tagResult.success) {
+    tagResult.data.filter(function(t) { return t.status === 'active'; }).forEach(function(t) {
+      _audienceTagOptionsHtml +=
+        '<label class="audience-tag-check-item" data-label="' + escHtml((t.tag_name || '').toLowerCase()) + '" ' +
+          'style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px;cursor:pointer;">' +
+          '<input type="checkbox" value="' + escHtml(t.tag_id) + '" class="audienceTagCheckbox" ' +
+            'style="width:auto;margin:0;">' +
+          escHtml(t.tag_name) +
+        '</label>';
+    });
+  }
+  if (!_audienceTagOptionsHtml) {
+    _audienceTagOptionsHtml = '<p style="color:#999;font-size:13px;margin:0;">目前沒有標籤，請先到「標籤管理」建立</p>';
   }
 
   _audienceAll      = audienceResult.data || [];
@@ -87,6 +109,18 @@ function _buildAudienceShell() {
           '<select id="audienceRichMenu">' + _audienceRmOptions + '</select>' +
         '</div>' +
 
+        '<div class="form-group">' +
+          '<label>標籤（選填，勾選後系統會把符合標籤的用戶推播加入此受眾）</label>' +
+          '<input type="text" id="audienceTagSearch" placeholder="搜尋標籤..."' +
+            ' oninput="filterAudienceTagCheckboxes()"' +
+            ' style="width:100%;padding:6px 10px;border:1.5px solid #e0e0e0;' +
+                    'border-radius:8px;font-size:13px;margin-bottom:8px;box-sizing:border-box;">' +
+          '<div id="audienceTagCheckList" style="max-height:160px;overflow-y:auto;' +
+               'border:1px solid #e0e0e0;border-radius:8px;padding:8px;">' +
+            _audienceTagOptionsHtml +
+          '</div>' +
+        '</div>' +
+
         '<div id="autoReplySection" style="margin-top:4px;">' +
           '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;' +
                          'font-size:14px;color:#444;user-select:none;">' +
@@ -129,6 +163,15 @@ function _buildAudienceShell() {
         '</div>' +
       '</div>' +
     '</div>';
+}
+
+function filterAudienceTagCheckboxes() {
+  var keyword = (document.getElementById('audienceTagSearch').value || '').trim().toLowerCase();
+  var items = document.querySelectorAll('.audience-tag-check-item');
+  for (var i = 0; i < items.length; i++) {
+    var label = items[i].getAttribute('data-label') || '';
+    items[i].style.display = (!keyword || label.indexOf(keyword) !== -1) ? 'flex' : 'none';
+  }
 }
 
 function toggleAudReplyField() {
@@ -227,6 +270,7 @@ function gotoAudiencePage(page) {
 
 function openCreateModal() {
   audienceEditIndex = null;
+  _currentEditingAudienceId = null;
   document.getElementById('audienceModalTitle').textContent = '建立受眾';
   document.getElementById('audienceSaveBtn').textContent    = '建立';
   document.getElementById('audienceName').value     = '';
@@ -236,24 +280,44 @@ function openCreateModal() {
   document.getElementById('audReplyContent').value      = '';
   document.getElementById('audReplyField').style.display = 'none';
   document.getElementById('autoReplySection').style.display = 'block';
+
+  document.querySelectorAll('.audienceTagCheckbox').forEach(function(cb) { cb.checked = false; });
+  document.getElementById('audienceTagSearch').value = '';
+  filterAudienceTagCheckboxes();
+
   openModal('createModal');
 }
 
 function closeCreateModal() {
   closeModal('createModal');
   audienceEditIndex = null;
+  _currentEditingAudienceId = null;
 }
 
-function editAudience(index, rowJson) {
+async function editAudience(index, rowJson) {
   var row = JSON.parse(decodeURIComponent(rowJson));
   audienceEditIndex = index;
+  _currentEditingAudienceId = row.audience_id;
   document.getElementById('audienceModalTitle').textContent = '編輯受眾';
   document.getElementById('audienceSaveBtn').textContent    = '儲存';
   document.getElementById('audienceName').value     = row.name         || '';
   document.getElementById('audienceKeyword').value  = row.keyword      || '';
   document.getElementById('audienceRichMenu').value = row.rich_menu_id || '';
   document.getElementById('autoReplySection').style.display = 'none';
+
+  document.querySelectorAll('.audienceTagCheckbox').forEach(function(cb) { cb.checked = false; });
+  document.getElementById('audienceTagSearch').value = '';
+  filterAudienceTagCheckboxes();
+
   openModal('createModal');
+
+  var linkResult = await apiCall({ action: 'getAudienceTagLinks', audience_id: row.audience_id });
+  if (linkResult.success) {
+    linkResult.data.forEach(function(tagId) {
+      var cb = document.querySelector('.audienceTagCheckbox[value="' + tagId + '"]');
+      if (cb) cb.checked = true;
+    });
+  }
 }
 
 async function saveAudience() {
@@ -270,6 +334,11 @@ async function saveAudience() {
   if (!name) { showToast('請填入受眾名稱', 'error'); return; }
   if (autoReply && !keyword)      { showToast('要同步建立回覆，請先填入觸發關鍵字', 'error'); return; }
   if (autoReply && !replyContent) { showToast('請填入回覆內容', 'error'); return; }
+
+  var selectedTagIds = Array.prototype.map.call(
+    document.querySelectorAll('.audienceTagCheckbox:checked'),
+    function(cb) { return cb.value; }
+  );
 
   var result;
   if (audienceEditIndex !== null) {
@@ -292,11 +361,25 @@ async function saveAudience() {
   }
 
   if (result.success) {
+    var targetAudienceId = _currentEditingAudienceId || (result.data && result.data.audience_id);
+    var tagMsg = '';
+
+    if (targetAudienceId) {
+      var linkResult = await apiCall({
+        action:      'setAudienceTagLinks',
+        audience_id: targetAudienceId,
+        tag_ids:     selectedTagIds
+      });
+      if (linkResult.success && linkResult.data && linkResult.data.pushed > 0) {
+        tagMsg = '，已推播 ' + linkResult.data.pushed + ' 人加入受眾';
+      }
+    }
+
     closeCreateModal();
     showToast(
-      audienceEditIndex !== null
+      (audienceEditIndex !== null
         ? '更新成功'
-        : (result.data && result.data.message ? result.data.message : '受眾建立成功'),
+        : (result.data && result.data.message ? result.data.message : '受眾建立成功')) + tagMsg,
       'success'
     );
     loadAudience();
