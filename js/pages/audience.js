@@ -91,7 +91,7 @@ function _buildAudienceShell() {
     '</div>' +
 
     '<div class="modal-overlay" id="createModal">' +
-      '<div class="modal">' +
+      '<div class="modal" style="max-height:85vh;overflow-y:auto;">' +
         '<h3 id="audienceModalTitle">建立受眾</h3>' +
 
         '<div class="form-group">' +
