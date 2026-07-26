@@ -1,6 +1,7 @@
 // ============================================================
 // js/pages/useroverview.js
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / renderPager
+// ⚠️ 本次新增：備註編輯功能（純文字，寫入 UserMaster.note）
 // ============================================================
 
 var _uoAll      = [];
@@ -70,6 +71,21 @@ function _buildUoShell() {
           '<button class="btn btn-primary" onclick="doAddUserTag()">新增</button>' +
         '</div>' +
       '</div>' +
+    '</div>' +
+
+    '<div class="modal-overlay" id="uoNoteModal">' +
+      '<div class="modal">' +
+        '<h3>編輯備註</h3>' +
+        '<p id="uoNoteUserHint" style="color:#888;font-size:13px;margin-bottom:12px;"></p>' +
+        '<div class="form-group">' +
+          '<label>人工註記（選填）</label>' +
+          '<textarea id="uoNoteInput" rows="4" placeholder="內部備註，僅後台可見"></textarea>' +
+        '</div>' +
+        '<div class="modal-footer">' +
+          '<button class="btn-cancel" onclick="closeUoNoteModal()">取消</button>' +
+          '<button class="btn btn-primary" onclick="doSaveUserNote()">儲存</button>' +
+        '</div>' +
+      '</div>' +
     '</div>';
 }
 
@@ -120,13 +136,20 @@ function _renderUoTable() {
         '</span>';
     }).join('');
 
+    var noteDisplay = row.note
+      ? '<span style="color:#666;">' + escHtml(row.note.length > 20 ? row.note.substring(0, 20) + '...' : row.note) + '</span>'
+      : '<span style="color:#bbb;">無備註</span>';
+
     return '<tr>' +
       '<td>' + escHtml(row.display_name || row.user_id) + '</td>' +
       '<td>' + (row.last_seen ? escHtml(String(row.last_seen)) : '-') + '</td>' +
       '<td>' + (tagChips || '<span style="color:#bbb;">無標籤</span>') + '</td>' +
+      '<td>' + noteDisplay + '</td>' +
       '<td style="white-space:nowrap;">' +
         '<button class="btn btn-primary" ' +
-          'onclick="openUoAddTagModal(\'' + escHtml(row.user_id) + '\',\'' + escHtml(row.display_name || row.user_id) + '\')">＋ 貼標籤</button>' +
+          'onclick="openUoAddTagModal(\'' + escHtml(row.user_id) + '\',\'' + escHtml(row.display_name || row.user_id) + '\')">＋ 貼標籤</button> ' +
+        '<button class="btn btn-edit" ' +
+          'onclick="openUoNoteModal(\'' + escHtml(row.user_id) + '\',\'' + escHtml(row.display_name || row.user_id) + '\',\'' + escHtml(encodeURIComponent(row.note || '')) + '\')">📝 備註</button>' +
       '</td>' +
     '</tr>';
   }).join('');
@@ -137,6 +160,7 @@ function _renderUoTable() {
         '<th>顯示名稱</th>' +
         '<th>最後互動</th>' +
         '<th>標籤</th>' +
+        '<th>備註</th>' +
         '<th>操作</th>' +
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
@@ -211,4 +235,38 @@ function doRemoveUserTag(userId, tagName) {
       showToast(result.message, 'error');
     }
   });
+}
+
+function openUoNoteModal(userId, displayName, encodedNote) {
+  _uoCurrentUserId   = userId;
+  _uoCurrentUserName = displayName;
+
+  document.getElementById('uoNoteUserHint').textContent = '用戶：' + displayName;
+  document.getElementById('uoNoteInput').value = decodeURIComponent(encodedNote || '');
+
+  openModal('uoNoteModal');
+}
+
+function closeUoNoteModal() {
+  closeModal('uoNoteModal');
+  _uoCurrentUserId   = null;
+  _uoCurrentUserName = null;
+}
+
+async function doSaveUserNote() {
+  var note = document.getElementById('uoNoteInput').value.trim();
+
+  var result = await apiCall({
+    action:  'updateUserNote',
+    user_id: _uoCurrentUserId,
+    note:    note
+  });
+
+  if (result.success) {
+    closeUoNoteModal();
+    showToast('備註已更新', 'success');
+    loadUserOverview();
+  } else {
+    showToast(result.message, 'error');
+  }
 }
