@@ -1,7 +1,8 @@
 // ============================================================
 // js/pages/useroverview.js
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / renderPager
-// ⚠️ 本次新增：備註編輯功能（純文字，寫入 UserMaster.note）
+// ⚠️ 本次新增：「新增標籤」Modal 的選擇標籤改為搜尋+可點選清單（原本是原生<select>），
+//    搜尋過濾比照移植指南前端注意事項，用display:none/block不重新渲染
 // ============================================================
 
 var _uoAll      = [];
@@ -11,6 +12,7 @@ var _uoPageSize = 20;
 var _uoTagList  = [];
 var _uoCurrentUserId = null;
 var _uoCurrentUserName = null;
+var _uoSelectedTagId = null;
 
 async function loadUserOverview() {
   setContent('<div class="loading">載入中...</div>');
@@ -64,7 +66,12 @@ function _buildUoShell() {
         '<p id="uoAddTagUserHint" style="color:#888;font-size:13px;margin-bottom:12px;"></p>' +
         '<div class="form-group">' +
           '<label>選擇標籤</label>' +
-          '<select id="uoTagSelect"></select>' +
+          '<input type="text" id="uoTagSearchInModal" placeholder="搜尋標籤..."' +
+            ' oninput="filterUoTagOptions()"' +
+            ' style="width:100%;padding:8px 10px;border:1.5px solid #e0e0e0;' +
+                    'border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;outline:none;">' +
+          '<div id="uoTagOptionList" style="max-height:180px;overflow-y:auto;' +
+               'border:1px solid #e0e0e0;border-radius:8px;padding:4px;"></div>' +
         '</div>' +
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeUoAddTagModal()">取消</button>' +
@@ -182,13 +189,23 @@ function gotoUoPage(page) {
 function openUoAddTagModal(userId, displayName) {
   _uoCurrentUserId   = userId;
   _uoCurrentUserName = displayName;
+  _uoSelectedTagId   = null;
 
   document.getElementById('uoAddTagUserHint').textContent = '用戶：' + displayName;
+  document.getElementById('uoTagSearchInModal').value = '';
 
-  var options = _uoTagList.map(function(t) {
-    return '<option value="' + escHtml(t.tag_id) + '">' + escHtml(t.tag_name) + '</option>';
-  }).join('');
-  document.getElementById('uoTagSelect').innerHTML = options || '<option value="">目前沒有可用標籤</option>';
+  var listEl = document.getElementById('uoTagOptionList');
+  if (_uoTagList.length === 0) {
+    listEl.innerHTML = '<p style="color:#999;font-size:13px;margin:6px;">目前沒有可用標籤</p>';
+  } else {
+    listEl.innerHTML = _uoTagList.map(function(t) {
+      return '<div class="uo-tag-option" data-label="' + escHtml((t.tag_name || '').toLowerCase()) + '" ' +
+        'data-tagid="' + escHtml(t.tag_id) + '" onclick="selectUoTagOption(this)" ' +
+        'style="padding:8px 10px;cursor:pointer;border-radius:6px;font-size:14px;">' +
+        escHtml(t.tag_name) +
+      '</div>';
+    }).join('');
+  }
 
   openModal('uoAddTagModal');
 }
@@ -197,17 +214,39 @@ function closeUoAddTagModal() {
   closeModal('uoAddTagModal');
   _uoCurrentUserId   = null;
   _uoCurrentUserName = null;
+  _uoSelectedTagId   = null;
+}
+
+function filterUoTagOptions() {
+  var keyword = (document.getElementById('uoTagSearchInModal').value || '').trim().toLowerCase();
+  var items = document.querySelectorAll('.uo-tag-option');
+  for (var i = 0; i < items.length; i++) {
+    var label = items[i].getAttribute('data-label') || '';
+    items[i].style.display = (!keyword || label.indexOf(keyword) !== -1) ? 'block' : 'none';
+  }
+}
+
+function selectUoTagOption(el) {
+  var items = document.querySelectorAll('.uo-tag-option');
+  for (var i = 0; i < items.length; i++) {
+    items[i].style.background = 'transparent';
+    items[i].style.color = '#333';
+    items[i].style.fontWeight = 'normal';
+  }
+  el.style.background = '#eef7f0';
+  el.style.color = '#06C755';
+  el.style.fontWeight = '600';
+  _uoSelectedTagId = el.getAttribute('data-tagid');
 }
 
 async function doAddUserTag() {
-  var tagId = document.getElementById('uoTagSelect').value;
-  if (!tagId) { showToast('請選擇標籤', 'error'); return; }
+  if (!_uoSelectedTagId) { showToast('請選擇標籤', 'error'); return; }
 
   var result = await apiCall({
     action:       'addUserTag',
     user_id:      _uoCurrentUserId,
     display_name: _uoCurrentUserName,
-    tag_id:       tagId
+    tag_id:       _uoSelectedTagId
   });
 
   if (result.success) {
