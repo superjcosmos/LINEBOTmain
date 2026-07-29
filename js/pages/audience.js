@@ -1,10 +1,8 @@
 // ============================================================
 // js/pages/audience.js
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / renderPager
-// ⚠️ 效能優化：getTagList 改為打開 Modal 時才呼叫（延遲載入），
-//    getAudienceList／getRichMenuList 改用 Promise.all 平行呼叫，
-//    避免受眾列表頁載入時被不必要的標籤資料拖慢
-// ⚠️ Modal 已加 max-height:85vh + overflow-y:auto，避免勾選清單過長卡死畫面
+// ⚠️ 本次新增：查看成員功能（唯讀清單）
+// ⚠️ 效能優化：editAudience 打開Modal後的兩個互不依賴API改用Promise.all平行呼叫
 // ============================================================
 
 var _audienceAll      = [];
@@ -149,6 +147,17 @@ function _buildAudienceShell() {
           '<button class="btn btn-primary" onclick="doImportAudience()">匯入</button>' +
         '</div>' +
       '</div>' +
+    '</div>' +
+
+    '<div class="modal-overlay" id="membersModal">' +
+      '<div class="modal" style="max-height:85vh;overflow-y:auto;">' +
+        '<h3>查看成員</h3>' +
+        '<p id="membersModalTitle" style="color:#888;font-size:13px;margin-bottom:12px;"></p>' +
+        '<div id="membersListWrap" style="max-height:400px;overflow-y:auto;"></div>' +
+        '<div class="modal-footer">' +
+          '<button class="btn-cancel" onclick="closeMembersModal()">關閉</button>' +
+        '</div>' +
+      '</div>' +
     '</div>';
 }
 
@@ -243,6 +252,8 @@ function _renderAudienceTable() {
           'onclick="editAudience(' + row.index + ',\'' + rowJson + '\')">編輯</button> ' +
         '<button class="btn btn-sync" ' +
           'onclick="syncCount(\'' + escHtml(row.audience_id) + '\',' + row.index + ')">同步人數</button> ' +
+        '<button class="btn" style="background:#e8f0fe;color:#1a73e8;" ' +
+          'onclick="openMembersModal(\'' + escHtml(row.audience_id) + '\',\'' + escHtml(row.name) + '\')">查看成員</button> ' +
         '<button class="btn btn-primary" ' +
           'onclick="openImportModal(\'' + escHtml(row.audience_id) + '\',\'' + escHtml(row.name) + '\')">匯入UID</button> ' +
         '<button class="btn btn-danger" ' +
@@ -313,9 +324,14 @@ async function editAudience(index, rowJson) {
   document.getElementById('audienceTagSearch').value = '';
 
   openModal('createModal');
-  await _loadAudienceTagCheckboxOptions();
 
-  var linkResult = await apiCall({ action: 'getAudienceTagLinks', audience_id: row.audience_id });
+  // ⚠️ 效能優化：這兩個呼叫互不依賴，改用 Promise.all 平行處理
+  var results = await Promise.all([
+    _loadAudienceTagCheckboxOptions(),
+    apiCall({ action: 'getAudienceTagLinks', audience_id: row.audience_id })
+  ]);
+  var linkResult = results[1];
+
   if (linkResult.success) {
     linkResult.data.forEach(function(tagId) {
       var cb = document.querySelector('.audienceTagCheckbox[value="' + tagId + '"]');
@@ -452,4 +468,41 @@ async function doDeleteAudience(audienceId, index) {
       showToast(result.message, 'error');
     }
   });
+}
+
+// ── 查看成員（唯讀）──
+async function openMembersModal(audienceId, name) {
+  document.getElementById('membersModalTitle').textContent = '受眾：' + name;
+  document.getElementById('membersListWrap').innerHTML = '<div class="loading">載入中...</div>';
+  openModal('membersModal');
+
+  var result = await apiCall({ action: 'getAudienceMembers', audience_id: audienceId });
+  var wrap = document.getElementById('membersListWrap');
+
+  if (!result.success) {
+    wrap.innerHTML = '<p class="empty">載入失敗：' + escHtml(result.message) + '</p>';
+    return;
+  }
+
+  if (result.data.length === 0) {
+    wrap.innerHTML = '<p class="empty">此受眾目前沒有成員</p>';
+    return;
+  }
+
+  var rows = result.data.map(function(m) {
+    return '<tr>' +
+      '<td>' + escHtml(m.display_name) + '</td>' +
+      '<td class="uid-cell">' + escHtml(m.user_id) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  wrap.innerHTML =
+    '<table>' +
+      '<thead><tr><th>顯示名稱</th><th>UserID</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table>';
+}
+
+function closeMembersModal() {
+  closeModal('membersModal');
 }
