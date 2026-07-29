@@ -1,9 +1,8 @@
 // ============================================================
 // js/pages/tag.js
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / renderPager
-// ⚠️ 效能優化：getAudienceList 改為打開 Modal 時才呼叫（延遲載入），
-//    不擋標籤列表頁的載入速度
-// ⚠️ Modal 已加 max-height:85vh + overflow-y:auto，避免勾選清單過長卡死畫面
+// ⚠️ 本次新增：使用人數欄位顯示，使用人數>0時隱藏刪除按鈕（避免無效的刪除嘗試往返）
+// ⚠️ 效能優化：editTag 打開Modal後的兩個互不依賴API改用Promise.all平行呼叫
 // ============================================================
 
 var _tagAll      = [];
@@ -172,16 +171,21 @@ function _renderTagTable() {
 
   var rows = page.map(function(row) {
     var rowJson = encodeURIComponent(JSON.stringify(row));
+    var usageCount = row.usage_count || 0;
+    // ⚠️ 使用人數>0時隱藏刪除按鈕，避免使用者點了才收到後端拒絕的錯誤訊息（後端仍保留同樣的檢查作為最終防線）
+    var deleteBtn = usageCount === 0
+      ? '<button class="btn btn-danger" onclick="doDeleteTag(\'' + escHtml(row.tag_id) + '\')">刪除</button>'
+      : '';
     return '<tr>' +
       '<td>' + escHtml(row.tag_name) + '</td>' +
       '<td>' + (row.category ? escHtml(row.category) : '-') + '</td>' +
       '<td>' + (row.keyword  ? escHtml(row.keyword)  : '-') + '</td>' +
       '<td>' + (row.status === 'active' ? '啟用' : '停用') + '</td>' +
+      '<td>' + usageCount + ' 人</td>' +
       '<td style="white-space:nowrap;">' +
         '<button class="btn btn-edit" ' +
           'onclick="editTag(\'' + escHtml(row.tag_id) + '\',\'' + rowJson + '\')">編輯</button> ' +
-        '<button class="btn btn-danger" ' +
-          'onclick="doDeleteTag(\'' + escHtml(row.tag_id) + '\')">刪除</button>' +
+        deleteBtn +
       '</td>' +
     '</tr>';
   }).join('');
@@ -193,6 +197,7 @@ function _renderTagTable() {
         '<th>分類</th>' +
         '<th>觸發關鍵字</th>' +
         '<th>狀態</th>' +
+        '<th>使用人數</th>' +
         '<th>操作</th>' +
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
@@ -244,9 +249,14 @@ async function editTag(tagId, rowJson) {
   document.getElementById('tagAudienceSearch').value = '';
 
   openModal('tagModal');
-  await _loadTagAudienceCheckboxOptions();
 
-  var linkResult = await apiCall({ action: 'getTagAudienceLinks', tag_id: tagId });
+  // ⚠️ 效能優化：這兩個呼叫互不依賴，改用 Promise.all 平行處理
+  var results = await Promise.all([
+    _loadTagAudienceCheckboxOptions(),
+    apiCall({ action: 'getTagAudienceLinks', tag_id: tagId })
+  ]);
+  var linkResult = results[1];
+
   if (linkResult.success) {
     linkResult.data.forEach(function(audienceId) {
       var cb = document.querySelector('.tagAudienceCheckbox[value="' + audienceId + '"]');
