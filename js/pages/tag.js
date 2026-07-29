@@ -172,19 +172,29 @@ function _renderTagTable() {
   var rows = page.map(function(row) {
     var rowJson = encodeURIComponent(JSON.stringify(row));
     var usageCount = row.usage_count || 0;
+    var isActive = row.status === 'active';
+
     // ⚠️ 使用人數>0時隱藏刪除按鈕，避免使用者點了才收到後端拒絕的錯誤訊息（後端仍保留同樣的檢查作為最終防線）
     var deleteBtn = usageCount === 0
-      ? '<button class="btn btn-danger" onclick="doDeleteTag(\'' + escHtml(row.tag_id) + '\')">刪除</button>'
+      ? '<button class="btn btn-danger" onclick="doDeleteTag(\'' + escHtml(row.tag_id) + '\')">刪除</button> '
       : '';
+
+    var toggleBtn = isActive
+      ? '<button class="btn" style="background:#fdecea;color:#c0392b;" ' +
+          'onclick="doToggleTagStatus(\'' + escHtml(row.tag_id) + '\')">停用</button> '
+      : '<button class="btn" style="background:#eafaf1;color:#06C755;" ' +
+          'onclick="doToggleTagStatus(\'' + escHtml(row.tag_id) + '\')">啟用</button> ';
+
     return '<tr>' +
       '<td>' + escHtml(row.tag_name) + '</td>' +
       '<td>' + (row.category ? escHtml(row.category) : '-') + '</td>' +
       '<td>' + (row.keyword  ? escHtml(row.keyword)  : '-') + '</td>' +
-      '<td>' + (row.status === 'active' ? '啟用' : '停用') + '</td>' +
+      '<td>' + (isActive ? '啟用' : '停用') + '</td>' +
       '<td>' + usageCount + ' 人</td>' +
       '<td style="white-space:nowrap;">' +
         '<button class="btn btn-edit" ' +
           'onclick="editTag(\'' + escHtml(row.tag_id) + '\',\'' + rowJson + '\')">編輯</button> ' +
+        toggleBtn +
         deleteBtn +
       '</td>' +
     '</tr>';
@@ -202,6 +212,16 @@ function _renderTagTable() {
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table>';
+}
+
+async function doToggleTagStatus(tagId) {
+  var result = await apiCall({ action: 'toggleTagStatus', tag_id: tagId });
+  if (result.success) {
+    showToast(result.data.message, 'success');
+    loadTag();
+  } else {
+    showToast(result.message, 'error');
+  }
 }
 
 function _renderTagPager() {
