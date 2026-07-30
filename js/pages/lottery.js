@@ -1,6 +1,10 @@
 // js/pages/lottery.js
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun
 // ⚠️ 修正：原版樣板字串插值未轉義使用者輸入（活動名稱/姓名等），已全面補上 escHtml
+// ⚠️ 2026-07-30 修正：三個前後端參數不對稱 bug
+//   1. 刪除活動：改傳 row_index（API 端需要，activity_name 不足以精準定位列）
+//   2. 開獎人數：draw_count → winner_count（對齊 API 端實際讀取的參數名）
+//   3. B型機率抽獎 prize_pool：送出前先 JSON.stringify（API 端用字串接住再 JSON.parse）
 
 var lotteryList = [];
 var lotteryLogData = [];
@@ -27,7 +31,7 @@ function renderLotteryList() {
       '<td>' +
         '<button class="btn btn-edit" onclick="viewLotteryLog(\'' + escHtml(a.activity_name) + '\')">記錄</button>' +
         (a.type === 'C' ? ' <button class="btn btn-primary" onclick="openDrawModal(\'' + escHtml(a.activity_name) + '\')">開獎</button>' : '') +
-        ' <button class="btn btn-danger" onclick="deleteLotteryActivity(\'' + escHtml(a.activity_name) + '\')">刪除</button>' +
+        ' <button class="btn btn-danger" onclick="deleteLotteryActivity(' + a.row_index + ', \'' + escHtml(a.activity_name) + '\')">刪除</button>' +
       '</td>' +
     '</tr>';
   }).join('');
@@ -172,7 +176,7 @@ async function submitLottery() {
     start_time:    document.getElementById('l-start').value,
     end_time:      document.getElementById('l-end').value,
     limit:         Number(document.getElementById('l-limit').value) || 0,
-    prize_pool:    prizePool,
+    prize_pool:    JSON.stringify(prizePool),
     prize_name:    prizeNameEl ? prizeNameEl.value : ''
   };
 
@@ -241,7 +245,7 @@ async function executeDraw(activityName) {
   var res = await apiCall({
     action:        'drawLottery',
     activity_name: activityName,
-    draw_count:    drawCount
+    winner_count:  drawCount
   });
 
   if (res.success) {
@@ -255,9 +259,9 @@ async function executeDraw(activityName) {
   }
 }
 
-async function deleteLotteryActivity(activityName) {
+async function deleteLotteryActivity(rowIndex, activityName) {
   await confirmAndRun('確定刪除活動「' + activityName + '」？', async function() {
-    var res = await apiCall({ action: 'deleteLottery', activity_name: activityName });
+    var res = await apiCall({ action: 'deleteLottery', row_index: rowIndex });
     if (res.success) {
       showToast('已刪除');
       loadLottery();
