@@ -20,7 +20,7 @@ async function loadLottery() {
 }
 
 function renderLotteryList() {
-  var typeLabel = { A: '搶紅包', B: '機率抽獎', C: '報名開獎' };
+  var typeLabel = { A: '搶紅包', B: '機率抽獎', C: '報名開獎', D: '點數紅包' };
   var statusLabel = { active: '進行中', disabled: '停用' };
 
   var rows = lotteryList.map(function(a) {
@@ -80,6 +80,7 @@ function openLotteryCreateModal() {
             '<option value="A">A 搶紅包（先到先得）</option>' +
             '<option value="B">B 機率抽獎（即時結果）</option>' +
             '<option value="C">C 報名開獎（手動抽出）</option>' +
+            '<option value="D">D 點數紅包（搶點數池）</option>' +
           '</select>' +
         '</div>' +
         '<div class="form-group">' +
@@ -183,7 +184,7 @@ function _prefillLotteryTypeFields(activity) {
     var container = document.getElementById('prize-pool-rows');
     if (!container || pool.length === 0) return;
 
-    container.innerHTML = ''; // 清空 renderLotteryTypeFields 預設產生的空白列，改用既有資料填滿
+    container.innerHTML = '';
     pool.forEach(function(p) {
       var div = document.createElement('div');
       div.className = 'prize-row';
@@ -195,6 +196,27 @@ function _prefillLotteryTypeFields(activity) {
         '<button onclick="this.parentElement.remove()" style="padding:8px;border:none;background:#fff0f0;color:#e53e3e;border-radius:6px;cursor:pointer">✕</button>';
       container.appendChild(div);
     });
+    return;
+  }
+
+  if (activity.type === 'D') {
+    var totalEl = document.getElementById('l-total-points');
+    var minEl   = document.getElementById('l-min-points');
+    var maxEl   = document.getElementById('l-max-points');
+    if (totalEl) totalEl.value = activity.total_points || 0;
+    if (minEl)   minEl.value   = activity.min_points   || 1;
+    if (maxEl)   maxEl.value   = activity.max_points   || 10;
+
+    // ⚠️ 隱藏欄位保存目前實際剩餘點數，submitLottery 存檔時會原封不動送回去，
+    // 不受這次編輯改動 total_points 影響，避免點數池被意外重置
+    var fieldsContainer = document.getElementById('lottery-type-fields');
+    if (fieldsContainer) {
+      var hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.id = 'l-remain-points';
+      hidden.value = activity.remain_points || 0;
+      fieldsContainer.appendChild(hidden);
+    }
   }
 }
 
@@ -226,6 +248,22 @@ function renderLotteryTypeFields() {
       '<div class="form-group">' +
         '<label>獎品名稱</label>' +
         '<input id="l-prize-name" type="text" placeholder="例：AirPods">' +
+      '</div>';
+ } else if (type === 'D') {
+    html =
+      '<div class="form-group">' +
+        '<label>總點數池</label>' +
+        '<input id="l-total-points" type="number" placeholder="例：1000" min="0">' +
+      '</div>' +
+      '<div class="form-row">' +
+        '<div class="form-group half">' +
+          '<label>每次最小點數</label>' +
+          '<input id="l-min-points" type="number" placeholder="例：1" min="0">' +
+        '</div>' +
+        '<div class="form-group half">' +
+          '<label>每次最大點數</label>' +
+          '<input id="l-max-points" type="number" placeholder="例：10" min="0">' +
+        '</div>' +
       '</div>';
   }
 
@@ -275,6 +313,22 @@ async function submitLottery(rowIndex) {
     prize_name:    prizeNameEl ? prizeNameEl.value : ''
   };
 
+  if (type === 'D') {
+    var totalPoints = Number(document.getElementById('l-total-points').value) || 0;
+    var minPoints   = Number(document.getElementById('l-min-points').value) || 1;
+    var maxPoints   = Number(document.getElementById('l-max-points').value) || 10;
+
+    // ⚠️ 關鍵：remain_points（剩餘點數池）只有「新增活動」時才等於 total_points，
+    // 「編輯既有活動」時絕對不能直接用 total_points 覆蓋，否則會把使用者已經
+    // 搶掉的點數憑空補回去，等於偷偷重置了點數池。編輯模式下，remain_points
+    // 要沿用 openLotteryEditModal 預填時記下的既有值（隱藏欄位 l-remain-points）。
+    var remainEl = document.getElementById('l-remain-points');
+    params.total_points  = totalPoints;
+    params.min_points    = minPoints;
+    params.max_points    = maxPoints;
+    params.remain_points = remainEl ? Number(remainEl.value) : totalPoints;
+  }
+
   if (rowIndex) params.row_index = rowIndex;
 
   if (!params.activity_name || !params.keyword) { showToast('請填寫必要欄位', 'error'); return; }
@@ -294,7 +348,16 @@ async function viewLotteryLog(activityName) {
   var logs = (res.success && res.data && res.data.list) ? res.data.list : [];
 
   var rows = logs.map(function(l) {
-    var resultText = l.result === 'won' ? '🎉 中獎' : l.result === 'entered' ? '📝 報名' : '未中獎';
+    var resultText;
+    if (l.result === 'entered') {
+      resultText = '📝 報名';
+    } else if (l.result.indexOf('won:') === 0) {
+      resultText = '🧧 搶到 ' + l.result.split(':')[1] + ' 點';
+    } else if (l.result === 'won') {
+      resultText = '🎉 中獎';
+    } else {
+      resultText = '未中獎';
+    }
     return '<tr>' +
       '<td>' + escHtml(formatDate(l.time)) + '</td>' +
       '<td>' + escHtml(l.display_name) + '</td>' +
