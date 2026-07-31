@@ -73,7 +73,6 @@ function renderLotteryList() {
     '<div id="lottery-modal"></div>'
   );
 }
-
 // ── 啟用/停用切換 ──
 // ⚠️ 2026-07-31 修正：原版直接用瀏覽器裡 lotteryList 的舊資料回填其他欄位，
 // 如果該活動在頁面載入之後有任何欄位持續變動（例如 D 型 remain_points
