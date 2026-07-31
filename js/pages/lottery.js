@@ -66,14 +66,16 @@ function renderLotteryList() {
   );
 }
 
-// ── 新增：啟用/停用切換 ──
-// ⚠️ saveLottery 是整列覆蓋寫入，不是單欄更新，所以這裡必須把該筆活動
-// 目前完整資料都帶上，只把 status 換成新值，其他原封不動送回去，
-// 否則其他欄位會被空字串蓋掉。remain_points 這裡直接取自 lotteryList
-// 現有值（getLotteryList 回傳的即時值），不是使用者重新輸入的，
-// 不會有「編輯時把剩餘點數池重置」的風險。
+// ── 啟用/停用切換 ──
+// ⚠️ 2026-07-31 修正：原版直接用瀏覽器裡 lotteryList 的舊資料回填其他欄位，
+// 如果該活動在頁面載入之後有任何欄位持續變動（例如 D 型 remain_points
+// 因為使用者持續搶紅包而不斷減少），舊資料會蓋掉這期間發生的所有變動。
+// 改為切換前先重新呼叫 getLotteryList 取得當下最新資料，避免蓋掉即時進度。
 async function toggleLotteryStatus(rowIndex) {
-  var matches = lotteryList.filter(function(a) { return a.row_index === rowIndex; });
+  // 先重新抓一次最新資料，不相信瀏覽器手上可能過時的 lotteryList
+  var freshRes = await apiCall({ action: 'getLotteryList' });
+  var freshList = (freshRes.success && freshRes.data && freshRes.data.list) ? freshRes.data.list : [];
+  var matches = freshList.filter(function(a) { return a.row_index === rowIndex; });
   var activity = matches[0];
   if (!activity) {
     showToast('找不到此活動資料，請重新整理頁面再試一次', 'error');
