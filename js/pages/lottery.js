@@ -136,6 +136,7 @@ function openLotteryEditModal(rowIndex) {
             '<option value="A"' + (activity.type === 'A' ? ' selected' : '') + '>A 搶紅包（先到先得）</option>' +
             '<option value="B"' + (activity.type === 'B' ? ' selected' : '') + '>B 機率抽獎（即時結果）</option>' +
             '<option value="C"' + (activity.type === 'C' ? ' selected' : '') + '>C 報名開獎（手動抽出）</option>' +
+            '<option value="D"' + (activity.type === 'D' ? ' selected' : '') + '>D 點數紅包（搶點數池）</option>' +
           '</select>' +
         '</div>' +
         '<div class="form-group">' +
