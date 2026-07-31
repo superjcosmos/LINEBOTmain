@@ -20,12 +20,14 @@ function renderLotteryList() {
   var statusLabel = { active: '進行中', disabled: '停用' };
 
   var rows = lotteryList.map(function(a) {
+    var pendingText = a.type === 'C' ? escHtml(a.pending_count || 0) : '-';
     return '<tr>' +
       '<td>' + escHtml(a.activity_name) + '</td>' +
       '<td><span class="badge badge-' + escHtml(a.type.toLowerCase()) + '">' + escHtml(typeLabel[a.type]) + '</span></td>' +
       '<td>' + escHtml(a.keyword) + '</td>' +
       '<td>' + escHtml(a.start_time || '-') + ' ~ ' + escHtml(a.end_time || '-') + '</td>' +
       '<td>' + escHtml(a.limit || '無限') + '</td>' +
+      '<td>' + pendingText + '</td>' +
       '<td>' + escHtml(a.winner_count || 0) + '</td>' +
       '<td>' + escHtml(statusLabel[a.status] || a.status) + '</td>' +
       '<td>' +
@@ -46,11 +48,11 @@ function renderLotteryList() {
         '<thead>' +
           '<tr>' +
             '<th>活動名稱</th><th>類型</th><th>關鍵字</th><th>時段</th>' +
-            '<th>名額</th><th>得獎數</th><th>狀態</th><th>操作</th>' +
+            '<th>名額</th><th>報名中</th><th>得獎數</th><th>狀態</th><th>操作</th>' +
           '</tr>' +
         '</thead>' +
         '<tbody id="lottery-table-body">' +
-          (rows || '<tr><td colspan="8" class="empty">尚無活動</td></tr>') +
+          (rows || '<tr><td colspan="9" class="empty">尚無活動</td></tr>') +
         '</tbody>' +
       '</table>' +
     '</div>' +
