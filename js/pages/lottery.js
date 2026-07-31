@@ -1,14 +1,13 @@
 // js/pages/lottery.js
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun
-// ⚠️ 修正：原版樣板字串插值未轉義使用者輸入（活動名稱/姓名等），已全面補上 escHtml
-// ⚠️ 2026-07-31 修正：三個前後端參數不對稱 bug
-//   1. 刪除活動：改傳 row_index（API 端需要，activity_name 不足以精準定位列）
-//   2. 開獎人數：draw_count → winner_count（對齊 API 端實際讀取的參數名）
-//   3. B型機率抽獎 prize_pool：送出前先 JSON.stringify（API 端用字串接住再 JSON.parse）
-// ⚠️ 2026-07-31 新增：編輯既有活動功能
-//   - submitLottery 改成同時支援新增/編輯，差別只在有沒有帶 row_index
-//   - 編輯模式下「類型」欄位鎖定不可改，避免已累積的 winner_count/報名記錄語意對不上
-//   - B型編輯時，既有 prize_pool 會解析回表單列表預填，而非只顯示第一列空白
+// ⚠️ 2026-07-31 累計修正/新增：
+//   1. 刪除活動改傳 row_index；開獎人數 draw_count → winner_count；
+//      B型 prize_pool 送出前 JSON.stringify
+//   2. 新增編輯活動功能
+//   3. 新增報名中人數顯示
+//   4. 新增 D 型（點數紅包）
+//   5. 新增「每人可參加次數」設定欄位（O欄 max_per_user）
+//   6. 新增啟用/停用活動功能
 
 var lotteryList = [];
 var lotteryLogData = [];
@@ -20,11 +19,12 @@ async function loadLottery() {
 }
 
 function renderLotteryList() {
-  var typeLabel = { A: '搶紅包', B: '機率抽獎', C: '報名開獎', D: '點數紅包' };
+  var typeLabel = { A: '限量搶購', B: '機率抽獎', C: '報名開獎', D: '點數紅包' };
   var statusLabel = { active: '進行中', disabled: '停用' };
 
   var rows = lotteryList.map(function(a) {
     var pendingText = a.type === 'C' ? escHtml(a.pending_count || 0) : '-';
+    var toggleLabel = a.status === 'active' ? '停用' : '啟用';
     return '<tr>' +
       '<td>' + escHtml(a.activity_name) + '</td>' +
       '<td><span class="badge badge-' + escHtml(a.type.toLowerCase()) + '">' + escHtml(typeLabel[a.type]) + '</span></td>' +
@@ -37,6 +37,7 @@ function renderLotteryList() {
       '<td>' +
         '<button class="btn btn-edit" onclick="viewLotteryLog(\'' + escHtml(a.activity_name) + '\')">記錄</button>' +
         ' <button class="btn btn-edit" onclick="openLotteryEditModal(' + a.row_index + ')">編輯</button>' +
+        ' <button class="btn btn-edit" onclick="toggleLotteryStatus(' + a.row_index + ')">' + toggleLabel + '</button>' +
         (a.type === 'C' ? ' <button class="btn btn-primary" onclick="openDrawModal(\'' + escHtml(a.activity_name) + '\')">開獎</button>' : '') +
         ' <button class="btn btn-danger" onclick="deleteLotteryActivity(' + a.row_index + ', \'' + escHtml(a.activity_name) + '\')">刪除</button>' +
       '</td>' +
@@ -65,6 +66,55 @@ function renderLotteryList() {
   );
 }
 
+// ── 新增：啟用/停用切換 ──
+// ⚠️ saveLottery 是整列覆蓋寫入，不是單欄更新，所以這裡必須把該筆活動
+// 目前完整資料都帶上，只把 status 換成新值，其他原封不動送回去，
+// 否則其他欄位會被空字串蓋掉。remain_points 這裡直接取自 lotteryList
+// 現有值（getLotteryList 回傳的即時值），不是使用者重新輸入的，
+// 不會有「編輯時把剩餘點數池重置」的風險。
+async function toggleLotteryStatus(rowIndex) {
+  var matches = lotteryList.filter(function(a) { return a.row_index === rowIndex; });
+  var activity = matches[0];
+  if (!activity) {
+    showToast('找不到此活動資料，請重新整理頁面再試一次', 'error');
+    return;
+  }
+
+  var newStatus = activity.status === 'active' ? 'disabled' : 'active';
+  var confirmMsg = newStatus === 'disabled'
+    ? '確定要停用活動「' + activity.activity_name + '」？停用後使用者輸入關鍵字將不會有任何回應。'
+    : '確定要重新啟用活動「' + activity.activity_name + '」？';
+
+  await confirmAndRun(confirmMsg, async function() {
+    var params = {
+      action:        'saveLottery',
+      row_index:     rowIndex,
+      activity_name: activity.activity_name,
+      type:          activity.type,
+      keyword:       activity.keyword,
+      start_time:    activity.start_time,
+      end_time:      activity.end_time,
+      limit:         activity.limit,
+      status:        newStatus,
+      prize_pool:    activity.prize_pool,
+      prize_name:    activity.prize_name,
+      total_points:  activity.total_points,
+      min_points:    activity.min_points,
+      max_points:    activity.max_points,
+      remain_points: activity.remain_points,
+      max_per_user:  activity.max_per_user
+    };
+
+    var res = await apiCall(params);
+    if (res.success) {
+      showToast(newStatus === 'disabled' ? '已停用' : '已啟用');
+      loadLottery();
+    } else {
+      showToast(res.message || '操作失敗', 'error');
+    }
+  });
+}
+
 function openLotteryCreateModal() {
   setContent('lottery-modal', '' +
     '<div class="modal-overlay show">' +
@@ -77,7 +127,7 @@ function openLotteryCreateModal() {
         '<div class="form-group">' +
           '<label>類型</label>' +
           '<select id="l-type" onchange="renderLotteryTypeFields()">' +
-            '<option value="A">A 搶紅包（先到先得）</option>' +
+            '<option value="A">A 限量搶購（先到先得）</option>' +
             '<option value="B">B 機率抽獎（即時結果）</option>' +
             '<option value="C">C 報名開獎（手動抽出）</option>' +
             '<option value="D">D 點數紅包（搶點數池）</option>' +
@@ -101,6 +151,10 @@ function openLotteryCreateModal() {
           '<label>名額上限（0 = 無限）</label>' +
           '<input id="l-limit" type="number" value="0" min="0">' +
         '</div>' +
+        '<div class="form-group">' +
+          '<label>每人可參加次數（留空 = 限1次，0 = 不限）</label>' +
+          '<input id="l-max-per-user" type="number" placeholder="留空 = 限1次" min="0">' +
+        '</div>' +
         '<div id="lottery-type-fields"></div>' +
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeLotteryModal()">取消</button>' +
@@ -112,8 +166,6 @@ function openLotteryCreateModal() {
   renderLotteryTypeFields();
 }
 
-// ── 新增：編輯既有活動 ──
-// rowIndex 對應 lotteryList 裡的 a.row_index（getLotteryList 回傳的 Sheet 實際列號）
 function openLotteryEditModal(rowIndex) {
   var matches = lotteryList.filter(function(a) { return a.row_index === rowIndex; });
   var activity = matches[0];
@@ -133,7 +185,7 @@ function openLotteryEditModal(rowIndex) {
         '<div class="form-group">' +
           '<label>類型（建立後不可變更）</label>' +
           '<select id="l-type" disabled>' +
-            '<option value="A"' + (activity.type === 'A' ? ' selected' : '') + '>A 搶紅包（先到先得）</option>' +
+            '<option value="A"' + (activity.type === 'A' ? ' selected' : '') + '>A 限量搶購（先到先得）</option>' +
             '<option value="B"' + (activity.type === 'B' ? ' selected' : '') + '>B 機率抽獎（即時結果）</option>' +
             '<option value="C"' + (activity.type === 'C' ? ' selected' : '') + '>C 報名開獎（手動抽出）</option>' +
             '<option value="D"' + (activity.type === 'D' ? ' selected' : '') + '>D 點數紅包（搶點數池）</option>' +
@@ -157,6 +209,10 @@ function openLotteryEditModal(rowIndex) {
           '<label>名額上限（0 = 無限）</label>' +
           '<input id="l-limit" type="number" value="' + escHtml(activity.limit || 0) + '" min="0">' +
         '</div>' +
+        '<div class="form-group">' +
+          '<label>每人可參加次數（留空 = 限1次，0 = 不限）</label>' +
+          '<input id="l-max-per-user" type="number" value="' + escHtml(activity.max_per_user || '') + '" placeholder="留空 = 限1次" min="0">' +
+        '</div>' +
         '<div id="lottery-type-fields"></div>' +
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeLotteryModal()">取消</button>' +
@@ -170,7 +226,6 @@ function openLotteryEditModal(rowIndex) {
   _prefillLotteryTypeFields(activity);
 }
 
-// ── 新增：編輯模式下，把既有的類型專屬欄位值（獎品名稱 / B型獎品清單）填回表單 ──
 function _prefillLotteryTypeFields(activity) {
   if (activity.type === 'A' || activity.type === 'C') {
     var prizeNameEl = document.getElementById('l-prize-name');
@@ -208,8 +263,6 @@ function _prefillLotteryTypeFields(activity) {
     if (minEl)   minEl.value   = activity.min_points   || 1;
     if (maxEl)   maxEl.value   = activity.max_points   || 10;
 
-    // ⚠️ 隱藏欄位保存目前實際剩餘點數，submitLottery 存檔時會原封不動送回去，
-    // 不受這次編輯改動 total_points 影響，避免點數池被意外重置
     var fieldsContainer = document.getElementById('lottery-type-fields');
     if (fieldsContainer) {
       var hidden = document.createElement('input');
@@ -250,7 +303,7 @@ function renderLotteryTypeFields() {
         '<label>獎品名稱</label>' +
         '<input id="l-prize-name" type="text" placeholder="例：AirPods">' +
       '</div>';
- } else if (type === 'D') {
+  } else if (type === 'D') {
     html =
       '<div class="form-group">' +
         '<label>總點數池</label>' +
@@ -284,7 +337,6 @@ function addPrizeRow() {
   container.appendChild(div);
 }
 
-// ── submitLottery：rowIndex 有值＝編輯（saveLottery 會覆蓋該列）；無值＝新增 ──
 async function submitLottery(rowIndex) {
   var type = document.getElementById('l-type').value;
   var prizePool = [];
@@ -310,6 +362,7 @@ async function submitLottery(rowIndex) {
     start_time:    document.getElementById('l-start').value,
     end_time:      document.getElementById('l-end').value,
     limit:         Number(document.getElementById('l-limit').value) || 0,
+    max_per_user:  document.getElementById('l-max-per-user').value,
     prize_pool:    JSON.stringify(prizePool),
     prize_name:    prizeNameEl ? prizeNameEl.value : ''
   };
@@ -319,10 +372,6 @@ async function submitLottery(rowIndex) {
     var minPoints   = Number(document.getElementById('l-min-points').value) || 1;
     var maxPoints   = Number(document.getElementById('l-max-points').value) || 10;
 
-    // ⚠️ 關鍵：remain_points（剩餘點數池）只有「新增活動」時才等於 total_points，
-    // 「編輯既有活動」時絕對不能直接用 total_points 覆蓋，否則會把使用者已經
-    // 搶掉的點數憑空補回去，等於偷偷重置了點數池。編輯模式下，remain_points
-    // 要沿用 openLotteryEditModal 預填時記下的既有值（隱藏欄位 l-remain-points）。
     var remainEl = document.getElementById('l-remain-points');
     params.total_points  = totalPoints;
     params.min_points    = minPoints;
