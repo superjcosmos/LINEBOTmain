@@ -25,19 +25,27 @@ function renderLotteryList() {
   var rows = lotteryList.map(function(a) {
     var pendingText = a.type === 'C' ? escHtml(a.pending_count || 0) : '-';
     var toggleLabel = a.status === 'active' ? '停用' : '啟用';
+    var toggleClass = a.status === 'active' ? 'btn-danger' : 'btn-primary';
+
+    // ⚠️ 新增：D型顯示「剩餘/總點數池」取代通用的「名額」欄位，
+    // 因為D型沒有「limit」這個概念（沒有人數上限，只有點數池上限）
+    var limitOrPointsText = a.type === 'D'
+      ? escHtml(a.remain_points || 0) + ' / ' + escHtml(a.total_points || 0) + ' 點'
+      : escHtml(a.limit || '無限');
+
     return '<tr>' +
       '<td>' + escHtml(a.activity_name) + '</td>' +
       '<td><span class="badge badge-' + escHtml(a.type.toLowerCase()) + '">' + escHtml(typeLabel[a.type]) + '</span></td>' +
       '<td>' + escHtml(a.keyword) + '</td>' +
       '<td>' + escHtml(a.start_time || '-') + ' ~ ' + escHtml(a.end_time || '-') + '</td>' +
-      '<td>' + escHtml(a.limit || '無限') + '</td>' +
+      '<td>' + limitOrPointsText + '</td>' +
       '<td>' + pendingText + '</td>' +
       '<td>' + escHtml(a.winner_count || 0) + '</td>' +
       '<td>' + escHtml(statusLabel[a.status] || a.status) + '</td>' +
       '<td>' +
         '<button class="btn btn-edit" onclick="viewLotteryLog(\'' + escHtml(a.activity_name) + '\')">記錄</button>' +
         ' <button class="btn btn-edit" onclick="openLotteryEditModal(' + a.row_index + ')">編輯</button>' +
-        ' <button class="btn btn-edit" onclick="toggleLotteryStatus(' + a.row_index + ')">' + toggleLabel + '</button>' +
+        ' <button class="' + toggleClass + '" onclick="toggleLotteryStatus(' + a.row_index + ')">' + toggleLabel + '</button>' +
         (a.type === 'C' ? ' <button class="btn btn-primary" onclick="openDrawModal(\'' + escHtml(a.activity_name) + '\')">開獎</button>' : '') +
         ' <button class="btn btn-danger" onclick="deleteLotteryActivity(' + a.row_index + ', \'' + escHtml(a.activity_name) + '\')">刪除</button>' +
       '</td>' +
@@ -54,7 +62,7 @@ function renderLotteryList() {
         '<thead>' +
           '<tr>' +
             '<th>活動名稱</th><th>類型</th><th>關鍵字</th><th>時段</th>' +
-            '<th>名額</th><th>報名中</th><th>得獎數</th><th>狀態</th><th>操作</th>' +
+            '<th>名額 / 點數池</th><th>報名中</th><th>得獎數</th><th>狀態</th><th>操作</th>' +
           '</tr>' +
         '</thead>' +
         '<tbody id="lottery-table-body">' +
