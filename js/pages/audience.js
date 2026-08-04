@@ -3,6 +3,9 @@
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / renderPager
 // ⚠️ 本次新增：查看成員功能（唯讀清單）
 // ⚠️ 效能優化：editAudience 打開Modal後的兩個互不依賴API改用Promise.all平行呼叫
+// ⚠️ 2026-07-31 新增：受眾ID欄位顯示（供小遊戲等其他功能查詢）
+// ⚠️ 2026-07-31 修正：createModal / membersModal 改用 .modal-scrollable class
+//    取代原本各自重複的 inline style="max-height:85vh;overflow-y:auto;"
 // ============================================================
 
 var _audienceAll      = [];
@@ -76,7 +79,7 @@ function _buildAudienceShell() {
     '</div>' +
 
     '<div class="modal-overlay" id="createModal">' +
-      '<div class="modal" style="max-height:85vh;overflow-y:auto;">' +
+      '<div class="modal modal-scrollable">' +
         '<h3 id="audienceModalTitle">建立受眾</h3>' +
 
         '<div class="form-group">' +
@@ -150,7 +153,7 @@ function _buildAudienceShell() {
     '</div>' +
 
     '<div class="modal-overlay" id="membersModal">' +
-      '<div class="modal" style="max-height:85vh;overflow-y:auto;">' +
+      '<div class="modal modal-scrollable">' +
         '<h3>查看成員</h3>' +
         '<p id="membersModalTitle" style="color:#888;font-size:13px;margin-bottom:12px;"></p>' +
         '<div id="membersListWrap" style="max-height:400px;overflow-y:auto;"></div>' +
@@ -161,7 +164,6 @@ function _buildAudienceShell() {
     '</div>';
 }
 
-// ── 延遲載入：只有打開 Modal 時才呼叫 getTagList，不擋列表頁載入速度 ──
 async function _loadAudienceTagCheckboxOptions() {
   var listEl = document.getElementById('audienceTagCheckList');
   listEl.innerHTML = '<p style="color:#999;font-size:13px;margin:0;">載入標籤中...</p>';
@@ -244,7 +246,6 @@ function _renderAudienceTable() {
     var rowJson = encodeURIComponent(JSON.stringify(row));
     return '<tr>' +
       '<td>' + escHtml(row.name) + '</td>' +
-      // ⚠️ 2026-07-31 新增：顯示受眾ID，供小遊戲「連結受眾ID」等其他功能查詢複製使用
       '<td class="uid-cell" title="點擊可全選複製" onclick="_selectAudienceIdText(this)">' + escHtml(row.audience_id) + '</td>' +
       '<td>' + (row.keyword ? escHtml(row.keyword) : '-') + '</td>' +
       '<td>' + (row.count || 0) + ' 人</td>' +
@@ -278,9 +279,6 @@ function _renderAudienceTable() {
     '</table>';
 }
 
-// ⚠️ 2026-07-31 新增：點擊受眾ID儲存格時全選文字，方便使用者手動複製（Ctrl+C）
-// 不使用 navigator.clipboard 直接寫入剪貼簿，避免引入新的瀏覽器API依賴模式，
-// 用瀏覽器原生的文字選取行為即可達成「方便複製」的目的
 function _selectAudienceIdText(cell) {
   var range = document.createRange();
   range.selectNodeContents(cell);
@@ -339,7 +337,6 @@ async function editAudience(index, rowJson) {
 
   openModal('createModal');
 
-  // ⚠️ 效能優化：這兩個呼叫互不依賴，改用 Promise.all 平行處理
   var results = await Promise.all([
     _loadAudienceTagCheckboxOptions(),
     apiCall({ action: 'getAudienceTagLinks', audience_id: row.audience_id })
@@ -484,7 +481,6 @@ async function doDeleteAudience(audienceId, index) {
   });
 }
 
-// ── 查看成員（唯讀）──
 async function openMembersModal(audienceId, name) {
   document.getElementById('membersModalTitle').textContent = '受眾：' + name;
   document.getElementById('membersListWrap').innerHTML = '<div class="loading">載入中...</div>';
