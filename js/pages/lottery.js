@@ -284,6 +284,14 @@ function _prefillLotteryTypeFields(activity) {
   }
 }
 
+// ⚠️ 2026-07-31 新增：小遊戲活動一鍵前往推播管理，並預選已連結的受眾
+// 純粹是導航 + 預選提示，到推播頁面後仍可自由改選其他受眾，不鎖定
+function goToBroadcastForActivity(audienceId) {
+  window._pendingBroadcastAudienceId = audienceId;
+  loadBroadcast();
+}
+
+
 function renderLotteryTypeFields() {
   var type = document.getElementById('l-type').value;
   var html = '';
