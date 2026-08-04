@@ -129,7 +129,7 @@ async function toggleLotteryStatus(rowIndex) {
 function openLotteryCreateModal() {
   setContent('lottery-modal', '' +
     '<div class="modal-overlay show">' +
-      '<div class="modal">' +
+      '<div class="modal" style="max-height:85vh;overflow-y:auto;">' +
         '<h3>新增抽獎活動</h3>' +
         '<div class="form-group">' +
           '<label>活動名稱</label>' +
