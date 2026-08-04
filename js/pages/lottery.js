@@ -8,6 +8,9 @@
 //   4. 新增 D 型（點數紅包）
 //   5. 新增「每人可參加次數」設定欄位（O欄 max_per_user）
 //   6. 新增啟用/停用活動功能
+//   7. 新增「連結受眾ID」欄位（P欄 linked_audience_id）+ 前往推播捷徑
+//   8. 修正 submitLottery 內殘留的重複 params 宣告（死碼，已移除）
+//   9. 所有 Modal 統一改用 .modal-scrollable class（取代 inline style）
 
 var lotteryList = [];
 var lotteryLogData = [];
@@ -27,8 +30,6 @@ function renderLotteryList() {
     var toggleLabel = a.status === 'active' ? '停用' : '啟用';
     var toggleClass = a.status === 'active' ? 'btn-danger' : 'btn-primary';
 
-    // ⚠️ 新增：D型顯示「剩餘/總點數池」取代通用的「名額」欄位，
-    // 因為D型沒有「limit」這個概念（沒有人數上限，只有點數池上限）
     var limitOrPointsText = a.type === 'D'
       ? escHtml(a.remain_points || 0) + ' / ' + escHtml(a.total_points || 0) + ' 點'
       : escHtml(a.limit || '無限');
@@ -74,13 +75,11 @@ function renderLotteryList() {
     '<div id="lottery-modal"></div>'
   );
 }
+
 // ── 啟用/停用切換 ──
-// ⚠️ 2026-07-31 修正：原版直接用瀏覽器裡 lotteryList 的舊資料回填其他欄位，
-// 如果該活動在頁面載入之後有任何欄位持續變動（例如 D 型 remain_points
-// 因為使用者持續搶紅包而不斷減少），舊資料會蓋掉這期間發生的所有變動。
-// 改為切換前先重新呼叫 getLotteryList 取得當下最新資料，避免蓋掉即時進度。
+// ⚠️ 切換前先重新呼叫 getLotteryList 取得當下最新資料，避免瀏覽器手上過時的
+// lotteryList 蓋掉這期間發生的即時變動（例如 D 型 remain_points 持續遞減）
 async function toggleLotteryStatus(rowIndex) {
-  // 先重新抓一次最新資料，不相信瀏覽器手上可能過時的 lotteryList
   var freshRes = await apiCall({ action: 'getLotteryList' });
   var freshList = (freshRes.success && freshRes.data && freshRes.data.list) ? freshRes.data.list : [];
   var matches = freshList.filter(function(a) { return a.row_index === rowIndex; });
@@ -113,7 +112,7 @@ async function toggleLotteryStatus(rowIndex) {
       max_points:    activity.max_points,
       remain_points: activity.remain_points,
       max_per_user:  activity.max_per_user,
-      linked_audience_id: activity.linked_audience_id  // ⚠️ 新增，避免停用/啟用時被清空
+      linked_audience_id: activity.linked_audience_id
     };
 
     var res = await apiCall(params);
@@ -169,7 +168,7 @@ function openLotteryCreateModal() {
         '<div class="form-group">' +
           '<label>連結受眾ID（選填，供前往推播使用）</label>' +
           '<input id="l-linked-audience-id" type="text" placeholder="至「受眾管理」頁面查詢ID">' +
-        '</div>' +     
+        '</div>' +
         '<div id="lottery-type-fields"></div>' +
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeLotteryModal()">取消</button>' +
@@ -231,7 +230,7 @@ function openLotteryEditModal(rowIndex) {
         '<div class="form-group">' +
           '<label>連結受眾ID（選填，供前往推播使用）</label>' +
           '<input id="l-linked-audience-id" type="text" value="' + escHtml(activity.linked_audience_id || '') + '" placeholder="至「受眾管理」頁面查詢ID">' +
-        '</div>' +             
+        '</div>' +
         '<div id="lottery-type-fields"></div>' +
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeLotteryModal()">取消</button>' +
@@ -293,13 +292,12 @@ function _prefillLotteryTypeFields(activity) {
   }
 }
 
-// ⚠️ 2026-07-31 新增：小遊戲活動一鍵前往推播管理，並預選已連結的受眾
+// ⚠️ 小遊戲活動一鍵前往推播管理，並預選已連結的受眾
 // 純粹是導航 + 預選提示，到推播頁面後仍可自由改選其他受眾，不鎖定
 function goToBroadcastForActivity(audienceId) {
   window._pendingBroadcastAudienceId = audienceId;
   loadBroadcast();
 }
-
 
 function renderLotteryTypeFields() {
   var type = document.getElementById('l-type').value;
@@ -364,6 +362,10 @@ function addPrizeRow() {
   container.appendChild(div);
 }
 
+// ⚠️ 修正：原版此函式內有兩個 var params 宣告，第二個在 apiCall 已送出、
+// showToast 已執行之後才出現，是完全不會被執行到的死碼，且內容不完整
+// （缺 max_per_user，D型專屬欄位也沒帶）。已移除第二個宣告，
+// 並把 linked_audience_id 合併進唯一保留的 params 物件裡。
 async function submitLottery(rowIndex) {
   var type = document.getElementById('l-type').value;
   var prizePool = [];
@@ -380,8 +382,6 @@ async function submitLottery(rowIndex) {
     if (totalProb > 100) { showToast('機率總和不能超過 100%', 'error'); return; }
   }
 
-  
-
   var prizeNameEl = document.getElementById('l-prize-name');
   var params = {
     action:        'saveLottery',
@@ -392,6 +392,7 @@ async function submitLottery(rowIndex) {
     end_time:      document.getElementById('l-end').value,
     limit:         Number(document.getElementById('l-limit').value) || 0,
     max_per_user:  document.getElementById('l-max-per-user').value,
+    linked_audience_id: document.getElementById('l-linked-audience-id').value,
     prize_pool:    JSON.stringify(prizePool),
     prize_name:    prizeNameEl ? prizeNameEl.value : ''
   };
@@ -420,20 +421,6 @@ async function submitLottery(rowIndex) {
   } else {
     showToast(res.message || (rowIndex ? '更新失敗' : '建立失敗'), 'error');
   }
-
-  var params = {
-    action:        'saveLottery',
-    activity_name: document.getElementById('l-name').value,
-    type:          type,
-    keyword:       document.getElementById('l-keyword').value,
-    start_time:    document.getElementById('l-start').value,
-    end_time:      document.getElementById('l-end').value,
-    limit:         Number(document.getElementById('l-limit').value) || 0,
-    max_per_user:  document.getElementById('l-max-per-user').value,
-    linked_audience_id: document.getElementById('l-linked-audience-id').value,  // ⚠️ 新增
-    prize_pool:    JSON.stringify(prizePool),
-    prize_name:    prizeNameEl ? prizeNameEl.value : ''
-  };
 }
 
 async function viewLotteryLog(activityName) {
@@ -461,7 +448,7 @@ async function viewLotteryLog(activityName) {
 
   setContent('lottery-modal', '' +
     '<div class="modal-overlay show">' +
-      '<div class="modal">' +
+      '<div class="modal modal-scrollable">' +
         '<h3>' + escHtml(activityName) + ' 參與記錄（' + logs.length + ' 人）</h3>' +
         '<table>' +
           '<thead><tr><th>時間</th><th>姓名</th><th>結果</th><th>狀態</th></tr></thead>' +
@@ -478,7 +465,7 @@ async function viewLotteryLog(activityName) {
 function openDrawModal(activityName) {
   setContent('lottery-modal', '' +
     '<div class="modal-overlay show">' +
-      '<div class="modal">' +
+      '<div class="modal modal-scrollable">' +
         '<h3>開獎：' + escHtml(activityName) + '</h3>' +
         '<div class="form-group">' +
           '<label>抽出人數</label>' +
