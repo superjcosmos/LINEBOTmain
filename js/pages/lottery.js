@@ -227,6 +227,10 @@ function openLotteryEditModal(rowIndex) {
           '<label>每人可參加次數（留空 = 限1次，0 = 不限）</label>' +
           '<input id="l-max-per-user" type="number" value="' + escHtml(activity.max_per_user || '') + '" placeholder="留空 = 限1次" min="0">' +
         '</div>' +
+        '<div class="form-group">' +
+          '<label>連結受眾ID（選填，供前往推播使用）</label>' +
+          '<input id="l-linked-audience-id" type="text" value="' + escHtml(activity.linked_audience_id || '') + '" placeholder="至「受眾管理」頁面查詢ID">' +
+        '</div>' +             
         '<div id="lottery-type-fields"></div>' +
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeLotteryModal()">取消</button>' +
