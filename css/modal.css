@@ -28,3 +28,38 @@
   justify-content: flex-end;
   margin-top: 16px;
 }
+
+/* ── modal.css ── */
+/* ===== Modal ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  width: 480px;
+  max-width: 90vw;
+}
+.modal h3 { font-size: 18px; margin-bottom: 20px; color: #1a1a2e; }
+.modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* ⚠️ 2026-07-31 新增：內容較多、可能超出視窗高度的 Modal 共用樣式
+   （例如小遊戲新增/編輯活動、受眾建立/編輯等表單欄位較多的場景）
+   取代原本各頁面各自重複寫 inline style="max-height:85vh;overflow-y:auto;" 的寫法 */
+.modal-scrollable {
+  max-height: 85vh;
+  overflow-y: auto;
+}
