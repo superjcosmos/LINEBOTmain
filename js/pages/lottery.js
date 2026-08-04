@@ -112,7 +112,8 @@ async function toggleLotteryStatus(rowIndex) {
       min_points:    activity.min_points,
       max_points:    activity.max_points,
       remain_points: activity.remain_points,
-      max_per_user:  activity.max_per_user
+      max_per_user:  activity.max_per_user,
+      linked_audience_id: activity.linked_audience_id  // ⚠️ 新增，避免停用/啟用時被清空
     };
 
     var res = await apiCall(params);
