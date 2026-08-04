@@ -244,6 +244,8 @@ function _renderAudienceTable() {
     var rowJson = encodeURIComponent(JSON.stringify(row));
     return '<tr>' +
       '<td>' + escHtml(row.name) + '</td>' +
+      // ⚠️ 2026-07-31 新增：顯示受眾ID，供小遊戲「連結受眾ID」等其他功能查詢複製使用
+      '<td class="uid-cell" title="點擊可全選複製" onclick="_selectAudienceIdText(this)">' + escHtml(row.audience_id) + '</td>' +
       '<td>' + (row.keyword ? escHtml(row.keyword) : '-') + '</td>' +
       '<td>' + (row.count || 0) + ' 人</td>' +
       '<td>' + escHtml(rmName) + '</td>' +
@@ -266,6 +268,7 @@ function _renderAudienceTable() {
     '<table>' +
       '<thead><tr>' +
         '<th>受眾名稱</th>' +
+        '<th>受眾ID</th>' +
         '<th>觸發關鍵字</th>' +
         '<th>人數</th>' +
         '<th>對應圖文選單</th>' +
@@ -273,6 +276,17 @@ function _renderAudienceTable() {
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table>';
+}
+
+// ⚠️ 2026-07-31 新增：點擊受眾ID儲存格時全選文字，方便使用者手動複製（Ctrl+C）
+// 不使用 navigator.clipboard 直接寫入剪貼簿，避免引入新的瀏覽器API依賴模式，
+// 用瀏覽器原生的文字選取行為即可達成「方便複製」的目的
+function _selectAudienceIdText(cell) {
+  var range = document.createRange();
+  range.selectNodeContents(cell);
+  var selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
 
 function _renderAudiencePager() {
