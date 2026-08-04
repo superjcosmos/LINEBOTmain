@@ -1,6 +1,9 @@
 // js/pages/broadcast.js
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun
 // ⚠️ 修正：原版樣板字串插值未轉義使用者輸入（受眾名稱、推播紀錄摘要等），已全面補上 escHtml
+// ⚠️ 2026-07-31 新增：供小遊戲頁面「前往推播」捷徑使用。
+// 小遊戲頁面點擊捷徑時，會設定 window._pendingBroadcastAudienceId 再呼叫 loadBroadcast()，
+// 這裡進頁面時檢查一次、若有值就自動預選，選完立刻清空避免下次進入此頁被誤觸發。
 
 var _broadcastAudienceData = [];
 var _selectedAudience = null;
@@ -218,6 +221,13 @@ async function loadBroadcast() {
     var raw = Array.isArray(res.data) ? res.data : (res.data.list || []);
     _broadcastAudienceData = raw.filter(function(a) { return a.status !== 'disabled'; });
     renderBcAudienceList(_broadcastAudienceData);
+
+    // ⚠️ 新增：檢查是否有待預選的受眾（來自小遊戲頁面的捷徑）
+    if (window._pendingBroadcastAudienceId) {
+      var pendingId = window._pendingBroadcastAudienceId;
+      window._pendingBroadcastAudienceId = null; // 用完即清空，避免殘留影響下次進頁
+      selectBcAudience(pendingId);
+    }
   } else {
     document.getElementById('bc-audience-list').innerHTML = '<p class="empty-tip">載入受眾失敗</p>';
   }
