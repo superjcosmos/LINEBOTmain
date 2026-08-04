@@ -379,6 +379,8 @@ async function submitLottery(rowIndex) {
     if (totalProb > 100) { showToast('機率總和不能超過 100%', 'error'); return; }
   }
 
+  
+
   var prizeNameEl = document.getElementById('l-prize-name');
   var params = {
     action:        'saveLottery',
@@ -417,6 +419,20 @@ async function submitLottery(rowIndex) {
   } else {
     showToast(res.message || (rowIndex ? '更新失敗' : '建立失敗'), 'error');
   }
+
+  var params = {
+    action:        'saveLottery',
+    activity_name: document.getElementById('l-name').value,
+    type:          type,
+    keyword:       document.getElementById('l-keyword').value,
+    start_time:    document.getElementById('l-start').value,
+    end_time:      document.getElementById('l-end').value,
+    limit:         Number(document.getElementById('l-limit').value) || 0,
+    max_per_user:  document.getElementById('l-max-per-user').value,
+    linked_audience_id: document.getElementById('l-linked-audience-id').value,  // ⚠️ 新增
+    prize_pool:    JSON.stringify(prizePool),
+    prize_name:    prizeNameEl ? prizeNameEl.value : ''
+  };
 }
 
 async function viewLotteryLog(activityName) {
