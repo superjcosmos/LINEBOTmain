@@ -2,6 +2,8 @@
 // 路徑：js/pages/admin.js
 // 功能：系統管理者後台
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / openModal/closeModal / renderPager
+// ⚠️ 2026-08-05 修正：推薦計畫新增紀錄 Modal 加入 feedback（客戶反饋折扣）選項，
+//    歷史紀錄表 typeLabel 改為三選一判斷（referral/bug_report/feedback）
 
 var _adminClients    = [];
 var _referralProgramClients = [];
@@ -138,7 +140,9 @@ async function _loadAdminReferral() {
   }).join('');
 
   var logRows = _referralProgramLogs.map(function(l) {
-    var typeLabel = l.type === 'referral' ? '推薦成功' : 'Bug 回報';
+    var typeLabel = l.type === 'referral' ? '推薦成功'
+      : l.type === 'feedback' ? '客戶反饋'
+      : 'Bug 回報';
     return '<tr>' +
       '<td style="font-size:12px;color:#888">' + escHtml(l.time) + '</td>' +
       '<td>' + escHtml(typeLabel) + '</td>' +
@@ -191,6 +195,7 @@ function _buildReferralRecordModal() {
         '<select id="refRecType">' +
           '<option value="referral">推薦成功（客戶A推薦客戶B）</option>' +
           '<option value="bug_report">Bug 回報獎勵</option>' +
+          '<option value="feedback">客戶反饋折扣（早期試用一次性）</option>' +
         '</select></div>' +
       '<div class="form-group"><label>推薦人（獲得點數的客戶）</label>' +
         '<select id="refRecClientSelect">' + options + '</select></div>' +
