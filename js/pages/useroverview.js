@@ -3,6 +3,8 @@
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / renderPager
 // ⚠️ 本次新增：「新增標籤」Modal 的選擇標籤改為搜尋+可點選清單（原本是原生<select>），
 //    搜尋過濾比照移植指南前端注意事項，用display:none/block不重新渲染
+// ⚠️ 2026-08-05 修正：filterUo/filterUoTagOptions 對 display_name、tags、tag_name
+//    加上 String() 型別防呆，避免資料非字串型別（數字/物件）時 .toLowerCase() 噴錯
 // ============================================================
 
 var _uoAll      = [];
@@ -103,9 +105,9 @@ function filterUo() {
     _uoFiltered = _uoAll.slice();
   } else {
     _uoFiltered = _uoAll.filter(function(row) {
-      var nameMatch = (row.display_name || '').toLowerCase().includes(keyword);
+      var nameMatch = String(row.display_name || '').toLowerCase().includes(keyword);
       var tagMatch  = (row.tags || []).some(function(t) {
-        return t.toLowerCase().includes(keyword);
+        return String(t || '').toLowerCase().includes(keyword);
       });
       return nameMatch || tagMatch;
     });
@@ -135,10 +137,11 @@ function _renderUoTable() {
 
   var rows = page.map(function(row) {
     var tagChips = (row.tags || []).filter(Boolean).map(function(t) {
+      var tagStr = String(t);
       return '<span class="tag-chip" style="display:inline-block;background:#eef7f0;' +
         'color:#06C755;border-radius:12px;padding:2px 10px;margin:2px 4px 2px 0;font-size:12px;">' +
-        escHtml(t) +
-        ' <a href="javascript:void(0)" onclick="doRemoveUserTag(\'' + escHtml(row.user_id) + '\',\'' + escHtml(t) + '\')" ' +
+        escHtml(tagStr) +
+        ' <a href="javascript:void(0)" onclick="doRemoveUserTag(\'' + escHtml(row.user_id) + '\',\'' + escHtml(tagStr) + '\')" ' +
           'style="color:#e74c3c;text-decoration:none;margin-left:4px;">×</a>' +
         '</span>';
     }).join('');
@@ -199,7 +202,7 @@ function openUoAddTagModal(userId, displayName) {
     listEl.innerHTML = '<p style="color:#999;font-size:13px;margin:6px;">目前沒有可用標籤</p>';
   } else {
     listEl.innerHTML = _uoTagList.map(function(t) {
-      return '<div class="uo-tag-option" data-label="' + escHtml((t.tag_name || '').toLowerCase()) + '" ' +
+      return '<div class="uo-tag-option" data-label="' + escHtml(String(t.tag_name || '').toLowerCase()) + '" ' +
         'data-tagid="' + escHtml(t.tag_id) + '" onclick="selectUoTagOption(this)" ' +
         'style="padding:8px 10px;cursor:pointer;border-radius:6px;font-size:14px;">' +
         escHtml(t.tag_name) +
