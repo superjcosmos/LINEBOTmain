@@ -365,10 +365,29 @@ function _buildAdminModal() {
       '<div class="modal-footer" style="justify-content:space-between">' +
         '<button class="btn" style="background:#3498db;color:#fff" onclick="impersonateClient()">👁 切換視角</button>' +
         '<button class="btn" style="background:#8e44ad;color:#fff" onclick="initClientSheetForCustomer()">🔧 初始化 Sheet</button>' +
+        '<button class="btn" style="background:#8e44ad;color:#fff" onclick="initClientSheetForCustomer()">🔧 初始化 Sheet</button>' +
+        '<button class="btn" style="background:#2980b9;color:#fff" onclick="openSendEmailModal()">✉️ 發送通知信</button>' +
         '<div style="display:flex;gap:8px">' +
           '<button class="btn-cancel" onclick="closeModal(\'adminEditModal\')">取消</button>' +
           '<button class="btn btn-primary" onclick="saveAdminClient()">儲存</button>' +
         '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function _buildSendEmailModal() {
+  return '<div class="modal-overlay" id="sendEmailModal">' +
+    '<div class="modal" style="max-width:520px">' +
+      '<h3 id="sendEmailModalTitle">✉️ 發送通知信</h3>' +
+      '<div class="form-group"><label>主旨</label>' +
+        '<input type="text" id="emailSubject"></div>' +
+      '<div class="form-group"><label>內容</label>' +
+        '<textarea id="emailMessage" rows="8"></textarea></div>' +
+      '<div id="emailLogList" style="margin-top:16px;max-height:180px;overflow-y:auto;font-size:12px;color:#888"></div>' +
+      '<div class="modal-footer">' +
+        '<button class="btn-cancel" onclick="closeModal(\'sendEmailModal\')">取消</button>' +
+        '<button class="btn btn-primary" onclick="submitSendClientEmail()">送出</button>' +
       '</div>' +
     '</div>' +
   '</div>';
