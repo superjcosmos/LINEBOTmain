@@ -7,6 +7,7 @@ var PAGES = {
   admin_support: { label: '客服留言管理', icon: '💬', load: function() { loadAdminSupport(); }, feature: null, adminOnly: true },
 
   // ── 一般客戶 ──
+  myaccount: { label: '我的帳號', icon: '🪪', load: function() { loadMyAccount(); }, feature: null },
   dashboard: { label: '儀表板',   icon: '📊', load: function() { loadDashboard(); }, feature: 'dashboard' },
   userlog:   { label: '用戶記錄', icon: '📋', load: function() { loadUserLog();   }, feature: 'userlog'   },
   useroverview: { label: '用戶總覽', icon: '👤', load: function() { loadUserOverview(); }, feature: 'useroverview' },
