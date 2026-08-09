@@ -217,9 +217,10 @@ function _buildReferralRecordModal() {
           '<option value="feedback">客戶反饋折扣（早期試用一次性）</option>' +
         '</select></div>' +
       '<div class="form-group"><label>推薦人（獲得點數的客戶）</label>' +
-        '<select id="refRecClientSelect">' + options + '</select></div>' +
+        '<select id="refRecClientSelect" onchange="_populateRelatedOptions()">' + options + '</select></div>' +
       '<div class="form-group"><label>被推薦客戶ID（僅「推薦成功」需填寫）</label>' +
-        '<input type="text" id="refRecRelated" placeholder="例如：C0003"></div>' +
+        '<select id="refRecRelated" onchange="_toggleRelatedManual()"></select>' +
+        '<input type="text" id="refRecRelatedManual" placeholder="手動輸入客戶ID" style="display:none;margin-top:8px"></div>' +
       '<div class="form-group"><label>點數</label>' +
         '<input type="number" id="refRecPoints" placeholder="例如：1"></div>' +
       '<div class="form-group"><label>備註</label>' +
