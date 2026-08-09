@@ -1,11 +1,15 @@
 // === admin.js ===
 // 路徑：js/pages/admin.js
 // 功能：系統管理者後台
-// ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / openModal/closeModal / renderPager
+// ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / openModal/closeModal / renderPager / modal-scrollable
 // ⚠️ 2026-08-05 修正：推薦計畫新增紀錄 Modal 加入 feedback（客戶反饋折扣）選項，
 //    歷史紀錄表 typeLabel 改為三選一判斷（referral/bug_report/feedback）
 // ⚠️ 2026-08-09 新增：客戶詳情 Modal 新增「初始化 Sheet」「發送通知信」功能
 //    （對應後端 adminInitClientSheet / adminSendClientEmail / adminGetClientEmailLog）
+// ⚠️ 2026-08-09 新增：客戶詳情新增 Webhook 網址欄位（Master Sheet O欄 webhook_url），
+//    發信範本可帶入此網址供客戶貼到 LINE Developers Console 的 Webhook 設定
+// ⚠️ 2026-08-09 修正：adminEditModal、sendEmailModal 補上 .modal-scrollable class，
+//    避免內容超出視窗高度時無法捲動（CODE_STYLE.md 共用 Modal 樣式規範）
 
 var _adminClients    = [];
 var _referralProgramClients = [];
@@ -22,6 +26,9 @@ var _sendEmailDefaultTemplate =
   '登入網址：https://superjcosmos.github.io/LINEBOTmain/\n' +
   '登入 Email：{email}\n\n' +
   '首次登入請至登入頁點選「忘記密碼？」設定您的密碼。\n\n' +
+  '請至 LINE Developers Console →「Messaging API」分頁 → Webhook settings，' +
+  '將下方網址貼入 Webhook URL 欄位，並開啟「Use webhook」：\n\n' +
+  '{webhook_url}\n\n' +
   '如有任何問題，歡迎透過 LINE 官方帳號與我們聯繫。\n\n' +
   'J Cosmos 客服團隊';
 
@@ -357,7 +364,7 @@ function filterAdmin() {
 
 function _buildAdminModal() {
   return '<div class="modal-overlay" id="adminEditModal">' +
-    '<div class="modal" style="max-width:500px">' +
+    '<div class="modal modal-scrollable" style="max-width:500px">' +
       '<h3 id="adminModalTitle">客戶詳情</h3>' +
       '<div id="adminDetailStats" style="background:#f8f9fa;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:#555;display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>' +
       '<div class="form-group"><label>公司名稱</label><input type="text" id="adminCompanyName"></div>' +
@@ -369,6 +376,8 @@ function _buildAdminModal() {
           '<option value="trial">Trial</option>' +
         '</select></div>' +
       '<div class="form-group"><label>到期日</label><input type="date" id="adminExpireDate"></div>' +
+      '<div class="form-group"><label>Webhook 網址</label>' +
+        '<input type="text" id="adminWebhookUrl" placeholder="該客戶專屬 GAS 專案的 Web App 部署網址"></div>' +
       '<div class="form-group"><label>狀態</label>' +
         '<select id="adminStatus">' +
           '<option value="active">Active（正常）</option>' +
@@ -397,6 +406,7 @@ async function openAdminDetail(idx) {
   document.getElementById('adminCompanyName').value = c.company_name || '';
   document.getElementById('adminPlan').value        = c.plan         || 'basic';
   document.getElementById('adminExpireDate').value  = (c.expire_date || '').replace(/\//g, '-');
+  document.getElementById('adminWebhookUrl').value  = c.webhook_url  || '';
   document.getElementById('adminStatus').value      = c.status       || 'active';
   var detailBox = document.getElementById('adminDetailStats');
   detailBox.innerHTML = '<div style="color:#aaa">載入中...</div>';
@@ -423,6 +433,7 @@ async function saveAdminClient() {
     company_name:     document.getElementById('adminCompanyName').value.trim(),
     plan:             document.getElementById('adminPlan').value,
     expire_date:      document.getElementById('adminExpireDate').value,
+    webhook_url:      document.getElementById('adminWebhookUrl').value.trim(),
     status:           document.getElementById('adminStatus').value
   });
   if (res.success) {
@@ -459,7 +470,7 @@ function initClientSheetForCustomer() {
 
 function _buildSendEmailModal() {
   return '<div class="modal-overlay" id="sendEmailModal">' +
-    '<div class="modal" style="max-width:520px">' +
+    '<div class="modal modal-scrollable" style="max-width:520px">' +
       '<h3 id="sendEmailModalTitle">✉️ 發送通知信</h3>' +
       '<div class="form-group"><label>主旨</label>' +
         '<input type="text" id="emailSubject"></div>' +
@@ -479,7 +490,10 @@ async function openSendEmailModal() {
   var c = _adminClients.find(function(x) { return x.client_id === _editingClientId; });
   document.getElementById('sendEmailModalTitle').textContent = '✉️ 發送通知信給 ' + (c ? (c.company_name || c.client_id) : _editingClientId);
   document.getElementById('emailSubject').value = 'J Cosmos 系統開通通知';
-  document.getElementById('emailMessage').value = _sendEmailDefaultTemplate.replace('{email}', c ? c.email : '');
+  var webhookText = (c && c.webhook_url) ? c.webhook_url : '⚠️ 尚未設定，請先至客戶詳情填入 Webhook 網址';
+  document.getElementById('emailMessage').value = _sendEmailDefaultTemplate
+    .replace('{email}', c ? c.email : '')
+    .replace('{webhook_url}', webhookText);
   document.getElementById('emailLogList').innerHTML = '<div style="color:#aaa">載入寄送紀錄...</div>';
   openModal('sendEmailModal');
 
