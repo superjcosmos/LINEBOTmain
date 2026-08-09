@@ -233,18 +233,45 @@ function _buildReferralRecordModal() {
   '</div>';
 }
 
+function _populateRelatedOptions() {
+  var referrer = document.getElementById('refRecClientSelect').value;
+  var matched  = _referralProgramClients.filter(function(c) {
+    return c.referred_by === referrer;
+  });
+
+  var options = matched.map(function(c) {
+    return '<option value="' + escHtml(c.client_id) + '">' + escHtml(c.client_id + '　' + (c.company_name || '')) + '</option>';
+  }).join('');
+
+  options += '<option value="__manual__">找不到／其他（手動輸入）</option>';
+
+  var sel = document.getElementById('refRecRelated');
+  sel.innerHTML = (matched.length ? options : '<option value="">此客戶目前無已知被推薦人</option>' + options);
+  _toggleRelatedManual();
+}
+
+function _toggleRelatedManual() {
+  var sel    = document.getElementById('refRecRelated');
+  var manual = document.getElementById('refRecRelatedManual');
+  manual.style.display = sel.value === '__manual__' ? 'block' : 'none';
+}
+
 function openReferralRecordModal() {
   document.getElementById('refRecType').value    = 'referral';
-  document.getElementById('refRecRelated').value = '';
   document.getElementById('refRecPoints').value  = '';
   document.getElementById('refRecNote').value    = '';
+  document.getElementById('refRecRelatedManual').value = '';
+  _populateRelatedOptions();
   openModal('referralRecordModal');
 }
 
 function submitReferralRecord() {
   var type     = document.getElementById('refRecType').value;
   var referrer = document.getElementById('refRecClientSelect').value;
-  var related  = (document.getElementById('refRecRelated').value || '').trim();
+  var relatedSelect = document.getElementById('refRecRelated').value;
+  var related  = relatedSelect === '__manual__'
+    ? (document.getElementById('refRecRelatedManual').value || '').trim()
+    : relatedSelect;
   var points   = parseInt(document.getElementById('refRecPoints').value, 10);
   var note     = (document.getElementById('refRecNote').value || '').trim();
 
