@@ -12,7 +12,7 @@ async function loadDashboard() {
 
 function renderDashboard(stats) {
   setContent('mainContent', `
-    <div class="page-title">儀表板</div>
+    <div class="page-title">儀表板<span style="font-size:13px;font-weight:400;color:#888;margin-left:12px">您的推薦碼：${escHtml(authState.clientId)}</span></div>
 
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
       <div class="card" style="text-align:center;padding:20px">
