@@ -390,8 +390,8 @@ function _buildAdminModal() {
           '<button class="btn" style="background:#2980b9;color:#fff" onclick="openSendEmailModal()">✉️ 發送通知信</button>' +
         '</div>' +
         '<div style="display:flex;gap:8px">' +
-          '<button class="btn-cancel" onclick="closeModal(\'adminEditModal\')">取消</button>' +
           '<button class="btn btn-primary" onclick="saveAdminClient()">儲存</button>' +
+          '<button class="btn-cancel" onclick="closeModal(\'adminEditModal\')">取消</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
