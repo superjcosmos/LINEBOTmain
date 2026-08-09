@@ -29,6 +29,10 @@ var _sendEmailDefaultTemplate =
   '請至 LINE Developers Console →「Messaging API」分頁 → Webhook settings，' +
   '將下方網址貼入 Webhook URL 欄位，並開啟「Use webhook」：\n\n' +
   '{webhook_url}\n\n' +
+  '⚠️ 重要：請確認「Webhook」開關已啟用。' +
+  '若您的 LINE 官方帳號原本就有設定關鍵字自動回應，兩者可以同時運作，' +
+  '但若剛好設定了相同的關鍵字，好友可能會收到重複的兩則回覆，' +
+  '屆時請視需要調整原有的自動回應設定。\n\n' +
   '如有任何問題，歡迎透過 LINE 官方帳號與我們聯繫。\n\n' +
   'J Cosmos 客服團隊';
 
