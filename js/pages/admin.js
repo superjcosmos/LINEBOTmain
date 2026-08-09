@@ -378,6 +378,8 @@ function _buildAdminModal() {
       '<div class="form-group"><label>到期日</label><input type="date" id="adminExpireDate"></div>' +
       '<div class="form-group"><label>Webhook 網址</label>' +
         '<input type="text" id="adminWebhookUrl" placeholder="該客戶專屬 GAS 專案的 Web App 部署網址"></div>' +
+      '<div class="form-group"><label>推薦人客戶ID</label>' +
+        '<input type="text" id="adminReferredBy" placeholder="例如：C002（來自開通表單，選填）"></div>' +
       '<div class="form-group"><label>狀態</label>' +
         '<select id="adminStatus">' +
           '<option value="active">Active（正常）</option>' +
