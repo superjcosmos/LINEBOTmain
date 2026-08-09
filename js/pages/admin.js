@@ -4,6 +4,8 @@
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / openModal/closeModal / renderPager
 // ⚠️ 2026-08-05 修正：推薦計畫新增紀錄 Modal 加入 feedback（客戶反饋折扣）選項，
 //    歷史紀錄表 typeLabel 改為三選一判斷（referral/bug_report/feedback）
+// ⚠️ 2026-08-09 新增：客戶詳情 Modal 新增「初始化 Sheet」「發送通知信」功能
+//    （對應後端 adminInitClientSheet / adminSendClientEmail / adminGetClientEmailLog）
 
 var _adminClients    = [];
 var _referralProgramClients = [];
@@ -13,6 +15,15 @@ var _adminPage       = 1;
 var _adminPageSize   = 15;
 var _editingClientId = null;
 var _adminTab        = 'clients';
+
+var _sendEmailDefaultTemplate =
+  '您好，\n\n' +
+  '您的 J Cosmos 系統帳號已完成開通，登入資訊如下：\n\n' +
+  '登入網址：https://superjcosmos.github.io/LINEBOTmain/\n' +
+  '登入 Email：{email}\n\n' +
+  '首次登入請至登入頁點選「忘記密碼？」設定您的密碼。\n\n' +
+  '如有任何問題，歡迎透過 LINE 官方帳號與我們聯繫。\n\n' +
+  'J Cosmos 客服團隊';
 
 async function loadAdmin() {
   setContent('<div class="loading">載入管理後台...</div>');
@@ -66,7 +77,8 @@ function _buildAdminPage(stats) {
   '</div>' +
 
   '<div id="adminTabContent">' + _buildClientsTab() + '</div>' +
-  _buildAdminModal();
+  _buildAdminModal() +
+  _buildSendEmailModal();
 }
 
 function switchAdminTab(tab) {
@@ -362,32 +374,16 @@ function _buildAdminModal() {
           '<option value="active">Active（正常）</option>' +
           '<option value="inactive">Inactive（停用）</option>' +
         '</select></div>' +
-      '<div class="modal-footer" style="justify-content:space-between">' +
-        '<button class="btn" style="background:#3498db;color:#fff" onclick="impersonateClient()">👁 切換視角</button>' +
-        '<button class="btn" style="background:#8e44ad;color:#fff" onclick="initClientSheetForCustomer()">🔧 初始化 Sheet</button>' +
-        '<button class="btn" style="background:#8e44ad;color:#fff" onclick="initClientSheetForCustomer()">🔧 初始化 Sheet</button>' +
-        '<button class="btn" style="background:#2980b9;color:#fff" onclick="openSendEmailModal()">✉️ 發送通知信</button>' +
+      '<div class="modal-footer" style="justify-content:space-between;flex-wrap:wrap;gap:8px">' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          '<button class="btn" style="background:#3498db;color:#fff" onclick="impersonateClient()">👁 切換視角</button>' +
+          '<button class="btn" style="background:#8e44ad;color:#fff" onclick="initClientSheetForCustomer()">🔧 初始化 Sheet</button>' +
+          '<button class="btn" style="background:#2980b9;color:#fff" onclick="openSendEmailModal()">✉️ 發送通知信</button>' +
+        '</div>' +
         '<div style="display:flex;gap:8px">' +
           '<button class="btn-cancel" onclick="closeModal(\'adminEditModal\')">取消</button>' +
           '<button class="btn btn-primary" onclick="saveAdminClient()">儲存</button>' +
         '</div>' +
-      '</div>' +
-    '</div>' +
-  '</div>';
-}
-
-function _buildSendEmailModal() {
-  return '<div class="modal-overlay" id="sendEmailModal">' +
-    '<div class="modal" style="max-width:520px">' +
-      '<h3 id="sendEmailModalTitle">✉️ 發送通知信</h3>' +
-      '<div class="form-group"><label>主旨</label>' +
-        '<input type="text" id="emailSubject"></div>' +
-      '<div class="form-group"><label>內容</label>' +
-        '<textarea id="emailMessage" rows="8"></textarea></div>' +
-      '<div id="emailLogList" style="margin-top:16px;max-height:180px;overflow-y:auto;font-size:12px;color:#888"></div>' +
-      '<div class="modal-footer">' +
-        '<button class="btn-cancel" onclick="closeModal(\'sendEmailModal\')">取消</button>' +
-        '<button class="btn btn-primary" onclick="submitSendClientEmail()">送出</button>' +
       '</div>' +
     '</div>' +
   '</div>';
@@ -438,6 +434,92 @@ async function saveAdminClient() {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+// 初始化客戶 Sheet
+// ────────────────────────────────────────────────────────────
+
+function initClientSheetForCustomer() {
+  if (!_editingClientId) return;
+  confirmAndRun(
+    '確定要為 ' + _editingClientId + ' 初始化 Sheet 嗎？\n此動作會在客戶的試算表中建立所需的工作表（已存在的分頁不會被覆蓋或清空）。',
+    async function() {
+      var res = await apiCall({ action: 'adminInitClientSheet', target_client_id: _editingClientId });
+      if (res.success) {
+        showToast(res.message || '初始化完成', 'success');
+      } else {
+        showToast(res.message || '初始化失敗', 'error');
+      }
+    }
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// 發送通知信給客戶
+// ────────────────────────────────────────────────────────────
+
+function _buildSendEmailModal() {
+  return '<div class="modal-overlay" id="sendEmailModal">' +
+    '<div class="modal" style="max-width:520px">' +
+      '<h3 id="sendEmailModalTitle">✉️ 發送通知信</h3>' +
+      '<div class="form-group"><label>主旨</label>' +
+        '<input type="text" id="emailSubject"></div>' +
+      '<div class="form-group"><label>內容</label>' +
+        '<textarea id="emailMessage" rows="8"></textarea></div>' +
+      '<div id="emailLogList" style="margin-top:16px;max-height:180px;overflow-y:auto;font-size:12px;color:#888"></div>' +
+      '<div class="modal-footer">' +
+        '<button class="btn-cancel" onclick="closeModal(\'sendEmailModal\')">取消</button>' +
+        '<button class="btn btn-primary" onclick="submitSendClientEmail()">送出</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+async function openSendEmailModal() {
+  if (!_editingClientId) return;
+  var c = _adminClients.find(function(x) { return x.client_id === _editingClientId; });
+  document.getElementById('sendEmailModalTitle').textContent = '✉️ 發送通知信給 ' + (c ? (c.company_name || c.client_id) : _editingClientId);
+  document.getElementById('emailSubject').value = 'J Cosmos 系統開通通知';
+  document.getElementById('emailMessage').value = _sendEmailDefaultTemplate.replace('{email}', c ? c.email : '');
+  document.getElementById('emailLogList').innerHTML = '<div style="color:#aaa">載入寄送紀錄...</div>';
+  openModal('sendEmailModal');
+
+  var res = await apiCall({ action: 'adminGetClientEmailLog', target_client_id: _editingClientId });
+  if (res.success && res.data.length) {
+    document.getElementById('emailLogList').innerHTML =
+      '<div style="font-weight:600;margin-bottom:6px">📜 過去寄送紀錄</div>' +
+      res.data.map(function(l) {
+        return '<div style="border-top:1px solid #eee;padding:6px 0">' +
+          '<span style="color:#aaa">' + escHtml(l.time) + '</span>　' +
+          escHtml(l.subject) +
+        '</div>';
+      }).join('');
+  } else {
+    document.getElementById('emailLogList').innerHTML = '<div style="color:#aaa">尚無寄送紀錄</div>';
+  }
+}
+
+function submitSendClientEmail() {
+  var subject = (document.getElementById('emailSubject').value || '').trim();
+  var message = (document.getElementById('emailMessage').value || '').trim();
+  if (!subject) { showToast('請填寫主旨', 'error'); return; }
+  if (!message) { showToast('請填寫內容', 'error'); return; }
+
+  confirmAndRun('確定要寄送這封通知信給 ' + _editingClientId + ' 嗎？', async function() {
+    var res = await apiCall({
+      action:            'adminSendClientEmail',
+      target_client_id:  _editingClientId,
+      subject:           subject,
+      message:           message
+    });
+    if (res.success) {
+      showToast(res.message || '已寄出', 'success');
+      closeModal('sendEmailModal');
+    } else {
+      showToast(res.message || '寄送失敗', 'error');
+    }
+  });
+}
+
 function impersonateClient() {
   if (!_editingClientId) return;
   var c = _adminClients.find(function(x) { return x.client_id === _editingClientId; });
@@ -462,21 +544,6 @@ function impersonateClient() {
   var supportBtn = document.getElementById('sidebarSupportBtn');
   if (supportBtn) supportBtn.style.display = 'block';
   navigateTo('dashboard');
-}
-
-function initClientSheetForCustomer() {
-  if (!_editingClientId) return;
-  confirmAndRun(
-    '確定要為 ' + _editingClientId + ' 初始化 Sheet 嗎？\n此動作會在客戶的試算表中建立所需的工作表（已存在的分頁不會被覆蓋或清空）。',
-    async function() {
-      var res = await apiCall({ action: 'adminInitClientSheet', target_client_id: _editingClientId });
-      if (res.success) {
-        showToast(res.message || '初始化完成', 'success');
-      } else {
-        showToast(res.message || '初始化失敗', 'error');
-      }
-    }
-  );
 }
 
 function _showImpersonateBar(name) {
