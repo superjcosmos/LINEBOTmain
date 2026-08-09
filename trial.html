@@ -235,6 +235,40 @@
     border-radius:10px;
     padding:8px 12px;
   }
+  .step-card details{
+    margin-top:12px;
+    background:var(--purple-light);
+    border-radius:10px;
+    padding:10px 14px;
+  }
+  .step-card details summary{
+    font-size:12.8px;
+    font-weight:700;
+    color:var(--purple);
+    cursor:pointer;
+    list-style:none;
+  }
+  .step-card details summary::-webkit-details-marker{display:none;}
+  .step-card details summary::before{
+    content:'▸ ';
+  }
+  .step-card details[open] summary::before{
+    content:'▾ ';
+  }
+  .step-card details ol{
+    margin:10px 0 2px;
+    padding-left:18px;
+    font-size:12.8px;
+    color:var(--ink);
+  }
+  .step-card details ol li{
+    margin-bottom:8px;
+    line-height:1.6;
+  }
+  .step-card details a{
+    color:var(--purple);
+    font-weight:700;
+  }
 
   /* ── CTA card ── */
   .cta{
@@ -378,6 +412,15 @@
         <div class="step-tag">STEP 04</div>
         <h3>取得 LINE 官方帳號金鑰</h3>
         <p>前往 <a href="https://developers.line.biz/console/" target="_blank" rel="noopener" style="color:var(--purple); font-weight:700;">LINE Developers Console</a>（需登入申請官方帳號時使用的帳號）→ 選擇 Provider 與 Channel。在「Messaging API」分頁取得 <strong>Channel access token</strong>，在「Basic settings」分頁取得 <strong>Channel secret</strong>。</p>
+        <details>
+          <summary>還沒有 LINE 官方帳號，或還沒啟用 Messaging API？</summary>
+          <ol>
+            <li>前往 <a href="https://manager.line.biz" target="_blank" rel="noopener">LINE Official Account Manager</a>，用您的 LINE 帳號登入。若還沒有官方帳號，點選「建立帳號」建立一個新的。</li>
+            <li>登入後，點右上角「設定」→ 左側選單「Messaging API」→ 點選「啟用 Messaging API」。</li>
+            <li>依畫面指示選擇或建立 Provider（服務提供者，填店家或個人名稱即可），完成後畫面會顯示 Channel ID 與 Channel Secret，同時可切換至 LINE Developers Console 繼續設定。</li>
+            <li>完成以上後，再依照上方步驟取得 Channel Access Token。</li>
+          </ol>
+        </details>
       </div>
     </div>
 
