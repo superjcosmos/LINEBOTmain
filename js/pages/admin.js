@@ -409,6 +409,7 @@ async function openAdminDetail(idx) {
   document.getElementById('adminPlan').value        = c.plan         || 'basic';
   document.getElementById('adminExpireDate').value  = (c.expire_date || '').replace(/\//g, '-');
   document.getElementById('adminWebhookUrl').value  = c.webhook_url  || '';
+  document.getElementById('adminReferredBy').value  = c.referred_by  || '';
   document.getElementById('adminStatus').value      = c.status       || 'active';
   var detailBox = document.getElementById('adminDetailStats');
   detailBox.innerHTML = '<div style="color:#aaa">載入中...</div>';
@@ -436,6 +437,7 @@ async function saveAdminClient() {
     plan:             document.getElementById('adminPlan').value,
     expire_date:      document.getElementById('adminExpireDate').value,
     webhook_url:      document.getElementById('adminWebhookUrl').value.trim(),
+    referred_by:      document.getElementById('adminReferredBy').value.trim(),
     status:           document.getElementById('adminStatus').value
   });
   if (res.success) {
