@@ -364,6 +364,7 @@ function _buildAdminModal() {
         '</select></div>' +
       '<div class="modal-footer" style="justify-content:space-between">' +
         '<button class="btn" style="background:#3498db;color:#fff" onclick="impersonateClient()">👁 切換視角</button>' +
+        '<button class="btn" style="background:#8e44ad;color:#fff" onclick="initClientSheetForCustomer()">🔧 初始化 Sheet</button>' +
         '<div style="display:flex;gap:8px">' +
           '<button class="btn-cancel" onclick="closeModal(\'adminEditModal\')">取消</button>' +
           '<button class="btn btn-primary" onclick="saveAdminClient()">儲存</button>' +
