@@ -445,6 +445,21 @@ function impersonateClient() {
   navigateTo('dashboard');
 }
 
+function initClientSheetForCustomer() {
+  if (!_editingClientId) return;
+  confirmAndRun(
+    '確定要為 ' + _editingClientId + ' 初始化 Sheet 嗎？\n此動作會在客戶的試算表中建立所需的工作表（已存在的分頁不會被覆蓋或清空）。',
+    async function() {
+      var res = await apiCall({ action: 'adminInitClientSheet', target_client_id: _editingClientId });
+      if (res.success) {
+        showToast(res.message || '初始化完成', 'success');
+      } else {
+        showToast(res.message || '初始化失敗', 'error');
+      }
+    }
+  );
+}
+
 function _showImpersonateBar(name) {
   var existing = document.getElementById('impersonateBar');
   if (existing) existing.remove();
