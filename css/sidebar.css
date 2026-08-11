@@ -1,5 +1,18 @@
 /* ── sidebar.css ── */
 
+/* ── 星點動畫 ── */
+@keyframes twinkle {
+  0%, 100% { opacity: var(--lo, 0.15); }
+  50%       { opacity: var(--hi, 0.85); }
+}
+.sb-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  pointer-events: none;
+  animation: twinkle var(--dur, 3s) ease-in-out infinite var(--del, 0s);
+}
+
 #mainPage { display: none; }
 
 .sidebar {
@@ -7,18 +20,51 @@
   left: 0; top: 0;
   width: 240px;
   height: 100vh;
-  background: #1a1a2e;
+  /* 上黑漸層到下帶黃味深棕黑 */
+  background: linear-gradient(180deg,
+    #040810 0%,
+    #0a1020 35%,
+    #1a1608 80%,
+    #2a2010 100%
+  );
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* 讓星點不溢出 */
+  position: fixed;  /* 重申 fixed，覆蓋 overflow:hidden 不影響定位 */
+}
+
+/* 星點容器，絕對定位鋪滿 sidebar */
+.sidebar-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* sidebar 內所有直接子元素都要在星點上層 */
+.sidebar-logo,
+.sidebar-menu,
+.sidebar-footer {
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar-logo {
   padding: 24px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-.sidebar-logo h2    { color: #06C755; font-size: 18px; }
-.sidebar-logo .email { color: #aaa; font-size: 12px; margin-top: 4px; }
+/* 移除原本 index.html 裡的 inline green style，這裡統一設定 */
+.sidebar-logo .brand-tag {
+  color: #4a7fd4;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.sidebar-logo h2    { color: #e8eaf0; font-size: 15px; font-weight: 600; }
+.sidebar-logo .email { color: rgba(200, 205, 216, 0.55); font-size: 12px; margin-top: 4px; }
 
 .sidebar-logo .plan {
   display: inline-block;
@@ -28,11 +74,10 @@
   font-size: 11px;
   font-weight: 600;
 }
-
-.plan-basic      { background: rgba(156,163,175,0.2); color: #9ca3af; }
-.plan-advanced   { background: rgba(59,130,246,0.2);  color: #60a5fa; }
-.plan-enterprise { background: rgba(234,179,8,0.2);   color: #fbbf24; }
-.plan-trial      { background: rgba(230,126,34,0.2);  color: #e67e22; }
+.plan-basic      { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+.plan-advanced   { background: rgba(59,  130, 246, 0.2); color: #60a5fa; }
+.plan-enterprise { background: rgba(234, 179,   8, 0.2); color: #fbbf24; }
+.plan-trial      { background: rgba(230, 126,  34, 0.2); color: #e67e22; }
 
 .sidebar-menu { flex: 1; padding: 16px 0; overflow-y: auto; }
 
@@ -41,48 +86,59 @@
   align-items: center;
   gap: 12px;
   padding: 12px 24px;
-  color: #ccc;
+  color: rgba(200, 205, 216, 0.65);
   cursor: pointer;
   transition: all 0.2s;
   font-size: 14px;
   user-select: none;
+  border-left: 3px solid transparent;
 }
-
-.menu-item:hover  { background: rgba(255,255,255,0.05); color: white; }
-.menu-item.active { background: rgba(6,199,85,0.15); color: #06C755; }
+.menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+/* active：乳白米黃反白，左側 accent 條 */
+.menu-item.active {
+  background: rgba(245, 242, 234, 0.92);
+  color: #1a1a2a;
+  border-left-color: rgba(245, 242, 234, 0.7);
+  border-radius: 0 8px 8px 0;
+  margin-right: 8px;
+}
 
 .menu-icon { font-size: 18px; width: 24px; text-align: center; }
 
+/* 星星 icon：未選中空心，選中填滿藍色 */
+.menu-item:not(.active) .menu-icon { color: rgba(200, 205, 216, 0.5); }
+.menu-item.active       .menu-icon { color: #2a6bcc; }
+
 .sidebar-footer {
   padding: 16px 24px;
-  border-top: 1px solid rgba(255,255,255,0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
-
 .btn-logout {
   width: 100%;
   padding: 10px;
   background: transparent;
-  color: #aaa;
-  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(200, 205, 216, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
   transition: all 0.2s;
 }
-
-.btn-logout:hover { color: white; border-color: white; }
+.btn-logout:hover { color: #fff; border-color: rgba(255, 255, 255, 0.4); }
 
 .btn-init {
   width: 100%;
   padding: 10px;
   background: transparent;
-  color: #aaa;
-  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(200, 205, 216, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   cursor: pointer;
   font-size: 12px;
   margin-bottom: 8px;
   transition: all 0.2s;
 }
-
-.btn-init:hover { color: white; border-color: rgba(255,255,255,0.3); }
+.btn-init:hover { color: #fff; border-color: rgba(255, 255, 255, 0.25); }

@@ -1,37 +1,50 @@
 /* ── auth.css ── */
-/* ===== 登入頁 ===== */
-#loginPage {
+
+/* ===== 登入頁 / 忘記密碼頁：共用宇宙星空背景 ===== */
+#loginPage,
+#forgotPasswordPage {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f0f2f5;
+  /* 宇宙星空底色 */
+  background: radial-gradient(ellipse at 60% 0%, #0d1a3a 0%, #060c1a 55%, #020509 100%);
+  position: relative;
+  overflow: hidden;
+}
+#forgotPasswordPage { display: none; }
+
+/* 星點容器 */
+#loginPage .auth-stars,
+#forgotPasswordPage .auth-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* ===== 忘記密碼頁 ===== */
-#forgotPasswordPage {
-  min-height: 100vh;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  background: #f0f2f5;
-}
-
+/* ===== 登入視窗：乳白米黃色 ===== */
 .login-box {
-  background: white;
+  position: relative;
+  z-index: 1;
+  background: rgba(245, 242, 234, 0.96);
   padding: 48px 40px;
   border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 24px 60px rgba(0, 0, 0, 0.6);
   width: 100%;
   max-width: 400px;
 }
 
 .logo { text-align: center; margin-bottom: 32px; }
-.logo p  { font-size: 13px; color: #06C755; font-weight: 600; letter-spacing: 1px; }
+.logo p  { font-size: 13px; color: #4a6fa5; font-weight: 600; letter-spacing: 1px; }
 .logo h1 { font-size: 22px; color: #1a1a2e; font-weight: 700; margin-top: 4px; }
 
+/* 忘記密碼步驟內說明文字：原本 color:#666 在乳白底仍可讀，保留 */
+
 .error-msg {
-  color: #e53e3e;
+  color: #c0392b;
   font-size: 13px;
   text-align: center;
   margin-top: 12px;
@@ -41,7 +54,7 @@
 .btn-login {
   width: 100%;
   padding: 14px;
-  background: #06C755;
+  background: #2a6bcc;
   color: white;
   border: none;
   border-radius: 8px;
@@ -51,6 +64,16 @@
   margin-top: 8px;
   transition: background 0.2s;
 }
-
-.btn-login:hover    { background: #05a847; }
+.btn-login:hover    { background: #1a56a0; }
 .btn-login:disabled { background: #aaa; cursor: not-allowed; }
+
+/* 登入頁連結（忘記密碼、返回）：原本綠色改藍色 */
+#loginPage a,
+#forgotPasswordPage a {
+  color: #2a6bcc;
+  text-decoration: none;
+}
+#loginPage a:hover,
+#forgotPasswordPage a:hover {
+  text-decoration: underline;
+}
