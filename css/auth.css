@@ -1,18 +1,28 @@
 /* ── auth.css ── */
 
-/* ===== 登入頁 / 忘記密碼頁：共用宇宙星空背景 ===== */
-#loginPage,
-#forgotPasswordPage {
+/* 登入頁 */
+#loginPage {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* 宇宙星空底色 */
+  gap: 24px;
   background: radial-gradient(ellipse at 60% 0%, #0d1a3a 0%, #060c1a 55%, #020509 100%);
   position: relative;
   overflow: hidden;
 }
-#forgotPasswordPage { display: none; }
+
+/* 忘記密碼頁 */
+#forgotPasswordPage {
+  min-height: 100vh;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 60% 0%, #0d1a3a 0%, #060c1a 55%, #020509 100%);
+  position: relative;
+  overflow: hidden;
+}
 
 /* 星點容器 */
 #loginPage .auth-stars,
