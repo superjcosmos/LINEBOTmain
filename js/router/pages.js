@@ -17,6 +17,7 @@ var PAGES = {
   lottery:      { label: '小遊戲',   icon: '<i class="ti ti-gift"></i>',            load: function() { loadLottery();      }, feature: 'lottery'     },
   referral:     { label: '推薦碼',   icon: '<i class="ti ti-ticket"></i>',          load: function() { loadReferral();     }, feature: 'referral'    },
   loyalty:      { label: '點數卡',   icon: '<i class="ti ti-star"></i>',            load: function() { loadLoyalty();      }, feature: 'loyalty'     },
+  coupon:       { label: '優惠券',   icon: '<i class="ti ti-discount-2"></i>',      load: function() { loadCoupon();       }, feature: 'coupon'      },
   export:       { label: '資料匯出', icon: '<i class="ti ti-download"></i>',        load: function() { loadExport();       }, feature: 'export'      },
   blacklist:    { label: '黑名單',   icon: '<i class="ti ti-ban"></i>',             load: function() { loadBlacklist();    }, feature: 'blacklist'   },
   support:      { label: '聯絡我們', icon: '<i class="ti ti-mail"></i>',            load: function() { loadSupport();      }, feature: 'support', hideFromSidebar: true }
