@@ -87,3 +87,31 @@
 #forgotPasswordPage a:hover {
   text-decoration: underline;
 }
+
+/* ── 登入頁品牌文字區 ── */
+.login-brand-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+  width: 340px;
+  text-align: center;
+}
+.login-brand-svg {
+  width: 100%;
+  filter: drop-shadow(0 0 12px rgba(90, 158, 224, 0.4));
+}
+.login-brand-tagline {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: rgba(180, 205, 235, 0.65) !important;
+  text-align: center;
+}
+.login-brand-divider {
+  width: 60px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(90, 158, 224, 0.5), transparent);
+  margin-top: 4px;
+}
