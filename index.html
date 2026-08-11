@@ -19,6 +19,9 @@
   <link rel="stylesheet" href="css/modal.css">
   <link rel="stylesheet" href="css/form.css">
   <link rel="stylesheet" href="css/pages.css">
+
+  <!-- Tabler Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 </head>
 <body>
 
@@ -28,7 +31,7 @@
 <!-- ── 全域 Loading 遮罩 ── -->
 <div id="global-loading" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9998;align-items:center;justify-content:center;">
   <div style="background:white;border-radius:16px;padding:32px 40px;display:flex;flex-direction:column;align-items:center;gap:16px;box-shadow:0 8px 32px rgba(0,0,0,0.15);">
-    <div style="width:40px;height:40px;border:4px solid #e0e0e0;border-top-color:#06C755;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+    <div style="width:40px;height:40px;border:4px solid #e0e0e0;border-top-color:#2a6bcc;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
     <div style="color:#444;font-size:14px;font-weight:500;">處理中，請稍候...</div>
   </div>
 </div>
@@ -40,6 +43,7 @@
      登入頁
      ================================================================ -->
 <div id="loginPage">
+  <div class="auth-stars" id="loginStars"></div>
   <div class="login-box">
     <div class="logo">
       <p>J Cosmos</p>
@@ -76,8 +80,7 @@
     <div class="error-msg" id="errorMsg"></div>
 
     <div style="text-align:center;margin-top:14px;font-size:14px;">
-      <a href="#" onclick="showForgotPassword();return false;"
-         style="color:#06C755;text-decoration:none;">
+      <a href="#" onclick="showForgotPassword();return false;">
         忘記密碼？
       </a>
     </div>
@@ -88,6 +91,7 @@
      忘記密碼頁
      ================================================================ -->
 <div id="forgotPasswordPage">
+  <div class="auth-stars" id="forgotStars"></div>
   <div class="login-box">
 
     <!-- Step 1：輸入 Email -->
@@ -109,8 +113,7 @@
         寄送驗證碼
       </button>
       <div style="text-align:center;margin-top:14px;font-size:14px;">
-        <a href="#" onclick="showLoginPage();return false;"
-           style="color:#06C755;text-decoration:none;">← 返回登入</a>
+        <a href="#" onclick="showLoginPage();return false;">← 返回登入</a>
       </div>
     </div>
 
@@ -140,11 +143,9 @@
       </button>
       <div style="text-align:center;margin-top:14px;font-size:14px;
                   display:flex;justify-content:center;gap:16px;">
-        <a href="#" onclick="resendOtp();return false;"
-           style="color:#06C755;text-decoration:none;">重新寄送驗證碼</a>
+        <a href="#" onclick="resendOtp();return false;">重新寄送驗證碼</a>
         <span style="color:#ccc;">|</span>
-        <a href="#" onclick="showLoginPage();return false;"
-           style="color:#666;text-decoration:none;">返回登入</a>
+        <a href="#" onclick="showLoginPage();return false;" style="color:#666;">返回登入</a>
       </div>
     </div>
 
@@ -174,8 +175,7 @@
         確認重設密碼
       </button>
       <div style="text-align:center;margin-top:14px;font-size:14px;">
-        <a href="#" onclick="showLoginPage();return false;"
-           style="color:#666;text-decoration:none;">返回登入</a>
+        <a href="#" onclick="showLoginPage();return false;" style="color:#666;">返回登入</a>
       </div>
     </div>
 
@@ -187,21 +187,20 @@
      ================================================================ -->
 <div id="mainPage" style="display:none;">
   <div class="sidebar">
+    <div class="sidebar-stars" id="sidebarStars"></div>
     <div class="sidebar-logo">
-      <p style="color:#06C755;font-size:11px;font-weight:600;letter-spacing:1px;margin-bottom:4px;">
-        J Cosmos
-      </p>
+      <p class="brand-tag">J Cosmos</p>
       <h2>LINE BOT API 管理後台</h2>
       <p class="email" id="sidebarEmail"></p>
       <span class="plan" id="sidebarPlan"></span>
     </div>
     <div class="sidebar-menu" id="sidebarMenu"></div>
-      <div class="sidebar-footer">
-        <button class="btn-init" onclick="openChangePasswordModal()">🔑 修改密碼</button>
-        <button class="btn-init" onclick="navigateTo('support')" id="sidebarSupportBtn">💬 聯絡我們</button>
-        <button class="btn-logout" onclick="logout()">登出</button>
-        <div id="sidebarVersion" ...></div>
-      </div>
+    <div class="sidebar-footer">
+      <button class="btn-init" onclick="openChangePasswordModal()">🔑 修改密碼</button>
+      <button class="btn-init" onclick="navigateTo('support')" id="sidebarSupportBtn">💬 聯絡我們</button>
+      <button class="btn-logout" onclick="logout()">登出</button>
+      <div id="sidebarVersion"></div>
+    </div>
   </div>
   <div class="main-content" id="mainContent">
     <div class="loading">載入中...</div>
@@ -230,16 +229,46 @@
 <script src="js/pages/account.js"></script>
 <script src="js/pages/export.js"></script>
 <script src="js/pages/blacklist.js"></script>
-<script src="js/pages/support.js"></script>  
+<script src="js/pages/support.js"></script>
 <script src="js/pages/referral.js"></script>
 <script src="js/pages/admin.js"></script>
 <script src="js/pages/admin_support.js"></script>
-<script src="js/pages/loyalty.js"></script>  
-<script src="js/pages/myaccount.js"></script>    
+<script src="js/pages/loyalty.js"></script>
+<script src="js/pages/myaccount.js"></script>
 <script src="js/router/pages.js"></script>
 <script src="js/router/navigate.js"></script>
 <script src="js/router/sidebar.js"></script>
 <script src="js/auth.js"></script>
+
+<!-- ── 星點生成（登入頁 + 忘記密碼頁 + Sidebar）── -->
+<script>
+function _makeStars(containerId, count) {
+  var c = document.getElementById(containerId);
+  if (!c) return;
+  for (var i = 0; i < count; i++) {
+    var s = document.createElement('div');
+    s.className = 'sb-star';
+    var size = Math.random() < 0.12 ? 2 : Math.random() < 0.45 ? 1.5 : 1;
+    var dur  = (2.5 + Math.random() * 3).toFixed(1);
+    var del  = (Math.random() * 5).toFixed(1);
+    var lo   = (0.1  + Math.random() * 0.15).toFixed(2);
+    var hi   = (0.55 + Math.random() * 0.45).toFixed(2);
+    s.style.cssText =
+      'width:'  + size + 'px;' +
+      'height:' + size + 'px;' +
+      'left:'   + (Math.random() * 100) + '%;' +
+      'top:'    + (Math.random() * 100) + '%;' +
+      '--dur:'  + dur  + 's;' +
+      '--del:-' + del  + 's;' +
+      '--lo:'   + lo   + ';' +
+      '--hi:'   + hi   + ';';
+    c.appendChild(s);
+  }
+}
+_makeStars('loginStars',   90);
+_makeStars('forgotStars',  90);
+_makeStars('sidebarStars', 70);
+</script>
 
 </body>
 </html>
