@@ -302,13 +302,16 @@ function submitReferralRecord() {
   });
 }
 
+// 1. _loadAdminSettings() 內，tabContent.innerHTML 的字串結尾
+//    （原本是 '</div>';  收在聯絡資訊卡片後面），改成在後面串接一張新卡片：
+ 
 async function _loadAdminSettings() {
   var tabContent = document.getElementById('adminTabContent');
   if (!tabContent) return;
-
+ 
   var contactRes = await apiCall({ action: 'getContactInfo' });
   var d          = contactRes.success ? (contactRes.data || {}) : {};
-
+ 
   tabContent.innerHTML =
     '<div class="card">' +
       '<div style="font-weight:600;font-size:15px;margin-bottom:8px">📬 登入頁聯絡資訊</div>' +
@@ -323,6 +326,14 @@ async function _loadAdminSettings() {
         '<textarea id="settingNote" rows="3" placeholder="例如：服務時間 週一至週五 09:00-18:00">' + escHtml(d.contact_note || '') + '</textarea></div>' +
       (d.updated_at ? '<p style="font-size:12px;color:#aaa;margin-bottom:12px">最後更新：' + escHtml(d.updated_at) + '</p>' : '') +
       '<button class="btn btn-primary" onclick="saveContactInfo()">儲存聯絡資訊</button>' +
+    '</div>' +
+    '<div class="card" style="margin-top:20px">' +
+      '<div style="font-weight:600;font-size:15px;margin-bottom:8px">⚡ 方案功能快取</div>' +
+      '<p style="font-size:13px;color:#888;margin-bottom:16px">' +
+        '手動編輯 Master Sheet 的 Plans 分頁（例如調整某方案開放的功能）後，' +
+        '客戶端最長需等待 10 分鐘快取過期才會生效。若需立即生效，請點擊下方按鈕。' +
+      '</p>' +
+      '<button class="btn" style="background:#8e44ad;color:#fff" onclick="doClearFeatureCache()">🔄 清除方案快取</button>' +
     '</div>';
 }
 
@@ -341,6 +352,16 @@ async function saveContactInfo() {
     showToast(res.message || '儲存失敗', 'error');
   }
 }
+
+async function doClearFeatureCache() {
+  var res = await apiCall({ action: 'adminClearAllFeatureCache' });
+  if (res.success) {
+    showToast(res.data.message || '快取已清除', 'success');
+  } else {
+    showToast(res.message || '清除失敗', 'error');
+  }
+}
+
 
 function _renderAdminTable() {
   var wrap = document.getElementById('adminTableWrap');
