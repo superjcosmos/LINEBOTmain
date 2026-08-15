@@ -2,11 +2,9 @@
 
 async function loadUserLog() {
   setContent('<div class="loading">載入中...</div>');
-
   var logResult = await apiCall({ action: "getUserLog", limit: 20 });
-
   if (!logResult.success) {
-    setContent('<div class="loading">載入失敗：' + logResult.message + '</div>');
+    setContent('<div class="loading">載入失敗：' + escHtml(logResult.message) + '</div>');
     return;
   }
 
@@ -65,9 +63,10 @@ async function filterByDate() {
   if (result.success) {
     card.innerHTML = _buildUserLogTable(result.data);
   } else {
-    card.innerHTML = '<div class="loading">載入失敗：' + result.message + '</div>';
+    card.innerHTML = '<div class="loading">載入失敗：' + escHtml(result.message) + '</div>';
   }
 }
+
 
 async function resetLog() {
   var card      = document.getElementById("userLogCard");
@@ -78,21 +77,20 @@ async function resetLog() {
   if (result.success) {
     card.innerHTML = _buildUserLogTable(result.data);
   } else {
-    card.innerHTML = '<div class="loading">載入失敗：' + result.message + '</div>';
+    card.innerHTML = '<div class="loading">載入失敗：' + escHtml(result.message) + '</div>';
   }
 }
 
 function _buildUserLogTable(data) {
   var rows = data.map(function(row) {
     return '<tr>' +
-      '<td>' + formatDate(row.time)    + '</td>' +
-      '<td>' + (row.name    || "-")    + '</td>' +
-      '<td class="uid-cell">' + (row.userId  || "-") + '</td>' +
-      '<td>' + (row.keyword || "-")    + '</td>' +
-      '<td>' + (row.status  || "-")    + '</td>' +
+      '<td>' + escHtml(formatDate(row.time)) + '</td>' +
+      '<td>' + escHtml(row.name    || "-") + '</td>' +
+      '<td class="uid-cell">' + escHtml(row.userId  || "-") + '</td>' +
+      '<td>' + escHtml(row.keyword || "-") + '</td>' +
+      '<td>' + escHtml(row.status  || "-") + '</td>' +
     '</tr>';
   }).join("");
-
   return '<table>' +
     '<thead><tr>' +
       '<th>時間</th>' +
