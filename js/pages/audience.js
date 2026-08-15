@@ -32,13 +32,6 @@ async function loadAudience() {
     return;
   }
 
-  if (audienceResult.data.length > 0) {
-    await Promise.all(audienceResult.data.map(function(row) {
-      return apiCall({ action: 'syncAudienceCount', audience_id: row.audience_id });
-    }));
-    audienceResult = await apiCall({ action: 'getAudienceList' });
-  }
-
   _audienceRmOptions = '<option value="">不切換圖文選單</option>';
   if (richMenuResult.success) {
     richMenuResult.data.forEach(function(rm) {
