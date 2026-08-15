@@ -19,8 +19,12 @@ var _uoSelectedTagId = null;
 async function loadUserOverview() {
   setContent('<div class="loading">載入中...</div>');
 
-  var userResult = await apiCall({ action: 'getUserOverview' });
-  var tagResult  = await apiCall({ action: 'getTagList' });
+  var results = await Promise.all([
+    apiCall({ action: 'getUserOverview' }),
+    apiCall({ action: 'getTagList' })
+  ]);
+  var userResult = results[0];
+  var tagResult  = results[1];
 
   if (!userResult.success) {
     setContent('<div class="empty">載入失敗：' + escHtml(userResult.message) + '</div>');
@@ -40,7 +44,6 @@ async function loadUserOverview() {
   _renderUoTable();
   _renderUoPager();
 }
-
 function _buildUoShell() {
   return '' +
     '<h2 class="page-title">用戶總覽</h2>' +
