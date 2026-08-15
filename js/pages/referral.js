@@ -11,10 +11,16 @@ var _referralSettings = {};
 
 async function loadReferral() {
   setContent('<div class="loading">載入推薦碼管理...</div>');
-  var statsRes   = await apiCall({ action: 'getReferralStats' });
-  var rankRes    = await apiCall({ action: 'getReferralRanking', top: 10 });
-  var listRes    = await apiCall({ action: 'getReferralList', limit: 200 });
-  var settingRes = await apiCall({ action: 'getReferralSettings' });
+  var results = await Promise.all([
+    apiCall({ action: 'getReferralStats' }),
+    apiCall({ action: 'getReferralRanking', top: 10 }),
+    apiCall({ action: 'getReferralList', limit: 200 }),
+    apiCall({ action: 'getReferralSettings' })
+  ]);
+  var statsRes   = results[0];
+  var rankRes    = results[1];
+  var listRes    = results[2];
+  var settingRes = results[3];
 
   if (!statsRes.success) { setContent('<div class="loading">載入失敗</div>'); return; }
 
