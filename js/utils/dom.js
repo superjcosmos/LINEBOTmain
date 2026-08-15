@@ -54,8 +54,8 @@ function closeModal(modalId) {
 }
 
 function initSheet() {
-  if (!confirm('確定要初始化工作表？此操作會建立缺少的工作表，不會覆蓋現有資料。')) return;
-  apiCall({ action: 'initClientSheet' }).then(function(res) {
+  confirmAndRun('確定要初始化工作表？此操作會建立缺少的工作表，不會覆蓋現有資料。', async function() {
+    var res = await apiCall({ action: 'initClientSheet' });
     if (res.success) {
       showToast('工作表初始化完成', 'success');
     } else {
