@@ -38,14 +38,16 @@ var _sendEmailDefaultTemplate =
 
 async function loadAdmin() {
   setContent('<div class="loading">載入管理後台...</div>');
-  var statsRes  = await apiCall({ action: 'adminGetOverallStats' });
-  var clientRes = await apiCall({ action: 'adminGetClientList'  });
-
+  var results   = await Promise.all([
+    apiCall({ action: 'adminGetOverallStats' }),
+    apiCall({ action: 'adminGetClientList'  })
+  ]);
+  var statsRes  = results[0];
+  var clientRes = results[1];
   if (!clientRes.success) {
     setContent('<div class="loading">載入失敗：' + escHtml(clientRes.message || '') + '</div>');
     return;
   }
-
   var stats = statsRes.success ? (statsRes.data || {}) : {};
   _adminClients  = Array.isArray(clientRes.data) ? clientRes.data : [];
   _adminFiltered = _adminClients.slice();
