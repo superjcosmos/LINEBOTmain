@@ -177,7 +177,7 @@ function _renderCouponTable() {
     // ⚠️ 已發放過的券不可刪除，隱藏按鈕，比照 tag.js 使用人數>0隱藏刪除按鈕的做法
     var deleteBtn = issuedCount === 0
       ? '<button class="btn btn-danger" onclick="doDeleteCoupon(\'' + escHtml(row.coupon_id) + '\')">刪除</button>'
-      : '';
+      : '<button class="btn btn-danger" disabled title="此優惠券已發放 ' + issuedCount + ' 張，無法刪除">刪除</button>';
     var toggleBtn = isActive
       ? '<button class="btn btn-disable" onclick="doToggleCouponStatus(\'' + escHtml(row.coupon_id) + '\')">停用</button>'
       : '<button class="btn btn-enable" onclick="doToggleCouponStatus(\'' + escHtml(row.coupon_id) + '\')">啟用</button>';
