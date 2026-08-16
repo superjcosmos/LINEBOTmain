@@ -177,7 +177,7 @@ function _renderTagTable() {
     // ⚠️ 使用人數>0時隱藏刪除按鈕，避免使用者點了才收到後端拒絕的錯誤訊息（後端仍保留同樣的檢查作為最終防線）
     var deleteBtn = usageCount === 0
       ? '<button class="btn btn-danger" onclick="doDeleteTag(\'' + escHtml(row.tag_id) + '\')">刪除</button>'
-      : '';
+      : '<button class="btn btn-danger" disabled title="此標籤還有 ' + usageCount + ' 人使用中，無法刪除">刪除</button>';
     var toggleBtn = isActive
       ? '<button class="btn btn-disable" onclick="doToggleTagStatus(\'' + escHtml(row.tag_id) + '\')">停用</button>'
       : '<button class="btn btn-enable" onclick="doToggleTagStatus(\'' + escHtml(row.tag_id) + '\')">啟用</button>';
