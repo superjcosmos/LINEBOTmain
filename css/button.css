@@ -34,6 +34,9 @@
   cursor: not-allowed;
 }
 
+.btn-sm    { padding: 4px 10px; font-size: 12px; }
+.btn-block { display: block; width: 100%; text-align: center; }
+
 .btn-cancel {
   padding: 10px 20px;
   background: #f0f0f0;
