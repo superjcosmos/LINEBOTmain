@@ -176,19 +176,13 @@ function _renderCouponTable() {
 
     // ⚠️ 已發放過的券不可刪除，隱藏按鈕，比照 tag.js 使用人數>0隱藏刪除按鈕的做法
     var deleteBtn = issuedCount === 0
-      ? '<a href="javascript:void(0)" onclick="doDeleteCoupon(\'' + escHtml(row.coupon_id) + '\')" ' +
-          'title="刪除" style="font-size:16px;text-decoration:none;">🗑️</a>'
+      ? '<button class="btn btn-danger" onclick="doDeleteCoupon(\'' + escHtml(row.coupon_id) + '\')">刪除</button>'
       : '';
-
     var toggleBtn = isActive
-      ? '<a href="javascript:void(0)" onclick="doToggleCouponStatus(\'' + escHtml(row.coupon_id) + '\')" ' +
-          'title="停用" style="font-size:16px;text-decoration:none;">🚫</a>'
-      : '<a href="javascript:void(0)" onclick="doToggleCouponStatus(\'' + escHtml(row.coupon_id) + '\')" ' +
-          'title="啟用" style="font-size:16px;text-decoration:none;">✅</a>';
-
-    var editBtn = '<a href="javascript:void(0)" ' +
-      'onclick="editCoupon(\'' + escHtml(row.coupon_id) + '\',\'' + rowJson + '\')" ' +
-      'title="編輯" style="font-size:16px;text-decoration:none;">✏️</a>';
+      ? '<button class="btn btn-disable" onclick="doToggleCouponStatus(\'' + escHtml(row.coupon_id) + '\')">停用</button>'
+      : '<button class="btn btn-enable" onclick="doToggleCouponStatus(\'' + escHtml(row.coupon_id) + '\')">啟用</button>';
+    var editBtn = '<button class="btn btn-edit" ' +
+      'onclick="editCoupon(\'' + escHtml(row.coupon_id) + '\',\'' + rowJson + '\')">編輯</button>';
 
     return '<tr>' +
       '<td>' + escHtml(row.name) + '</td>' +
@@ -197,7 +191,7 @@ function _renderCouponTable() {
       '<td>' + (isActive ? '啟用' : '停用') + '</td>' +
       '<td>' + issuedCount + ' 發放 / ' + usedCount + ' 已用</td>' +
       '<td style="white-space:nowrap;">' +
-        '<span style="display:inline-flex;gap:10px;align-items:center;">' +
+        '<span style="display:inline-flex;gap:8px;align-items:center;">' +
           editBtn + toggleBtn + deleteBtn +
         '</span>' +
       '</td>' +
