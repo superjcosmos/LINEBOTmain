@@ -28,7 +28,7 @@ function renderLotteryList() {
   var rows = lotteryList.map(function(a) {
     var pendingText = a.type === 'C' ? escHtml(a.pending_count || 0) : '-';
     var toggleLabel = a.status === 'active' ? '停用' : '啟用';
-    var toggleClass = a.status === 'active' ? 'btn-danger' : 'btn-primary';
+    var toggleClass = a.status === 'active' ? 'btn-disable' : 'btn-enable';
 
     var limitOrPointsText = a.type === 'D'
       ? escHtml(a.remain_points || 0) + ' / ' + escHtml(a.total_points || 0) + ' 點'
@@ -46,8 +46,8 @@ function renderLotteryList() {
       '<td>' +
         '<button class="btn btn-edit" onclick="viewLotteryLog(\'' + escHtml(a.activity_name) + '\')">記錄</button>' +
         ' <button class="btn btn-edit" onclick="openLotteryEditModal(' + a.row_index + ')">編輯</button>' +
-        ' <button class="' + toggleClass + '" onclick="toggleLotteryStatus(' + a.row_index + ')">' + toggleLabel + '</button>' +
-        (a.linked_audience_id ? ' <button class="btn btn-secondary" onclick="goToBroadcastForActivity(\'' + escHtml(a.linked_audience_id) + '\')">📢 前往推播</button>' : '') +
+        ' <button class="btn ' + toggleClass + '" onclick="toggleLotteryStatus(' + a.row_index + ')">' + toggleLabel + '</button>' +
+        (a.linked_audience_id ? ' <button class="btn btn-sync" onclick="goToBroadcastForActivity(\'' + escHtml(a.linked_audience_id) + '\')">📢 前往推播</button>' : '') +
         (a.type === 'C' ? ' <button class="btn btn-primary" onclick="openDrawModal(\'' + escHtml(a.activity_name) + '\')">開獎</button>' : '') +
         ' <button class="btn btn-danger" onclick="deleteLotteryActivity(' + a.row_index + ', \'' + escHtml(a.activity_name) + '\')">刪除</button>' +
       '</td>' +
