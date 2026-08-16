@@ -179,8 +179,8 @@ function _renderTagTable() {
       ? '<button class="btn btn-danger" onclick="doDeleteTag(\'' + escHtml(row.tag_id) + '\')">刪除</button>'
       : '';
     var toggleBtn = isActive
-      ? '<button class="btn btn-toggle" onclick="doToggleTagStatus(\'' + escHtml(row.tag_id) + '\')">停用</button>'
-      : '<button class="btn btn-toggle" onclick="doToggleTagStatus(\'' + escHtml(row.tag_id) + '\')">啟用</button>';
+      ? '<button class="btn btn-disable" onclick="doToggleTagStatus(\'' + escHtml(row.tag_id) + '\')">停用</button>'
+      : '<button class="btn btn-enable" onclick="doToggleTagStatus(\'' + escHtml(row.tag_id) + '\')">啟用</button>';
     var editBtn = '<button class="btn btn-edit" ' +
       'onclick="editTag(\'' + escHtml(row.tag_id) + '\',\'' + rowJson + '\')">編輯</button>';
 
