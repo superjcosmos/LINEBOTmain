@@ -124,50 +124,32 @@ async function loadBroadcast() {
     '<div class="card" style="margin-top:20px">' +
       '<div class="card-header-row">' +
         '<h3>📋 推播紀錄</h3>' +
-        '<button class="btn btn-secondary btn-sm" onclick="loadBroadcastLog()">重新整理</button>' +
+        '<button class="btn btn-sync btn-sm" onclick="loadBroadcastLog()">重新整理</button>' +
       '</div>' +
       '<div id="bc-log-table">載入中…</div>' +
     '</div>' +
 
-    '<div id="flex-template-modal" onclick="closeFlexTemplateModal(event)" style="' +
-      'display:none;' +
-      'position:fixed; inset:0; z-index:9999;' +
-      'background:rgba(0,0,0,.5);' +
-      'align-items:center; justify-content:center;' +
-    '">' +
-      '<div onclick="event.stopPropagation()" style="' +
-        'background:#fff; border-radius:14px;' +
-        'width:90%; max-width:520px;' +
-        'box-shadow:0 8px 32px rgba(0,0,0,.18);' +
-        'overflow:hidden;' +
-      '">' +
-        '<div style="' +
-          'display:flex; align-items:center; justify-content:space-between;' +
-          'padding:16px 20px; border-bottom:1px solid #f0f0f0;' +
-        '">' +
-          '<h3 style="margin:0;font-size:16px">📋 Flex 範本</h3>' +
-          '<button onclick="closeFlexTemplateModalDirect()" style="' +
-            'background:none; border:none; font-size:18px;' +
-            'color:#aaa; cursor:pointer; line-height:1; padding:2px 6px;' +
-          '">✕</button>' +
-        '</div>' +
-        '<div style="padding:20px">' +
-          '<p style="font-size:13px;color:#888;margin:0 0 14px">' +
-            '選擇範本後可在編輯區繼續修改，或前往' +
-            '<a href="https://developers.line.biz/flex-simulator/" target="_blank" style="color:#06c755;text-decoration:none;font-weight:500">LINE Flex Simulator</a>' +
-            '設計完整版面。' +
-          '</p>' +
-          '<div id="flex-template-list">' +
-            '<div onclick="applyFlexTemplate(0)" class="bc-tpl-item">' +
-              '<span>🎉 促銷公告</span><span class="bc-tpl-arrow">套用 →</span>' +
-            '</div>' +
-            '<div onclick="applyFlexTemplate(1)" class="bc-tpl-item">' +
-              '<span>📋 活動報名</span><span class="bc-tpl-arrow">套用 →</span>' +
-            '</div>' +
-            '<div onclick="applyFlexTemplate(2)" class="bc-tpl-item">' +
-              '<span>📦 訂單通知</span><span class="bc-tpl-arrow">套用 →</span>' +
-            '</div>' +
+    '<div class="modal-overlay" id="flexTemplateModal">' +
+      '<div class="modal" style="max-width:520px">' +
+        '<h3>📋 Flex 範本</h3>' +
+        '<p style="font-size:13px;color:#888;margin:0 0 14px">' +
+          '選擇範本後可在編輯區繼續修改，或前往' +
+          '<a href="https://developers.line.biz/flex-simulator/" target="_blank" style="color:#06c755;text-decoration:none;font-weight:500">LINE Flex Simulator</a>' +
+          '設計完整版面。' +
+        '</p>' +
+        '<div id="flex-template-list">' +
+          '<div onclick="applyFlexTemplate(0)" class="bc-tpl-item">' +
+            '<span>🎉 促銷公告</span><span class="bc-tpl-arrow">套用 →</span>' +
           '</div>' +
+          '<div onclick="applyFlexTemplate(1)" class="bc-tpl-item">' +
+            '<span>📋 活動報名</span><span class="bc-tpl-arrow">套用 →</span>' +
+          '</div>' +
+          '<div onclick="applyFlexTemplate(2)" class="bc-tpl-item">' +
+            '<span>📦 訂單通知</span><span class="bc-tpl-arrow">套用 →</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="modal-footer">' +
+          '<button class="btn-cancel" onclick="closeModal(\'flexTemplateModal\')">關閉</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -377,20 +359,8 @@ var _flexTemplateTargetId = null;
 
 function openFlexTemplateModal(msgId) {
   _flexTemplateTargetId = msgId;
-  var modal = document.getElementById('flex-template-modal');
-  if (modal) modal.style.display = 'flex';
+  openModal('flexTemplateModal');
 }
-
-function closeFlexTemplateModalDirect() {
-  var modal = document.getElementById('flex-template-modal');
-  if (modal) modal.style.display = 'none';
-  _flexTemplateTargetId = null;
-}
-
-function closeFlexTemplateModal(event) {
-  if (event.target.id === 'flex-template-modal') closeFlexTemplateModalDirect();
-}
-
 function applyFlexTemplate(templateIdx) {
   var tpl = FLEX_TEMPLATES[templateIdx];
   if (!tpl || _flexTemplateTargetId === null) return;
@@ -399,7 +369,7 @@ function applyFlexTemplate(templateIdx) {
     m.flexJson = tpl.json;
     renderBcMessages();
   }
-  closeFlexTemplateModalDirect();
+  closeModal('flexTemplateModal');
   showToast('已套用範本「' + tpl.label + '」，可繼續修改', 'success');
 }
 
