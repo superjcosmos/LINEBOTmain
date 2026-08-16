@@ -22,6 +22,8 @@
 
 .btn-sync          { background: #e8f4fd; color: #2b7bb9; }
 .btn-sync:hover    { background: #d1e9f7; }
+.btn-toggle        { background: #f0f0f0; color: #666; }
+.btn-toggle:hover  { background: #e0e0e0; }
 
 .btn-cancel {
   padding: 10px 20px;
