@@ -176,19 +176,13 @@ function _renderTagTable() {
 
     // ⚠️ 使用人數>0時隱藏刪除按鈕，避免使用者點了才收到後端拒絕的錯誤訊息（後端仍保留同樣的檢查作為最終防線）
     var deleteBtn = usageCount === 0
-      ? '<a href="javascript:void(0)" onclick="doDeleteTag(\'' + escHtml(row.tag_id) + '\')" ' +
-          'title="刪除" style="font-size:16px;text-decoration:none;">🗑️</a>'
+      ? '<button class="btn btn-danger" onclick="doDeleteTag(\'' + escHtml(row.tag_id) + '\')">刪除</button>'
       : '';
-
     var toggleBtn = isActive
-      ? '<a href="javascript:void(0)" onclick="doToggleTagStatus(\'' + escHtml(row.tag_id) + '\')" ' +
-          'title="停用" style="font-size:16px;text-decoration:none;">🚫</a>'
-      : '<a href="javascript:void(0)" onclick="doToggleTagStatus(\'' + escHtml(row.tag_id) + '\')" ' +
-          'title="啟用" style="font-size:16px;text-decoration:none;">✅</a>';
-
-    var editBtn = '<a href="javascript:void(0)" ' +
-      'onclick="editTag(\'' + escHtml(row.tag_id) + '\',\'' + rowJson + '\')" ' +
-      'title="編輯" style="font-size:16px;text-decoration:none;">✏️</a>';
+      ? '<button class="btn btn-toggle" onclick="doToggleTagStatus(\'' + escHtml(row.tag_id) + '\')">停用</button>'
+      : '<button class="btn btn-toggle" onclick="doToggleTagStatus(\'' + escHtml(row.tag_id) + '\')">啟用</button>';
+    var editBtn = '<button class="btn btn-edit" ' +
+      'onclick="editTag(\'' + escHtml(row.tag_id) + '\',\'' + rowJson + '\')">編輯</button>';
 
     return '<tr>' +
       '<td>' + escHtml(row.tag_name) + '</td>' +
@@ -196,8 +190,8 @@ function _renderTagTable() {
       '<td>' + (row.keyword  ? escHtml(row.keyword)  : '-') + '</td>' +
       '<td>' + (isActive ? '啟用' : '停用') + '</td>' +
       '<td>' + usageCount + ' 人</td>' +
-      '<td style="white-space:nowrap;">' +
-        '<span style="display:inline-flex;gap:10px;align-items:center;">' +
+    '<td style="white-space:nowrap;">' +
+        '<span style="display:inline-flex;gap:8px;align-items:center;">' +
           editBtn + toggleBtn + deleteBtn +
         '</span>' +
       '</td>' +
