@@ -5,8 +5,11 @@
 //    搜尋過濾比照移植指南前端注意事項，用display:none/block不重新渲染
 // ⚠️ 2026-08-05 修正：filterUo/filterUoTagOptions 對 display_name、tags、tag_name
 //    加上 String() 型別防呆，避免資料非字串型別（數字/物件）時 .toLowerCase() 噴錯
+// ⚠️ 2026-08-25 修正（自動貼標問題排查清單v3第8項比對）：filterUo() 原本只比對
+//    display_name／tags，沒有把 user_id（UID）列入搜尋範圍，導致拿UID（例如從
+//    UserLog/ErrorLog複製出來）在這個頁面搜尋會查不到、看起來像資料不存在，容易
+//    誤判成bug。已加入UID比對，搜尋框placeholder同步更新告知使用者可搜UID。
 // ============================================================
-
 var _uoAll      = [];
 var _uoFiltered = [];
 var _uoPage     = 1;
@@ -15,32 +18,25 @@ var _uoTagList  = [];
 var _uoCurrentUserId = null;
 var _uoCurrentUserName = null;
 var _uoSelectedTagId = null;
-
 async function loadUserOverview() {
   setContent('<div class="loading">載入中...</div>');
-
   var results = await Promise.all([
     apiCall({ action: 'getUserOverview' }),
     apiCall({ action: 'getTagList' })
   ]);
   var userResult = results[0];
   var tagResult  = results[1];
-
   if (!userResult.success) {
     setContent('<div class="empty">載入失敗：' + escHtml(userResult.message) + '</div>');
     return;
   }
-
   _uoTagList = (tagResult.success ? tagResult.data : []).filter(function(t) {
     return t.status === 'active';
   });
-
   _uoAll      = userResult.data || [];
   _uoFiltered = _uoAll.slice();
   _uoPage     = 1;
-
   setContent(_buildUoShell());
-
   _renderUoTable();
   _renderUoPager();
 }
@@ -50,21 +46,17 @@ function _buildUoShell() {
     '<div class="card">' +
       '<div class="toolbar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
         '<input type="text" id="uoSearch"' +
-          ' placeholder="搜尋顯示名稱或標籤..."' +
+          ' placeholder="搜尋顯示名稱、UID或標籤..."' +
           ' oninput="filterUo()"' +
           ' style="flex:1;min-width:180px;max-width:320px;' +
                   'padding:8px 12px;border:1.5px solid #e0e0e0;' +
                   'border-radius:8px;font-size:14px;outline:none;">' +
         '<span id="uoTotalHint" style="color:#888;font-size:13px;white-space:nowrap;"></span>' +
       '</div>' +
-
       '<div id="uoTableWrap"></div>' +
-
       '<div id="uoPager" style="display:flex;justify-content:center;' +
            'gap:6px;margin-top:16px;flex-wrap:wrap;"></div>' +
-
     '</div>' +
-
     '<div class="modal-overlay" id="uoAddTagModal">' +
       '<div class="modal">' +
         '<h3>新增標籤</h3>' +
@@ -84,7 +76,6 @@ function _buildUoShell() {
         '</div>' +
       '</div>' +
     '</div>' +
-
     '<div class="modal-overlay" id="uoNoteModal">' +
       '<div class="modal">' +
         '<h3>編輯備註</h3>' +
@@ -100,44 +91,37 @@ function _buildUoShell() {
       '</div>' +
     '</div>';
 }
-
 function filterUo() {
   var keyword = (document.getElementById('uoSearch').value || '').trim().toLowerCase();
-
   if (!keyword) {
     _uoFiltered = _uoAll.slice();
   } else {
     _uoFiltered = _uoAll.filter(function(row) {
       var nameMatch = String(row.display_name || '').toLowerCase().includes(keyword);
+      var uidMatch  = String(row.user_id || '').toLowerCase().includes(keyword);
       var tagMatch  = (row.tags || []).some(function(t) {
         return String(t || '').toLowerCase().includes(keyword);
       });
-      return nameMatch || tagMatch;
+      return nameMatch || uidMatch || tagMatch;
     });
   }
-
   _uoPage = 1;
   _renderUoTable();
   _renderUoPager();
 }
-
 function _renderUoTable() {
   var wrap = document.getElementById('uoTableWrap');
   var hint = document.getElementById('uoTotalHint');
   if (!wrap) return;
-
   var total = _uoFiltered.length;
   if (hint) hint.textContent = '共 ' + total + ' 位用戶';
-
   if (total === 0) {
     wrap.innerHTML = '<p class="empty">沒有符合的用戶</p>';
     return;
   }
-
   var start = (_uoPage - 1) * _uoPageSize;
   var end   = Math.min(start + _uoPageSize, total);
   var page  = _uoFiltered.slice(start, end);
-
   var rows = page.map(function(row) {
     var tagChips = (row.tags || []).filter(Boolean).map(function(t) {
       var tagStr = String(t);
@@ -148,11 +132,9 @@ function _renderUoTable() {
           'style="color:#e74c3c;text-decoration:none;margin-left:4px;">×</a>' +
         '</span>';
     }).join('');
-
     var noteDisplay = row.note
       ? '<span style="color:#666;">' + escHtml(row.note.length > 20 ? row.note.substring(0, 20) + '...' : row.note) + '</span>'
       : '<span style="color:#bbb;">無備註</span>';
-
     return '<tr>' +
       '<td>' + escHtml(row.display_name || row.user_id) + '</td>' +
       '<td>' + (row.last_seen ? escHtml(String(row.last_seen)) : '-') + '</td>' +
@@ -166,7 +148,6 @@ function _renderUoTable() {
       '</td>' +
     '</tr>';
   }).join('');
-
   wrap.innerHTML =
     '<table>' +
       '<thead><tr>' +
@@ -179,11 +160,9 @@ function _renderUoTable() {
       '<tbody>' + rows + '</tbody>' +
     '</table>';
 }
-
 function _renderUoPager() {
   renderPager('uoPager', _uoFiltered.length, _uoPage, _uoPageSize, gotoUoPage);
 }
-
 function gotoUoPage(page) {
   var totalPages = Math.ceil(_uoFiltered.length / _uoPageSize);
   if (page < 1 || page > totalPages) return;
@@ -191,15 +170,12 @@ function gotoUoPage(page) {
   _renderUoTable();
   _renderUoPager();
 }
-
 function openUoAddTagModal(userId, displayName) {
   _uoCurrentUserId   = userId;
   _uoCurrentUserName = displayName;
   _uoSelectedTagId   = null;
-
   document.getElementById('uoAddTagUserHint').textContent = '用戶：' + displayName;
   document.getElementById('uoTagSearchInModal').value = '';
-
   var listEl = document.getElementById('uoTagOptionList');
   if (_uoTagList.length === 0) {
     listEl.innerHTML = '<p style="color:#999;font-size:13px;margin:6px;">目前沒有可用標籤</p>';
@@ -212,17 +188,14 @@ function openUoAddTagModal(userId, displayName) {
       '</div>';
     }).join('');
   }
-
   openModal('uoAddTagModal');
 }
-
 function closeUoAddTagModal() {
   closeModal('uoAddTagModal');
   _uoCurrentUserId   = null;
   _uoCurrentUserName = null;
   _uoSelectedTagId   = null;
 }
-
 function filterUoTagOptions() {
   var keyword = (document.getElementById('uoTagSearchInModal').value || '').trim().toLowerCase();
   var items = document.querySelectorAll('.uo-tag-option');
@@ -231,7 +204,6 @@ function filterUoTagOptions() {
     items[i].style.display = (!keyword || label.indexOf(keyword) !== -1) ? 'block' : 'none';
   }
 }
-
 function selectUoTagOption(el) {
   var items = document.querySelectorAll('.uo-tag-option');
   for (var i = 0; i < items.length; i++) {
@@ -244,17 +216,14 @@ function selectUoTagOption(el) {
   el.style.fontWeight = '600';
   _uoSelectedTagId = el.getAttribute('data-tagid');
 }
-
 async function doAddUserTag() {
   if (!_uoSelectedTagId) { showToast('請選擇標籤', 'error'); return; }
-
   var result = await apiCall({
     action:       'addUserTag',
     user_id:      _uoCurrentUserId,
     display_name: _uoCurrentUserName,
     tag_id:       _uoSelectedTagId
   });
-
   if (result.success) {
     closeUoAddTagModal();
     showToast('貼標籤成功', 'success');
@@ -263,14 +232,12 @@ async function doAddUserTag() {
     showToast(result.message, 'error');
   }
 }
-
 function doRemoveUserTag(userId, tagName) {
   // ⚠️ 移除用的是 tag_id，但畫面上顯示/可點擊的是 tag_name（後端 removeUserTag 只接受 tag_id），
   //    這裡先用名稱反查對應的 tag_id 再送出
   var tag = _uoTagList.find(function(t) { return t.tag_name === tagName; });
   var tagId = tag ? tag.tag_id : '';
   if (!tagId) { showToast('找不到對應的標籤ID，請重新整理頁面', 'error'); return; }
-
   confirmAndRun('確定要移除「' + tagName + '」這個標籤嗎？', async function() {
     var result = await apiCall({ action: 'removeUserTag', user_id: userId, tag_id: tagId });
     if (result.success) {
@@ -281,32 +248,25 @@ function doRemoveUserTag(userId, tagName) {
     }
   });
 }
-
 function openUoNoteModal(userId, displayName, encodedNote) {
   _uoCurrentUserId   = userId;
   _uoCurrentUserName = displayName;
-
   document.getElementById('uoNoteUserHint').textContent = '用戶：' + displayName;
   document.getElementById('uoNoteInput').value = decodeURIComponent(encodedNote || '');
-
   openModal('uoNoteModal');
 }
-
 function closeUoNoteModal() {
   closeModal('uoNoteModal');
   _uoCurrentUserId   = null;
   _uoCurrentUserName = null;
 }
-
 async function doSaveUserNote() {
   var note = document.getElementById('uoNoteInput').value.trim();
-
   var result = await apiCall({
     action:  'updateUserNote',
     user_id: _uoCurrentUserId,
     note:    note
   });
-
   if (result.success) {
     closeUoNoteModal();
     showToast('備註已更新', 'success');
