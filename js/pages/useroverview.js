@@ -9,16 +9,23 @@
 //    display_name／tags，沒有把 user_id（UID）列入搜尋範圍，導致拿UID（例如從
 //    UserLog/ErrorLog複製出來）在這個頁面搜尋會查不到、看起來像資料不存在，容易
 //    誤判成bug。已加入UID比對，搜尋框placeholder同步更新告知使用者可搜UID。
+// ⚠️ 2026-08-25 修正（自動貼標問題排查清單第5項比對）：原本 loadUserOverview()
+//    每次呼叫都固定重置 _uoPage=1 且清空搜尋關鍵字，而貼標籤/移除標籤/編輯備註
+//    成功後也是呼叫同一支函式重整畫面，導致這些操作後會連帶跳回第1頁、搜尋條件也
+//    被清空——跟loyalty.js是同一種模式。已改為：只有「首次進入頁面」才重置搜尋與
+//    頁碼；操作成功後改呼叫 loadUserOverview(true) 保留目前搜尋關鍵字與頁碼，並在
+//    篩選後的筆數變少導致頁碼超出範圍時自動修正，避免停在空白頁面。
 // ============================================================
 var _uoAll      = [];
 var _uoFiltered = [];
 var _uoPage     = 1;
 var _uoPageSize = 20;
 var _uoTagList  = [];
+var _uoSearchKeyword = '';
 var _uoCurrentUserId = null;
 var _uoCurrentUserName = null;
 var _uoSelectedTagId = null;
-async function loadUserOverview() {
+async function loadUserOverview(preserveView) {
   setContent('<div class="loading">載入中...</div>');
   var results = await Promise.all([
     apiCall({ action: 'getUserOverview' }),
@@ -33,12 +40,37 @@ async function loadUserOverview() {
   _uoTagList = (tagResult.success ? tagResult.data : []).filter(function(t) {
     return t.status === 'active';
   });
-  _uoAll      = userResult.data || [];
-  _uoFiltered = _uoAll.slice();
-  _uoPage     = 1;
+  _uoAll = userResult.data || [];
+  if (!preserveView) {
+    _uoSearchKeyword = '';
+    _uoPage = 1;
+  }
+  _applyUoFilter();
   setContent(_buildUoShell());
+  document.getElementById('uoSearch').value = _uoSearchKeyword;
+  _clampUoPage();
   _renderUoTable();
   _renderUoPager();
+}
+function _applyUoFilter() {
+  var keyword = _uoSearchKeyword.trim().toLowerCase();
+  if (!keyword) {
+    _uoFiltered = _uoAll.slice();
+  } else {
+    _uoFiltered = _uoAll.filter(function(row) {
+      var nameMatch = String(row.display_name || '').toLowerCase().includes(keyword);
+      var uidMatch  = String(row.user_id || '').toLowerCase().includes(keyword);
+      var tagMatch  = (row.tags || []).some(function(t) {
+        return String(t || '').toLowerCase().includes(keyword);
+      });
+      return nameMatch || uidMatch || tagMatch;
+    });
+  }
+}
+function _clampUoPage() {
+  var totalPages = Math.max(1, Math.ceil(_uoFiltered.length / _uoPageSize));
+  if (_uoPage > totalPages) _uoPage = totalPages;
+  if (_uoPage < 1) _uoPage = 1;
 }
 function _buildUoShell() {
   return '' +
@@ -92,19 +124,8 @@ function _buildUoShell() {
     '</div>';
 }
 function filterUo() {
-  var keyword = (document.getElementById('uoSearch').value || '').trim().toLowerCase();
-  if (!keyword) {
-    _uoFiltered = _uoAll.slice();
-  } else {
-    _uoFiltered = _uoAll.filter(function(row) {
-      var nameMatch = String(row.display_name || '').toLowerCase().includes(keyword);
-      var uidMatch  = String(row.user_id || '').toLowerCase().includes(keyword);
-      var tagMatch  = (row.tags || []).some(function(t) {
-        return String(t || '').toLowerCase().includes(keyword);
-      });
-      return nameMatch || uidMatch || tagMatch;
-    });
-  }
+  _uoSearchKeyword = document.getElementById('uoSearch').value || '';
+  _applyUoFilter();
   _uoPage = 1;
   _renderUoTable();
   _renderUoPager();
@@ -227,7 +248,7 @@ async function doAddUserTag() {
   if (result.success) {
     closeUoAddTagModal();
     showToast('貼標籤成功', 'success');
-    loadUserOverview();
+    loadUserOverview(true);
   } else {
     showToast(result.message, 'error');
   }
@@ -242,7 +263,7 @@ function doRemoveUserTag(userId, tagName) {
     var result = await apiCall({ action: 'removeUserTag', user_id: userId, tag_id: tagId });
     if (result.success) {
       showToast('已移除標籤', 'success');
-      loadUserOverview();
+      loadUserOverview(true);
     } else {
       showToast(result.message, 'error');
     }
@@ -270,7 +291,7 @@ async function doSaveUserNote() {
   if (result.success) {
     closeUoNoteModal();
     showToast('備註已更新', 'success');
-    loadUserOverview();
+    loadUserOverview(true);
   } else {
     showToast(result.message, 'error');
   }
