@@ -6,49 +6,62 @@
 // ⚠️ 2026-07-31 新增：受眾ID欄位顯示（供小遊戲等其他功能查詢）
 // ⚠️ 2026-07-31 修正：createModal / membersModal 改用 .modal-scrollable class
 //    取代原本各自重複的 inline style="max-height:85vh;overflow-y:auto;"
+// ⚠️ 2026-08-27 修正（自動貼標問題排查清單第5項）：loadAudience() 原本每次被
+//   任何操作（儲存/匯入/同步人數/刪除）呼叫後都會無條件重置頁碼跟清空搜尋框，
+//   跟useroverview.js修過的同一根因。改為 loadAudience(preserveView) 只有
+//   真正切換到本頁（非preserveView）才重置，操作後的刷新一律保留目前頁碼與搜尋字。
 // ============================================================
-
-var _audienceAll      = [];
-var _audienceFiltered = [];
-var _audiencePage     = 1;
-var _audiencePageSize = 20;
-var _audienceRmOptions = '';
-var audienceEditIndex  = null;
-var currentAudienceId  = null;
+var _audienceAll           = [];
+var _audienceFiltered      = [];
+var _audiencePage          = 1;
+var _audiencePageSize      = 20;
+var _audienceSearchKeyword = '';
+var _audienceRmOptions     = '';
+var audienceEditIndex      = null;
+var currentAudienceId      = null;
 var _currentEditingAudienceId = null;
-
-async function loadAudience() {
-  setContent('<div class="loading">載入中...</div>');
-
+async function loadAudience(preserveView) {
+  if (!preserveView) setContent('<div class="loading">載入中...</div>');
   var results = await Promise.all([
     apiCall({ action: 'getAudienceList' }),
     apiCall({ action: 'getRichMenuList' })
   ]);
   var audienceResult = results[0];
   var richMenuResult = results[1];
-
   if (!audienceResult.success) {
     setContent('<div class="empty">載入失敗：' + escHtml(audienceResult.message) + '</div>');
     return;
   }
-
   _audienceRmOptions = '<option value="">不切換圖文選單</option>';
   if (richMenuResult.success) {
     richMenuResult.data.forEach(function(rm) {
       _audienceRmOptions += '<option value="' + escHtml(rm.rich_menu_id) + '">' + escHtml(rm.name) + '</option>';
     });
   }
-
-  _audienceAll      = audienceResult.data || [];
-  _audienceFiltered = _audienceAll.slice();
-  _audiencePage     = 1;
-
+  _audienceAll = audienceResult.data || [];
+  if (!preserveView) {
+    _audienceSearchKeyword = '';
+    _audiencePage = 1;
+  }
+  _applyAudienceFilter();
   setContent(_buildAudienceShell());
-
+  document.getElementById('audienceSearch').value = _audienceSearchKeyword;
+  _clampAudiencePage();
   _renderAudienceTable();
   _renderAudiencePager();
 }
-
+function _applyAudienceFilter() {
+  var keyword = _audienceSearchKeyword.trim().toLowerCase();
+  _audienceFiltered = !keyword ? _audienceAll.slice() : _audienceAll.filter(function(row) {
+    return (row.name    || '').toLowerCase().includes(keyword) ||
+           (row.keyword || '').toLowerCase().includes(keyword);
+  });
+}
+function _clampAudiencePage() {
+  var totalPages = Math.max(1, Math.ceil(_audienceFiltered.length / _audiencePageSize));
+  if (_audiencePage > totalPages) _audiencePage = totalPages;
+  if (_audiencePage < 1) _audiencePage = 1;
+}
 function _buildAudienceShell() {
   return '' +
     '<h2 class="page-title">受眾管理</h2>' +
@@ -63,33 +76,25 @@ function _buildAudienceShell() {
                   'border-radius:8px;font-size:14px;outline:none;">' +
         '<span id="audienceTotalHint" style="color:#888;font-size:13px;white-space:nowrap;"></span>' +
       '</div>' +
-
       '<div id="audienceTableWrap"></div>' +
-
       '<div id="audiencePager" style="display:flex;justify-content:center;' +
            'gap:6px;margin-top:16px;flex-wrap:wrap;"></div>' +
-
     '</div>' +
-
     '<div class="modal-overlay" id="createModal">' +
       '<div class="modal modal-scrollable">' +
         '<h3 id="audienceModalTitle">建立受眾</h3>' +
-
         '<div class="form-group">' +
           '<label>受眾名稱</label>' +
           '<input type="text" id="audienceName" placeholder="例如：VIP客戶">' +
         '</div>' +
-
         '<div class="form-group">' +
           '<label>觸發關鍵字（選填）</label>' +
           '<input type="text" id="audienceKeyword" placeholder="用戶輸入此關鍵字自動加入">' +
         '</div>' +
-
         '<div class="form-group">' +
           '<label>觸發後切換圖文選單（選填）</label>' +
           '<select id="audienceRichMenu">' + _audienceRmOptions + '</select>' +
         '</div>' +
-
         '<div class="form-group">' +
           '<label>標籤（選填，勾選後系統會把符合標籤的用戶推播加入此受眾）</label>' +
           '<input type="text" id="audienceTagSearch" placeholder="搜尋標籤..."' +
@@ -101,7 +106,6 @@ function _buildAudienceShell() {
             '<p style="color:#999;font-size:13px;margin:0;">載入標籤中...</p>' +
           '</div>' +
         '</div>' +
-
         '<div id="autoReplySection" style="margin-top:4px;">' +
           '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;' +
                          'font-size:14px;color:#444;user-select:none;">' +
@@ -120,14 +124,12 @@ function _buildAudienceShell() {
                       'box-sizing:border-box;outline:none;"></textarea>' +
           '</div>' +
         '</div>' +
-
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeCreateModal()">取消</button>' +
           '<button class="btn btn-primary" id="audienceSaveBtn" onclick="saveAudience()">建立</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
-
     '<div class="modal-overlay" id="importModal">' +
       '<div class="modal">' +
         '<h3>匯入 UID</h3>' +
@@ -144,7 +146,6 @@ function _buildAudienceShell() {
         '</div>' +
       '</div>' +
     '</div>' +
-
     '<div class="modal-overlay" id="membersModal">' +
       '<div class="modal modal-scrollable">' +
         '<h3>查看成員</h3>' +
@@ -156,11 +157,9 @@ function _buildAudienceShell() {
       '</div>' +
     '</div>';
 }
-
 async function _loadAudienceTagCheckboxOptions() {
   var listEl = document.getElementById('audienceTagCheckList');
   listEl.innerHTML = '<p style="color:#999;font-size:13px;margin:0;">載入標籤中...</p>';
-
   var tagResult = await apiCall({ action: 'getTagList' });
   var html = '';
   if (tagResult.success) {
@@ -176,7 +175,6 @@ async function _loadAudienceTagCheckboxOptions() {
   }
   listEl.innerHTML = html || '<p style="color:#999;font-size:13px;margin:0;">目前沒有標籤，請先到「標籤管理」建立</p>';
 }
-
 function filterAudienceTagCheckboxes() {
   var keyword = (document.getElementById('audienceTagSearch').value || '').trim().toLowerCase();
   var items = document.querySelectorAll('.audience-tag-check-item');
@@ -185,46 +183,30 @@ function filterAudienceTagCheckboxes() {
     items[i].style.display = (!keyword || label.indexOf(keyword) !== -1) ? 'flex' : 'none';
   }
 }
-
 function toggleAudReplyField() {
   var checked = document.getElementById('audAutoReply').checked;
   document.getElementById('audReplyField').style.display = checked ? 'block' : 'none';
 }
-
 function filterAudience() {
-  var keyword = (document.getElementById('audienceSearch').value || '').trim().toLowerCase();
-
-  if (!keyword) {
-    _audienceFiltered = _audienceAll.slice();
-  } else {
-    _audienceFiltered = _audienceAll.filter(function(row) {
-      return (row.name    || '').toLowerCase().includes(keyword) ||
-             (row.keyword || '').toLowerCase().includes(keyword);
-    });
-  }
-
+  _audienceSearchKeyword = document.getElementById('audienceSearch').value || '';
+  _applyAudienceFilter();
   _audiencePage = 1;
   _renderAudienceTable();
   _renderAudiencePager();
 }
-
 function _renderAudienceTable() {
   var wrap = document.getElementById('audienceTableWrap');
   var hint = document.getElementById('audienceTotalHint');
   if (!wrap) return;
-
   var total = _audienceFiltered.length;
   if (hint) hint.textContent = '共 ' + total + ' 筆';
-
   if (total === 0) {
     wrap.innerHTML = '<p class="empty">沒有符合的受眾</p>';
     return;
   }
-
   var start = (_audiencePage - 1) * _audiencePageSize;
   var end   = Math.min(start + _audiencePageSize, total);
   var page  = _audienceFiltered.slice(start, end);
-
   var rows = page.map(function(row) {
     var rmName = '-';
     if (row.rich_menu_id) {
@@ -235,7 +217,6 @@ function _renderAudienceTable() {
       }
       if (rmName === '-') rmName = row.rich_menu_id.substring(0, 12) + '...';
     }
-
     var rowJson = encodeURIComponent(JSON.stringify(row));
     return '<tr>' +
       '<td>' + escHtml(row.name) + '</td>' +
@@ -257,7 +238,6 @@ function _renderAudienceTable() {
       '</td>' +
     '</tr>';
   }).join('');
-
   wrap.innerHTML =
     '<table>' +
       '<thead><tr>' +
@@ -271,7 +251,6 @@ function _renderAudienceTable() {
       '<tbody>' + rows + '</tbody>' +
     '</table>';
 }
-
 function _selectAudienceIdText(cell) {
   var range = document.createRange();
   range.selectNodeContents(cell);
@@ -279,11 +258,9 @@ function _selectAudienceIdText(cell) {
   selection.removeAllRanges();
   selection.addRange(range);
 }
-
 function _renderAudiencePager() {
   renderPager('audiencePager', _audienceFiltered.length, _audiencePage, _audiencePageSize, gotoAudiencePage);
 }
-
 function gotoAudiencePage(page) {
   var totalPages = Math.ceil(_audienceFiltered.length / _audiencePageSize);
   if (page < 1 || page > totalPages) return;
@@ -291,7 +268,6 @@ function gotoAudiencePage(page) {
   _renderAudienceTable();
   _renderAudiencePager();
 }
-
 async function openCreateModal() {
   audienceEditIndex = null;
   _currentEditingAudienceId = null;
@@ -305,17 +281,14 @@ async function openCreateModal() {
   document.getElementById('audReplyField').style.display = 'none';
   document.getElementById('autoReplySection').style.display = 'block';
   document.getElementById('audienceTagSearch').value = '';
-
   openModal('createModal');
   await _loadAudienceTagCheckboxOptions();
 }
-
 function closeCreateModal() {
   closeModal('createModal');
   audienceEditIndex = null;
   _currentEditingAudienceId = null;
 }
-
 async function editAudience(index, rowJson) {
   var row = JSON.parse(decodeURIComponent(rowJson));
   audienceEditIndex = index;
@@ -327,15 +300,12 @@ async function editAudience(index, rowJson) {
   document.getElementById('audienceRichMenu').value = row.rich_menu_id || '';
   document.getElementById('autoReplySection').style.display = 'none';
   document.getElementById('audienceTagSearch').value = '';
-
   openModal('createModal');
-
   var results = await Promise.all([
     _loadAudienceTagCheckboxOptions(),
     apiCall({ action: 'getAudienceTagLinks', audience_id: row.audience_id })
   ]);
   var linkResult = results[1];
-
   if (linkResult.success) {
     linkResult.data.forEach(function(tagId) {
       var cb = document.querySelector('.audienceTagCheckbox[value="' + tagId + '"]');
@@ -343,7 +313,6 @@ async function editAudience(index, rowJson) {
     });
   }
 }
-
 async function saveAudience() {
   var name         = document.getElementById('audienceName').value.trim();
   var keyword      = document.getElementById('audienceKeyword').value.trim();
@@ -354,16 +323,13 @@ async function saveAudience() {
   var replyContent = document.getElementById('audReplyContent')
                        ? document.getElementById('audReplyContent').value.trim()
                        : '';
-
   if (!name) { showToast('請填入受眾名稱', 'error'); return; }
   if (autoReply && !keyword)      { showToast('要同步建立回覆，請先填入觸發關鍵字', 'error'); return; }
   if (autoReply && !replyContent) { showToast('請填入回覆內容', 'error'); return; }
-
   var selectedTagIds = Array.prototype.map.call(
     document.querySelectorAll('.audienceTagCheckbox:checked'),
     function(cb) { return cb.value; }
   );
-
   var result;
   if (audienceEditIndex !== null) {
     result = await apiCall({
@@ -383,11 +349,9 @@ async function saveAudience() {
       reply_content: replyContent
     });
   }
-
   if (result.success) {
     var targetAudienceId = _currentEditingAudienceId || (result.data && result.data.audience_id);
     var tagMsg = '';
-
     if (targetAudienceId) {
       var linkResult = await apiCall({
         action:      'setAudienceTagLinks',
@@ -398,7 +362,6 @@ async function saveAudience() {
         tagMsg = '，已推播 ' + linkResult.data.pushed + ' 人加入受眾';
       }
     }
-
     closeCreateModal();
     showToast(
       (audienceEditIndex !== null
@@ -406,57 +369,49 @@ async function saveAudience() {
         : (result.data && result.data.message ? result.data.message : '受眾建立成功')) + tagMsg,
       'success'
     );
-    loadAudience();
+    loadAudience(true);
   } else {
     showToast(result.message, 'error');
   }
 }
-
 function openImportModal(audienceId, name) {
   currentAudienceId = audienceId;
   document.getElementById('importModalTitle').textContent = '受眾：' + name;
   document.getElementById('importUids').value = '';
   openModal('importModal');
 }
-
 function closeImportModal() {
   closeModal('importModal');
   document.getElementById('importUids').value = '';
   currentAudienceId = null;
 }
-
 async function doImportAudience() {
   var raw  = document.getElementById('importUids').value.trim();
   var uids = raw.split('\n').map(function(u) { return u.trim(); }).filter(Boolean);
-
   if (uids.length === 0) { showToast('請填入至少一筆 UID', 'error'); return; }
-
   var result = await apiCall({
     action:      'importAudience',
     audience_id: currentAudienceId,
     uids:        uids
   });
-
   if (result.success) {
     closeImportModal();
     showToast(result.message, 'success');
-    loadAudience();
+    loadAudience(true);
   } else {
     showToast(result.message, 'error');
   }
 }
-
 async function syncCount(audienceId, index) {
   showToast('同步中...');
   var result = await apiCall({ action: 'syncAudienceCount', audience_id: audienceId });
   if (result.success) {
     showToast('人數已更新：' + result.data.count + ' 人', 'success');
-    loadAudience();
+    loadAudience(true);
   } else {
     showToast(result.message, 'error');
   }
 }
-
 async function doDeleteAudience(audienceId, index) {
   await confirmAndRun('確定要刪除這個受眾嗎？此操作無法復原。', async function() {
     var result = await apiCall({
@@ -464,48 +419,40 @@ async function doDeleteAudience(audienceId, index) {
       audience_id: audienceId,
       index:       index
     });
-
     if (result.success) {
       showToast('受眾已刪除', 'success');
-      loadAudience();
+      loadAudience(true);
     } else {
       showToast(result.message, 'error');
     }
   });
 }
-
 async function openMembersModal(audienceId, name) {
   document.getElementById('membersModalTitle').textContent = '受眾：' + name;
   document.getElementById('membersListWrap').innerHTML = '<div class="loading">載入中...</div>';
   openModal('membersModal');
-
   var result = await apiCall({ action: 'getAudienceMembers', audience_id: audienceId });
   var wrap = document.getElementById('membersListWrap');
-
   if (!result.success) {
     wrap.innerHTML = '<p class="empty">載入失敗：' + escHtml(result.message) + '</p>';
     return;
   }
-
   if (result.data.length === 0) {
     wrap.innerHTML = '<p class="empty">此受眾目前沒有成員</p>';
     return;
   }
-
   var rows = result.data.map(function(m) {
     return '<tr>' +
       '<td>' + escHtml(m.display_name) + '</td>' +
       '<td class="uid-cell">' + escHtml(m.user_id) + '</td>' +
     '</tr>';
   }).join('');
-
   wrap.innerHTML =
     '<table>' +
       '<thead><tr><th>顯示名稱</th><th>UserID</th></tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table>';
 }
-
 function closeMembersModal() {
   closeModal('membersModal');
 }
