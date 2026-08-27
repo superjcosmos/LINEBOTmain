@@ -3,34 +3,48 @@
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / renderPager
 // ⚠️ 本次新增：使用人數欄位顯示，使用人數>0時隱藏刪除按鈕（避免無效的刪除嘗試往返）
 // ⚠️ 效能優化：editTag 打開Modal後的兩個互不依賴API改用Promise.all平行呼叫
+// ⚠️ 2026-08-27 修正（自動貼標問題排查清單第5項）：loadTag() 原本每次被任何
+//   操作（啟用/停用/刪除/儲存）呼叫後都會無條件重置頁碼跟清空搜尋框，跟
+//   useroverview.js修過的同一根因。改為 loadTag(preserveView) 只有真正
+//   切換到本頁（非preserveView）才重置，操作後的刷新一律保留目前頁碼與搜尋字。
 // ============================================================
-
-var _tagAll      = [];
-var _tagFiltered  = [];
-var _tagPage      = 1;
-var _tagPageSize  = 20;
-var tagEditId     = null;
-
-async function loadTag() {
-  setContent('<div class="loading">載入中...</div>');
-
+var _tagAll           = [];
+var _tagFiltered      = [];
+var _tagPage          = 1;
+var _tagPageSize      = 20;
+var _tagSearchKeyword = '';
+var tagEditId         = null;
+async function loadTag(preserveView) {
+  if (!preserveView) setContent('<div class="loading">載入中...</div>');
   var result = await apiCall({ action: 'getTagList' });
-
   if (!result.success) {
     setContent('<div class="empty">載入失敗：' + escHtml(result.message) + '</div>');
     return;
   }
-
-  _tagAll      = result.data || [];
-  _tagFiltered = _tagAll.slice();
-  _tagPage     = 1;
-
+  _tagAll = result.data || [];
+  if (!preserveView) {
+    _tagSearchKeyword = '';
+    _tagPage = 1;
+  }
+  _applyTagFilter();
   setContent(_buildTagShell());
-
+  document.getElementById('tagSearch').value = _tagSearchKeyword;
+  _clampTagPage();
   _renderTagTable();
   _renderTagPager();
 }
-
+function _applyTagFilter() {
+  var keyword = _tagSearchKeyword.trim().toLowerCase();
+  _tagFiltered = !keyword ? _tagAll.slice() : _tagAll.filter(function(row) {
+    return (row.tag_name || '').toLowerCase().includes(keyword) ||
+           (row.keyword  || '').toLowerCase().includes(keyword);
+  });
+}
+function _clampTagPage() {
+  var totalPages = Math.max(1, Math.ceil(_tagFiltered.length / _tagPageSize));
+  if (_tagPage > totalPages) _tagPage = totalPages;
+  if (_tagPage < 1) _tagPage = 1;
+}
 function _buildTagShell() {
   return '' +
     '<h2 class="page-title">標籤管理</h2>' +
@@ -45,33 +59,25 @@ function _buildTagShell() {
                   'border-radius:8px;font-size:14px;outline:none;">' +
         '<span id="tagTotalHint" style="color:#888;font-size:13px;white-space:nowrap;"></span>' +
       '</div>' +
-
       '<div id="tagTableWrap"></div>' +
-
       '<div id="tagPager" style="display:flex;justify-content:center;' +
            'gap:6px;margin-top:16px;flex-wrap:wrap;"></div>' +
-
     '</div>' +
-
     '<div class="modal-overlay" id="tagModal">' +
       '<div class="modal" style="max-height:85vh;overflow-y:auto;">' +
         '<h3 id="tagModalTitle">建立標籤</h3>' +
-
         '<div class="form-group">' +
           '<label>標籤名稱</label>' +
           '<input type="text" id="tagName" placeholder="例如：VIP客戶">' +
         '</div>' +
-
         '<div class="form-group">' +
           '<label>分類（選填）</label>' +
           '<input type="text" id="tagCategory" placeholder="例如：會員等級">' +
         '</div>' +
-
         '<div class="form-group">' +
           '<label>觸發關鍵字（選填）</label>' +
           '<input type="text" id="tagKeyword" placeholder="用戶輸入此關鍵字自動貼標">' +
         '</div>' +
-
         '<div class="form-group">' +
           '<label>狀態</label>' +
           '<select id="tagStatus">' +
@@ -79,12 +85,10 @@ function _buildTagShell() {
             '<option value="inactive">停用</option>' +
           '</select>' +
         '</div>' +
-
         '<div class="form-group">' +
           '<label>備註（選填）</label>' +
           '<textarea id="tagNote" rows="2" placeholder="內部備註"></textarea>' +
         '</div>' +
-
         '<div class="form-group">' +
           '<label>連結受眾（可複選，選了之後會把此標籤目前的使用者實際推播進該受眾）</label>' +
           '<input type="text" id="tagAudienceSearch" placeholder="搜尋受眾..."' +
@@ -96,7 +100,6 @@ function _buildTagShell() {
             '<p style="color:#999;font-size:13px;margin:0;">載入受眾中...</p>' +
           '</div>' +
         '</div>' +
-
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeCreateTagModal()">取消</button>' +
           '<button class="btn btn-primary" id="tagSaveBtn" onclick="saveTagItem()">建立</button>' +
@@ -104,12 +107,10 @@ function _buildTagShell() {
       '</div>' +
     '</div>';
 }
-
 // ── 延遲載入：只有打開 Modal 時才呼叫 getAudienceList，不擋列表頁載入速度 ──
 async function _loadTagAudienceCheckboxOptions() {
   var listEl = document.getElementById('tagAudienceCheckList');
   listEl.innerHTML = '<p style="color:#999;font-size:13px;margin:0;">載入受眾中...</p>';
-
   var audienceResult = await apiCall({ action: 'getAudienceList' });
   var html = '';
   if (audienceResult.success) {
@@ -125,7 +126,6 @@ async function _loadTagAudienceCheckboxOptions() {
   }
   listEl.innerHTML = html || '<p style="color:#999;font-size:13px;margin:0;">目前沒有受眾，請先到「受眾管理」建立</p>';
 }
-
 function filterTagAudienceCheckboxes() {
   var keyword = (document.getElementById('tagAudienceSearch').value || '').trim().toLowerCase();
   var items = document.querySelectorAll('.tag-audience-check-item');
@@ -134,46 +134,30 @@ function filterTagAudienceCheckboxes() {
     items[i].style.display = (!keyword || label.indexOf(keyword) !== -1) ? 'flex' : 'none';
   }
 }
-
 function filterTag() {
-  var keyword = (document.getElementById('tagSearch').value || '').trim().toLowerCase();
-
-  if (!keyword) {
-    _tagFiltered = _tagAll.slice();
-  } else {
-    _tagFiltered = _tagAll.filter(function(row) {
-      return (row.tag_name || '').toLowerCase().includes(keyword) ||
-             (row.keyword  || '').toLowerCase().includes(keyword);
-    });
-  }
-
+  _tagSearchKeyword = document.getElementById('tagSearch').value || '';
+  _applyTagFilter();
   _tagPage = 1;
   _renderTagTable();
   _renderTagPager();
 }
-
 function _renderTagTable() {
   var wrap = document.getElementById('tagTableWrap');
   var hint = document.getElementById('tagTotalHint');
   if (!wrap) return;
-
   var total = _tagFiltered.length;
   if (hint) hint.textContent = '共 ' + total + ' 筆';
-
   if (total === 0) {
     wrap.innerHTML = '<p class="empty">沒有符合的標籤</p>';
     return;
   }
-
   var start = (_tagPage - 1) * _tagPageSize;
   var end   = Math.min(start + _tagPageSize, total);
   var page  = _tagFiltered.slice(start, end);
-
   var rows = page.map(function(row) {
     var rowJson = encodeURIComponent(JSON.stringify(row));
     var usageCount = row.usage_count || 0;
     var isActive = row.status === 'active';
-
     // ⚠️ 使用人數>0時隱藏刪除按鈕，避免使用者點了才收到後端拒絕的錯誤訊息（後端仍保留同樣的檢查作為最終防線）
     var deleteBtn = usageCount === 0
       ? '<button class="btn btn-danger" onclick="doDeleteTag(\'' + escHtml(row.tag_id) + '\')">刪除</button>'
@@ -183,7 +167,6 @@ function _renderTagTable() {
       : '<button class="btn btn-enable" onclick="doToggleTagStatus(\'' + escHtml(row.tag_id) + '\')">啟用</button>';
     var editBtn = '<button class="btn btn-edit" ' +
       'onclick="editTag(\'' + escHtml(row.tag_id) + '\',\'' + rowJson + '\')">編輯</button>';
-
     return '<tr>' +
       '<td>' + escHtml(row.tag_name) + '</td>' +
       '<td>' + (row.category ? escHtml(row.category) : '-') + '</td>' +
@@ -197,7 +180,6 @@ function _renderTagTable() {
       '</td>' +
     '</tr>';
   }).join('');
-
   wrap.innerHTML =
     '<table>' +
       '<thead><tr>' +
@@ -211,21 +193,18 @@ function _renderTagTable() {
       '<tbody>' + rows + '</tbody>' +
     '</table>';
 }
-
 async function doToggleTagStatus(tagId) {
   var result = await apiCall({ action: 'toggleTagStatus', tag_id: tagId });
   if (result.success) {
     showToast(result.data.message, 'success');
-    loadTag();
+    loadTag(true);
   } else {
     showToast(result.message, 'error');
   }
 }
-
 function _renderTagPager() {
   renderPager('tagPager', _tagFiltered.length, _tagPage, _tagPageSize, gotoTagPage);
 }
-
 function gotoTagPage(page) {
   var totalPages = Math.ceil(_tagFiltered.length / _tagPageSize);
   if (page < 1 || page > totalPages) return;
@@ -233,7 +212,6 @@ function gotoTagPage(page) {
   _renderTagTable();
   _renderTagPager();
 }
-
 async function openCreateTagModal() {
   tagEditId = null;
   document.getElementById('tagModalTitle').textContent = '建立標籤';
@@ -244,16 +222,13 @@ async function openCreateTagModal() {
   document.getElementById('tagStatus').value   = 'active';
   document.getElementById('tagNote').value     = '';
   document.getElementById('tagAudienceSearch').value = '';
-
   openModal('tagModal');
   await _loadTagAudienceCheckboxOptions();
 }
-
 function closeCreateTagModal() {
   closeModal('tagModal');
   tagEditId = null;
 }
-
 async function editTag(tagId, rowJson) {
   var row = JSON.parse(decodeURIComponent(rowJson));
   tagEditId = tagId;
@@ -265,16 +240,13 @@ async function editTag(tagId, rowJson) {
   document.getElementById('tagStatus').value   = row.status   || 'active';
   document.getElementById('tagNote').value     = row.note     || '';
   document.getElementById('tagAudienceSearch').value = '';
-
   openModal('tagModal');
-
   // ⚠️ 效能優化：這兩個呼叫互不依賴，改用 Promise.all 平行處理
   var results = await Promise.all([
     _loadTagAudienceCheckboxOptions(),
     apiCall({ action: 'getTagAudienceLinks', tag_id: tagId })
   ]);
   var linkResult = results[1];
-
   if (linkResult.success) {
     linkResult.data.forEach(function(audienceId) {
       var cb = document.querySelector('.tagAudienceCheckbox[value="' + audienceId + '"]');
@@ -282,21 +254,17 @@ async function editTag(tagId, rowJson) {
     });
   }
 }
-
 async function saveTagItem() {
   var tagName  = document.getElementById('tagName').value.trim();
   var category = document.getElementById('tagCategory').value.trim();
   var keyword  = document.getElementById('tagKeyword').value.trim();
   var status   = document.getElementById('tagStatus').value;
   var note     = document.getElementById('tagNote').value.trim();
-
   if (!tagName) { showToast('請填入標籤名稱', 'error'); return; }
-
   var selectedAudienceIds = Array.prototype.map.call(
     document.querySelectorAll('.tagAudienceCheckbox:checked'),
     function(cb) { return cb.value; }
   );
-
   var result = await apiCall({
     action:   'saveTag',
     tag_id:   tagEditId || '',
@@ -306,11 +274,9 @@ async function saveTagItem() {
     status:   status,
     note:     note
   });
-
   if (result.success) {
     var targetTagId = tagEditId || (result.data && result.data.tag_id);
     var pushMsg = '';
-
     if (targetTagId) {
       var linkResult = await apiCall({
         action:        'setTagAudienceLinks',
@@ -321,22 +287,19 @@ async function saveTagItem() {
         pushMsg = '，已推播 ' + linkResult.data.pushed + ' 人加入受眾';
       }
     }
-
     closeCreateTagModal();
     showToast((result.data && result.data.message ? result.data.message : '儲存成功') + pushMsg, 'success');
-    loadTag();
+    loadTag(true);
   } else {
     showToast(result.message, 'error');
   }
 }
-
 async function doDeleteTag(tagId) {
   await confirmAndRun('確定要刪除這個標籤嗎？此操作無法復原。', async function() {
     var result = await apiCall({ action: 'deleteTag', tag_id: tagId });
-
     if (result.success) {
       showToast('標籤已刪除', 'success');
-      loadTag();
+      loadTag(true);
     } else {
       showToast(result.message, 'error');
     }
