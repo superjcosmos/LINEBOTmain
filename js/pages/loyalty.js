@@ -1,15 +1,20 @@
 // ============================================================
 // js/pages/loyalty.js
 // 多張點數卡管理頁
+// ⚠️ 2026-08-27 修正（自動貼標問題排查清單第5項）：submitAdjustPoints() 加/扣點
+//   成功後呼叫 viewLoyaltyCard() 重新整理會員點數清單，原本會無條件把分頁
+//   重置回第1頁、同時清空搜尋框，跟useroverview.js/tag.js/coupon.js/audience.js
+//   修過的同一根因。改為 viewLoyaltyCard(idx, preserveView)，只有真正點擊
+//   「會員點數」按鈕打開Modal（非preserveView）才重置分頁與搜尋字，
+//   Modal內操作後的刷新一律保留目前頁碼與搜尋字。
 // ============================================================
-
-var _loyaltyCards     = [];
-var _loyaltyUserAll   = [];
-var _loyaltyUserFilt  = [];
-var _loyaltyUserPage  = 1;
-var _loyaltyPageSize  = 15;
+var _loyaltyCards      = [];
+var _loyaltyUserAll    = [];
+var _loyaltyUserFilt   = [];
+var _loyaltyUserPage   = 1;
+var _loyaltyPageSize   = 15;
+var _loyaltySearchKeyword = '';
 var _loyaltyActiveCard = null; // 目前查看的卡
-
 async function loadLoyalty() {
   setContent('<div class="loading">載入點數卡管理...</div>');
   var res = await apiCall({ action: 'getLoyaltyCardList' });
@@ -17,7 +22,6 @@ async function loadLoyalty() {
   _loyaltyCards = res.data || [];
   _renderLoyaltyMain();
 }
-
 // ══════════════════════════════════════════
 // 主頁：點數卡清單
 // ══════════════════════════════════════════
@@ -35,7 +39,6 @@ function _renderLoyaltyMain() {
     var antiHtml = antiTags.length ? antiTags.map(function(t) {
       return '<span style="background:#f0eeff;color:#534AB7;border-radius:10px;padding:1px 8px;font-size:11px">' + t + '</span>';
     }).join(' ') : '-';
-
     return '<tr>' +
       '<td><strong>' + escHtml(c.card_name) + '</strong><br><span style="font-size:11px;color:#aaa">' + escHtml(c.card_id) + '</span></td>' +
       '<td><span style="color:' + modeColor + ';font-weight:600">' + modeLbl + '</span></td>' +
@@ -56,13 +59,11 @@ function _renderLoyaltyMain() {
       '</td>' +
     '</tr>';
   }).join('');
-
   setContent(
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
       '<h2 class="page-title" style="margin:0">點數卡管理</h2>' +
       '<button class="btn btn-primary" onclick="openCardModal()">＋ 新增點數卡</button>' +
     '</div>' +
-
     '<div class="card">' +
       (_loyaltyCards.length === 0
         ? '<p class="empty">尚未建立任何點數卡，點右上角新增</p>'
@@ -70,7 +71,6 @@ function _renderLoyaltyMain() {
             '<th>卡片名稱</th><th>模式</th><th>關鍵字</th><th>防刷設定</th><th>狀態</th><th style="text-align:center">操作</th>' +
           '</tr></thead><tbody>' + cardRows + '</tbody></table>') +
     '</div>' +
-
     // 新增/編輯 Modal
     '<div class="modal-overlay" id="cardModal">' +
       '<div class="modal" style="max-width:540px;max-height:90vh;overflow-y:auto">' +
@@ -82,7 +82,6 @@ function _renderLoyaltyMain() {
         '</div>' +
       '</div>' +
     '</div>' +
-
     // 會員點數查詢 Modal
     '<div class="modal-overlay" id="userPointsModal">' +
       '<div class="modal" style="max-width:640px;max-height:90vh;overflow-y:auto">' +
@@ -98,7 +97,6 @@ function _renderLoyaltyMain() {
         '<div class="modal-footer"><button class="btn-cancel" onclick="closeUserPointsModal()">關閉</button></div>' +
       '</div>' +
     '</div>' +
-
     // 調整點數 Modal
     '<div class="modal-overlay" id="adjustPointsModal">' +
       '<div class="modal" style="max-width:420px">' +
@@ -123,32 +121,26 @@ function _renderLoyaltyMain() {
     '</div>'
   );
 }
-
 var _userLogCache = null;
-
 async function _ensureUserLogCache() {
   if (_userLogCache) return _userLogCache;
   var res = await apiCall({ action: 'getUserLogListForLoyalty' });
   _userLogCache = res.success ? (res.data || []) : [];
   return _userLogCache;
 }
-
 async function searchUserLogForAdjust() {
   var kw = (document.getElementById('adjustUserSearch').value || '').trim().toLowerCase();
   var dropdown = document.getElementById('adjustUserDropdown');
   if (!kw) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
-
   var list = await _ensureUserLogCache();
   var matched = list.filter(function(u) {
     return (u.display_name || '').toLowerCase().includes(kw) || (u.user_id || '').toLowerCase().includes(kw);
   }).slice(0, 20);
-
   if (matched.length === 0) {
     dropdown.innerHTML = '<div style="padding:10px;font-size:12px;color:#aaa">找不到符合的用戶</div>';
     dropdown.style.display = 'block';
     return;
   }
-
   dropdown.innerHTML = matched.map(function(u) {
     return '<div onclick="selectAdjustUser(\'' + u.user_id.replace(/'/g, "\\'") + '\',\'' + (u.display_name || '').replace(/'/g, "\\'") + '\')" ' +
       'style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:13px" ' +
@@ -159,19 +151,16 @@ async function searchUserLogForAdjust() {
   }).join('');
   dropdown.style.display = 'block';
 }
-
 function selectAdjustUser(userId, displayName) {
   document.getElementById('adjustUserId').value      = userId;
   document.getElementById('adjustDisplayName').value = displayName;
   document.getElementById('adjustUserSearch').value  = displayName ? (displayName + '（' + userId + '）') : userId;
   document.getElementById('adjustUserDropdown').style.display = 'none';
 }
-
 // ══════════════════════════════════════════
 // 新增 / 編輯 Modal
 // ══════════════════════════════════════════
 var _editingCard = null;
-
 function openCardModal(card) {
   _editingCard = card || null;
   var c = card || {};
@@ -180,10 +169,8 @@ function openCardModal(card) {
   document.getElementById('cardModalForm').innerHTML = _buildCardForm(c, m);
   openModal('cardModal');
 }
-
 function editLoyaltyCard(idx) { openCardModal(_loyaltyCards[idx]); }
 function closeCardModal()     { closeModal('cardModal'); }
-
 function _buildCardForm(c, m) {
   var showStamp  = m === 'stamp'  || m === 'both';
   var showDeduct = m === 'deduct' || m === 'both';
@@ -207,7 +194,6 @@ function _buildCardForm(c, m) {
       '</div>' +
     '</div>';
 }
-
 function _buildModeFields(c, m) {
   var showStamp  = m === 'stamp'  || m === 'both';
   var showDeduct = m === 'deduct' || m === 'both';
@@ -222,15 +208,12 @@ function _buildModeFields(c, m) {
     : '') +
   '<div class="form-group"><label>點數有效天數（0 = 不限）</label><input type="number" id="cfExpireDays" min="0" value="' + (c.expire_days || 0) + '"></div>';
 }
-
 function refreshCardForm() {
   var m = document.getElementById('cfMode').value;
   var c = _editingCard || {};
   document.getElementById('cfModeFields').innerHTML = _buildModeFields(c, m);
 }
-
 function _getVal(id, def) { var el = document.getElementById(id); return el ? el.value : (def || ''); }
-
 async function submitCardModal() {
   var m         = _getVal('cfMode', 'stamp');
   var cardName  = _getVal('cfCardName').trim();
@@ -244,10 +227,8 @@ async function submitCardModal() {
   var dailyLim  = parseInt(_getVal('cfDailyLimit')) || 0;
   var cooldown  = parseInt(_getVal('cfCooldown'))   || 0;
   var manualOnly= document.getElementById('cfManualOnly') ? document.getElementById('cfManualOnly').checked : false;
-
   if (!cardName) { showToast('請填寫點數卡名稱', 'error'); return; }
   if (!checkKw)  { showToast('請填寫查詢點數關鍵字', 'error'); return; }
-
   var res = await apiCall({
     action:           'saveLoyaltyCard',
     card_id:          _editingCard ? _editingCard.card_id : '',
@@ -265,7 +246,6 @@ async function submitCardModal() {
     cooldown_minutes: cooldown,
     manual_only:      manualOnly
   });
-
   if (res.success) {
     showToast(_editingCard ? '已更新' : '新增成功', 'success');
     closeCardModal();
@@ -274,7 +254,6 @@ async function submitCardModal() {
     showToast(res.message || '儲存失敗', 'error');
   }
 }
-
 // ── 停用/啟用 ──
 async function toggleCard(idx) {
   var c   = _loyaltyCards[idx];
@@ -285,7 +264,6 @@ async function toggleCard(idx) {
     else showToast(res.message || '操作失敗', 'error');
   });
 }
-
 // ── 刪除 ──
 async function deleteCard(idx) {
   var c = _loyaltyCards[idx];
@@ -295,30 +273,42 @@ async function deleteCard(idx) {
     else showToast(res.message || '刪除失敗', 'error');
   });
 }
-
 // ══════════════════════════════════════════
 // 會員點數查詢 Modal
 // ══════════════════════════════════════════
-async function viewLoyaltyCard(idx) {
+async function viewLoyaltyCard(idx, preserveView) {
   var c = _loyaltyCards[idx];
   _loyaltyActiveCard = c;
   document.getElementById('userPointsTitle').textContent = '【' + c.card_name + '】會員點數';
-  openModal('userPointsModal');
+  if (!preserveView) openModal('userPointsModal');
   document.getElementById('loyaltyUserTable').innerHTML = '<p style="color:#888;font-size:13px">載入中...</p>';
-
   var res = await apiCall({ action: 'getLoyaltyUserList', card_id: c.card_id });
-  _loyaltyUserAll  = res.success ? (res.data || []) : [];
-  _loyaltyUserFilt = _loyaltyUserAll.slice();
-  _loyaltyUserPage = 1;
+  _loyaltyUserAll = res.success ? (res.data || []) : [];
+  if (!preserveView) {
+    _loyaltySearchKeyword = '';
+    _loyaltyUserPage = 1;
+  }
+  _applyLoyaltyUserFilter();
+  document.getElementById('loyaltySearch').value = _loyaltySearchKeyword;
+  _clampLoyaltyUserPage();
   _renderLoyaltyUserTable();
   _renderLoyaltyUserPager();
 }
-
+function _applyLoyaltyUserFilter() {
+  var keyword = _loyaltySearchKeyword.trim().toLowerCase();
+  _loyaltyUserFilt = !keyword ? _loyaltyUserAll.slice() : _loyaltyUserAll.filter(function(u) {
+    return (u.display_name || '').toLowerCase().includes(keyword) || (u.user_id || '').toLowerCase().includes(keyword);
+  });
+}
+function _clampLoyaltyUserPage() {
+  var totalPages = Math.max(1, Math.ceil(_loyaltyUserFilt.length / _loyaltyPageSize));
+  if (_loyaltyUserPage > totalPages) _loyaltyUserPage = totalPages;
+  if (_loyaltyUserPage < 1) _loyaltyUserPage = 1;
+}
 function closeUserPointsModal() {
   closeModal('userPointsModal');
   _loyaltyActiveCard = null;
 }
-
 function _renderLoyaltyUserTable() {
   var wrap = document.getElementById('loyaltyUserTable');
   var hint = document.getElementById('loyaltyUserHint');
@@ -342,25 +332,17 @@ function _renderLoyaltyUserTable() {
   }).join('');
   wrap.innerHTML = '<table class="table"><thead><tr><th>姓名</th><th>UID</th><th style="text-align:center">點數</th><th>最後記錄</th><th style="text-align:center">操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
 }
-
 function _renderLoyaltyUserPager() {
   renderPager('loyaltyUserPager', _loyaltyUserFilt.length, _loyaltyUserPage, _loyaltyPageSize, goLoyaltyPage);
 }
-
 function goLoyaltyPage(p) { _loyaltyUserPage = p; _renderLoyaltyUserTable(); _renderLoyaltyUserPager(); }
-
 function filterLoyaltyUsers() {
-  var kw = (document.getElementById('loyaltySearch').value || '').trim().toLowerCase();
-  _loyaltyUserFilt = kw
-    ? _loyaltyUserAll.filter(function(u) {
-        return (u.display_name || '').toLowerCase().includes(kw) || (u.user_id || '').toLowerCase().includes(kw);
-      })
-    : _loyaltyUserAll.slice();
+  _loyaltySearchKeyword = document.getElementById('loyaltySearch').value || '';
+  _applyLoyaltyUserFilter();
   _loyaltyUserPage = 1;
   _renderLoyaltyUserTable();
   _renderLoyaltyUserPager();
 }
-
 // ══════════════════════════════════════════
 // 調整點數 Modal
 // ══════════════════════════════════════════
@@ -376,7 +358,6 @@ function openAdjustModalForUser(idx) {
   document.getElementById('adjustNote').value   = '';
   openModal('adjustPointsModal');
 }
-
 function openAdjustModalNew() {
   if (!_loyaltyActiveCard) return;
   document.getElementById('adjustCardId').value      = _loyaltyActiveCard.card_id;
@@ -388,9 +369,7 @@ function openAdjustModalNew() {
   document.getElementById('adjustNote').value   = '';
   openModal('adjustPointsModal');
 }
-
 function closeAdjustModal() { closeModal('adjustPointsModal'); }
-
 async function submitAdjustPoints() {
   var cardId      = document.getElementById('adjustCardId').value;
   var userId      = document.getElementById('adjustUserId').value.trim();
@@ -398,18 +377,15 @@ async function submitAdjustPoints() {
   var action      = document.getElementById('adjustAction').value;
   var points      = parseInt(document.getElementById('adjustPoints').value) || 0;
   var note        = document.getElementById('adjustNote').value.trim() || '後台手動調整';
-
   if (!userId) { showToast('請輸入 user_id', 'error'); return; }
   if (points <= 0) { showToast('請輸入有效點數', 'error'); return; }
-
   var res = await apiCall({ action: 'adjustLoyaltyPoints', card_id: cardId, user_id: userId, display_name: displayName, point_action: action, points: points, note: note });
   if (res.success) {
     showToast('點數已調整，新餘額：' + res.data.balance, 'success');
     closeAdjustModal();
-    if (_loyaltyActiveCard) viewLoyaltyCard(_loyaltyCards.findIndex(function(c) { return c.card_id === _loyaltyActiveCard.card_id; }));
+    if (_loyaltyActiveCard) viewLoyaltyCard(_loyaltyCards.findIndex(function(c) { return c.card_id === _loyaltyActiveCard.card_id; }), true);
   } else {
     showToast(res.message || '調整失敗', 'error');
   }
 }
-
 // escHtml() 已移至 js/utils/dom.js 全域共用，此處不再重複定義
