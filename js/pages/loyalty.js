@@ -15,6 +15,7 @@ var _loyaltyUserPage   = 1;
 var _loyaltyPageSize   = 15;
 var _loyaltySearchKeyword = '';
 var _loyaltyActiveCard = null; // 目前查看的卡
+var _loyaltyShowDisabled = false; // 顯示已停用點數卡開關（2026-08-30 新增）
 async function loadLoyalty() {
   setContent('<div class="loading">載入點數卡管理...</div>');
   var res = await apiCall({ action: 'getLoyaltyCardList' });
@@ -26,7 +27,13 @@ async function loadLoyalty() {
 // 主頁：點數卡清單
 // ══════════════════════════════════════════
 function _renderLoyaltyMain() {
-  var cardRows = _loyaltyCards.map(function(c, idx) {
+  var disabledCount = _loyaltyCards.filter(function(c) { return c.status !== 'active'; }).length;
+  var visibleIdx = [];
+  _loyaltyCards.forEach(function(c, idx) {
+    if (_loyaltyShowDisabled || c.status === 'active') visibleIdx.push(idx);
+  });
+  var cardRows = visibleIdx.map(function(idx) {
+    var c = _loyaltyCards[idx];
     var modeLbl = c.mode === 'stamp' ? '集點' : c.mode === 'deduct' ? '儲值扣點' : '雙模式';
     var modeColor = c.mode === 'stamp' ? '#D85A30' : c.mode === 'deduct' ? '#1D9E75' : '#534AB7';
     var statusBadge = c.status === 'active'
@@ -62,11 +69,18 @@ function _renderLoyaltyMain() {
   setContent(
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
       '<h2 class="page-title" style="margin:0">點數卡管理</h2>' +
-      '<button class="btn btn-primary" onclick="openCardModal()">＋ 新增點數卡</button>' +
+      '<div>' +
+        (disabledCount > 0
+          ? '<button class="btn btn-sync btn-sm" onclick="toggleShowDisabledCards()" style="margin-right:8px">' +
+              (_loyaltyShowDisabled ? '隱藏已停用點數卡' : '顯示已停用點數卡（' + disabledCount + '）') +
+            '</button>'
+          : '') +
+        '<button class="btn btn-primary" onclick="openCardModal()">＋ 新增點數卡</button>' +
+      '</div>' +
     '</div>' +
     '<div class="card">' +
-      (_loyaltyCards.length === 0
-        ? '<p class="empty">尚未建立任何點數卡，點右上角新增</p>'
+      (visibleIdx.length === 0
+        ? '<p class="empty">' + (_loyaltyCards.length === 0 ? '尚未建立任何點數卡，點右上角新增' : '目前沒有啟用中的點數卡') + '</p>'
         : '<table class="table"><thead><tr>' +
             '<th>卡片名稱</th><th>模式</th><th>關鍵字</th><th>防刷設定</th><th>狀態</th><th style="text-align:center">操作</th>' +
           '</tr></thead><tbody>' + cardRows + '</tbody></table>') +
@@ -264,6 +278,13 @@ async function toggleCard(idx) {
     else showToast(res.message || '操作失敗', 'error');
   });
 }
+
+//── 單獨顯示停用 ──
+function toggleShowDisabledCards() {
+  _loyaltyShowDisabled = !_loyaltyShowDisabled;
+  _renderLoyaltyMain();
+}
+
 // ── 刪除 ──
 async function deleteCard(idx) {
   var c = _loyaltyCards[idx];
