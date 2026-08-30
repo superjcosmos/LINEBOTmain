@@ -17,6 +17,7 @@ var _couponPage          = 1;
 var _couponPageSize      = 20;
 var _couponSearchKeyword = '';
 var couponEditId         = null;
+var _couponTagList = []; // 新增：核銷自動貼標籤下拉選單資料
 async function loadCoupon(preserveView) {
   if (!preserveView) setContent('<div class="loading">載入中...</div>');
   var result = await apiCall({ action: 'getCouponList' });
@@ -28,6 +29,8 @@ async function loadCoupon(preserveView) {
   if (!preserveView) {
     _couponSearchKeyword = '';
     _couponPage = 1;
+    var tagRes = await apiCall({ action: 'getTagList' });
+    _couponTagList = tagRes.success ? (tagRes.data || []).filter(function(t) { return t.status === 'active'; }) : [];
   }
   _applyCouponFilter();
   setContent(_buildCouponShell());
@@ -48,6 +51,9 @@ function _clampCouponPage() {
   if (_couponPage < 1) _couponPage = 1;
 }
 function _buildCouponShell() {
+  var tagOptions = '<option value="">不自動貼標籤</option>' + _couponTagList.map(function(t) {
+    return '<option value="' + escHtml(t.tag_id) + '">' + escHtml(t.tag_name) + '</option>';
+  }).join('');
   return '' +
     '<h2 class="page-title">優惠券管理</h2>' +
     '<div class="card">' +
@@ -106,6 +112,10 @@ function _buildCouponShell() {
             '<label>每人可領張數</label>' +
             '<input type="number" id="couponPerUserLimit" min="1" value="1" style="width:100%;box-sizing:border-box;">' +
           '</div>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label>核銷成功自動貼標籤（選填）</label>' +
+          '<select id="couponRedeemTag">' + tagOptions + '</select>' +
         '</div>' +
         '<div class="form-group">' +
           '<label>狀態</label>' +
@@ -223,6 +233,7 @@ function openCreateCouponModal() {
   document.getElementById('couponValidUntil').value      = '';
   document.getElementById('couponTotalQuota').value      = '';
   document.getElementById('couponPerUserLimit').value    = '1';
+  document.getElementById('couponRedeemTag').value = row.redeem_tag_id || '';
   document.getElementById('couponStatus').value           = 'active';
   _updateDiscountValueLabel();
   openModal('couponModal');
@@ -244,6 +255,7 @@ function editCoupon(couponId, rowJson) {
   document.getElementById('couponValidUntil').value      = row.valid_until     || '';
   document.getElementById('couponTotalQuota').value      = row.total_quota == null ? '' : row.total_quota;
   document.getElementById('couponPerUserLimit').value    = row.per_user_limit  || 1;
+  document.getElementById('couponRedeemTag').value = row.redeem_tag_id || '';
   document.getElementById('couponStatus').value           = row.status         || 'active';
   _updateDiscountValueLabel();
   openModal('couponModal');
@@ -257,6 +269,7 @@ async function saveCouponItem() {
   var validUntil     = document.getElementById('couponValidUntil').value;
   var totalQuota     = document.getElementById('couponTotalQuota').value;
   var perUserLimit   = document.getElementById('couponPerUserLimit').value;
+  var redeemTagId = document.getElementById('couponRedeemTag').value;
   var status         = document.getElementById('couponStatus').value;
   if (!name)           { showToast('請填入優惠券名稱', 'error'); return; }
   if (!discountValue || Number(discountValue) <= 0) { showToast('請填入正確的折抵數值', 'error'); return; }
@@ -272,6 +285,7 @@ async function saveCouponItem() {
     total_quota:     totalQuota,
     per_user_limit:  perUserLimit,
     redemption_mode: 'self_liff', // ⚠️ 固定值，見檔案開頭說明
+    redeem_tag_id:   redeemTagId,
     status:          status
   });
   if (result.success) {
