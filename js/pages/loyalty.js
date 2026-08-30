@@ -46,6 +46,16 @@ function _renderLoyaltyMain() {
     var antiHtml = antiTags.length ? antiTags.map(function(t) {
       return '<span style="background:#f0eeff;color:#534AB7;border-radius:10px;padding:1px 8px;font-size:11px">' + t + '</span>';
     }).join(' ') : '-';
+    var logCount  = c.log_count || 0;
+    var usageHtml = logCount > 0
+      ? '<span style="color:#534AB7;font-size:12px">已有 ' + logCount + ' 筆記錄</span>'
+      : '<span style="color:#aaa;font-size:12px">尚未使用</span>';
+    var deleteBtn = logCount === 0
+      ? '<button class="btn btn-danger btn-sm" onclick="deleteCard(' + idx + ')">刪除</button>'
+      : '<button class="btn btn-danger btn-sm" disabled title="此點數卡已有 ' + logCount + ' 筆集點/兌換紀錄，無法刪除，請改用停用">刪除</button>';
+    var toggleBtn = c.status === 'active'
+      ? '<button class="btn btn-disable btn-sm" onclick="toggleCard(' + idx + ')">停用</button>'
+      : '<button class="btn btn-enable btn-sm" onclick="toggleCard(' + idx + ')">啟用</button>';
     return '<tr>' +
       '<td><strong>' + escHtml(c.card_name) + '</strong><br><span style="font-size:11px;color:#aaa">' + escHtml(c.card_id) + '</span></td>' +
       '<td><span style="color:' + modeColor + ';font-weight:600">' + modeLbl + '</span></td>' +
@@ -57,12 +67,14 @@ function _renderLoyaltyMain() {
       '</td>' +
       '<td>' + antiHtml + '</td>' +
       '<td>' + statusBadge + '</td>' +
+      '<td>' + usageHtml + '</td>' +
       '<td style="text-align:center">' +
-        '<button onclick="viewLoyaltyCard(' + idx + ')" style="font-size:12px;padding:4px 8px;border:1px solid #534AB7;color:#534AB7;background:#fff;border-radius:6px;cursor:pointer;margin-right:4px">會員點數</button>' +
-        '<button onclick="editLoyaltyCard(' + idx + ')" style="font-size:12px;padding:4px 8px;border:1px solid #888;color:#555;background:#fff;border-radius:6px;cursor:pointer;margin-right:4px">編輯</button>' +
-        '<button onclick="toggleCard(' + idx + ')" style="font-size:12px;padding:4px 8px;border:1px solid #ccc;color:#888;background:#fff;border-radius:6px;cursor:pointer;margin-right:4px">' +
-          (c.status === 'active' ? '停用' : '啟用') + '</button>' +
-        '<button onclick="deleteCard(' + idx + ')" style="font-size:12px;padding:4px 8px;border:1px solid #e74c3c;color:#e74c3c;background:#fff;border-radius:6px;cursor:pointer">刪除</button>' +
+        '<span style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center">' +
+          '<button class="btn btn-sync btn-sm" onclick="viewLoyaltyCard(' + idx + ')">會員點數</button>' +
+          '<button class="btn btn-edit btn-sm" onclick="editLoyaltyCard(' + idx + ')">編輯</button>' +
+          toggleBtn +
+          deleteBtn +
+        '</span>' +
       '</td>' +
     '</tr>';
   }).join('');
@@ -82,10 +94,9 @@ function _renderLoyaltyMain() {
       (visibleIdx.length === 0
         ? '<p class="empty">' + (_loyaltyCards.length === 0 ? '尚未建立任何點數卡，點右上角新增' : '目前沒有啟用中的點數卡') + '</p>'
         : '<table class="table"><thead><tr>' +
-            '<th>卡片名稱</th><th>模式</th><th>關鍵字</th><th>防刷設定</th><th>狀態</th><th style="text-align:center">操作</th>' +
+            '<th>卡片名稱</th><th>模式</th><th>關鍵字</th><th>防刷設定</th><th>狀態</th><th>使用狀況</th><th style="text-align:center">操作</th>' +
           '</tr></thead><tbody>' + cardRows + '</tbody></table>') +
     '</div>' +
-    // 新增/編輯 Modal
     '<div class="modal-overlay" id="cardModal">' +
       '<div class="modal" style="max-width:540px;max-height:90vh;overflow-y:auto">' +
         '<h3 id="cardModalTitle">新增點數卡</h3>' +
@@ -96,7 +107,6 @@ function _renderLoyaltyMain() {
         '</div>' +
       '</div>' +
     '</div>' +
-    // 會員點數查詢 Modal
     '<div class="modal-overlay" id="userPointsModal">' +
       '<div class="modal" style="max-width:640px;max-height:90vh;overflow-y:auto">' +
         '<h3 id="userPointsTitle">會員點數</h3>' +
@@ -111,7 +121,6 @@ function _renderLoyaltyMain() {
         '<div class="modal-footer"><button class="btn-cancel" onclick="closeUserPointsModal()">關閉</button></div>' +
       '</div>' +
     '</div>' +
-    // 調整點數 Modal
     '<div class="modal-overlay" id="adjustPointsModal">' +
       '<div class="modal" style="max-width:420px">' +
         '<h3 id="adjustModalTitle">手動加/扣點</h3>' +
