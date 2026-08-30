@@ -175,19 +175,26 @@ function selectAdjustUser(userId, displayName) {
 // 新增 / 編輯 Modal
 // ══════════════════════════════════════════
 var _editingCard = null;
-function openCardModal(card) {
+async function openCardModal(card) {
   _editingCard = card || null;
   var c = card || {};
   var m = c.mode || 'stamp';
   document.getElementById('cardModalTitle').textContent = card ? '編輯點數卡' : '新增點數卡';
-  document.getElementById('cardModalForm').innerHTML = _buildCardForm(c, m);
+  document.getElementById('cardModalForm').innerHTML = '<div class="loading">載入中...</div>';
   openModal('cardModal');
+  var tagRes  = await apiCall({ action: 'getTagList' });
+  var tagList = tagRes.success ? (tagRes.data || []).filter(function(t) { return t.status === 'active'; }) : [];
+  document.getElementById('cardModalForm').innerHTML = _buildCardForm(c, m, tagList);
 }
 function editLoyaltyCard(idx) { openCardModal(_loyaltyCards[idx]); }
 function closeCardModal()     { closeModal('cardModal'); }
-function _buildCardForm(c, m) {
+function _buildCardForm(c, m, tagList) {
   var showStamp  = m === 'stamp'  || m === 'both';
   var showDeduct = m === 'deduct' || m === 'both';
+  var tagOptions = '<option value="">不自動貼標籤</option>' + (tagList || []).map(function(t) {
+    var sel = String(c.milestone_tag_id || '') === String(t.tag_id) ? ' selected' : '';
+    return '<option value="' + escHtml(t.tag_id) + '"' + sel + '>' + escHtml(t.tag_name) + '</option>';
+  }).join('');
   return '<div class="form-group"><label>點數卡名稱</label><input type="text" id="cfCardName" placeholder="咖啡集點卡" value="' + escHtml(c.card_name || '') + '"></div>' +
     '<div class="form-group"><label>模式</label>' +
       '<select id="cfMode" onchange="refreshCardForm()">' +
@@ -198,6 +205,9 @@ function _buildCardForm(c, m) {
     '</div>' +
     '<div id="cfModeFields">' + _buildModeFields(c, m) + '</div>' +
     '<div class="form-group"><label>查詢點數關鍵字</label><input type="text" id="cfCheckKw" placeholder="查點數" value="' + escHtml(c.check_keyword || '') + '"></div>' +
+    '<div class="form-group"><label>兌換成功自動貼標籤（選填）</label>' +
+      '<select id="cfMilestoneTag">' + tagOptions + '</select>' +
+    '</div>' +
     '<div style="border-top:1px solid #eee;margin:16px 0;padding-top:16px">' +
       '<div style="font-weight:600;font-size:14px;margin-bottom:12px">🛡️ 防刷設定</div>' +
       '<div class="form-group"><label>每日集點上限（0 = 不限）</label><input type="number" id="cfDailyLimit" min="0" value="' + (c.daily_limit || 0) + '"></div>' +
@@ -241,6 +251,7 @@ async function submitCardModal() {
   var dailyLim  = parseInt(_getVal('cfDailyLimit')) || 0;
   var cooldown  = parseInt(_getVal('cfCooldown'))   || 0;
   var manualOnly= document.getElementById('cfManualOnly') ? document.getElementById('cfManualOnly').checked : false;
+  var milestoneTagId = _getVal('cfMilestoneTag');
   if (!cardName) { showToast('請填寫點數卡名稱', 'error'); return; }
   if (!checkKw)  { showToast('請填寫查詢點數關鍵字', 'error'); return; }
   var res = await apiCall({
@@ -258,7 +269,8 @@ async function submitCardModal() {
     expire_days:      expireDays,
     daily_limit:      dailyLim,
     cooldown_minutes: cooldown,
-    manual_only:      manualOnly
+    manual_only:      manualOnly,
+    milestone_tag_id: milestoneTagId
   });
   if (res.success) {
     showToast(_editingCard ? '已更新' : '新增成功', 'success');
