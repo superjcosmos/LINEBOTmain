@@ -719,10 +719,12 @@ async function submitCouponPoolUpload() {
 // ── 推播發券 Modal ──
 function openCouponPoolPushModal(poolId) {
   _couponPoolPushTargetId = poolId;
+  var row = _couponPoolAll.filter(function(p) { return p.pool_id === poolId; })[0];
+  document.getElementById('couponPoolPushActivityName').textContent = row ? ('活動：' + row.name) : '';
   document.getElementById('couponPoolPushMode').value = 'audience';
   document.getElementById('couponPoolPushAudience').value = '';
   document.getElementById('couponPoolPushManualUids').value = '';
-  document.getElementById('couponPoolPushTemplate').value = '';
+  document.getElementById('couponPoolPushTemplate').value = '親愛的顧客您好，您的專屬序號是 {{序號}}，請至門市出示兌換。';
   _toggleCouponPoolPushMode();
   openModal('couponPoolPushModal');
 }
