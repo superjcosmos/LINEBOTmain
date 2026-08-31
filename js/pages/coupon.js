@@ -566,7 +566,7 @@ function _renderCouponPoolTable() {
     var rowJson = encodeURIComponent(JSON.stringify(row));
     var isActive = row.status === 'active';
     var periodText = (row.valid_from || row.valid_until)
-      ? (escHtml(row.valid_from || '不限') + ' ~ ' + escHtml(row.valid_until || '不限'))
+      ? (escHtml(String(row.valid_from || '不限').split('T')[0]) + ' ~ ' + escHtml(String(row.valid_until || '不限').split('T')[0]))
       : '不限期間';
     var limitText = row.issue_limit == null ? '不限' : row.issue_limit;
     var deleteBtn = row.issued_count === 0
