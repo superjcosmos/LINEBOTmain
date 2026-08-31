@@ -233,7 +233,7 @@ function openCreateCouponModal() {
   document.getElementById('couponValidUntil').value      = '';
   document.getElementById('couponTotalQuota').value      = '';
   document.getElementById('couponPerUserLimit').value    = '1';
-  document.getElementById('couponRedeemTag').value = row.redeem_tag_id || '';
+  document.getElementById('couponRedeemTag').value = '';
   document.getElementById('couponStatus').value           = 'active';
   _updateDiscountValueLabel();
   openModal('couponModal');
