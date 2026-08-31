@@ -86,7 +86,7 @@ function _buildCouponShell() {
     '<div style="display:flex;align-items:center;gap:8px;position:relative;">' +
       '<h2 class="page-title" style="margin:0;">優惠券管理</h2>' +
       '<button type="button" onclick="toggleCouponInfoTip(event)" title="功能說明" ' +
-        'style="border:none;background:none;color:#06c755;font-size:16px;font-weight:bold;cursor:pointer;line-height:1;padding:0;">ⓘ</button>' + ⓘ</button>' +
+        'style="border:none;background:none;color:#06c755;font-size:16px;font-weight:bold;cursor:pointer;line-height:1;padding:0;">ⓘ</button>' + 
       '<div id="couponInfoTip" style="display:none;position:absolute;top:32px;left:0;z-index:50;' +
         'background:#fff;border:1px solid #ddd;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);' +
         'padding:14px 16px;max-width:320px;font-size:13px;line-height:1.6;color:#444;">' +
