@@ -240,6 +240,7 @@ function _buildCouponShell() {
     '<div class="modal-overlay" id="couponPoolPushModal">' +
       '<div class="modal">' +
         '<h3>推播發券</h3>' +
+        '<p id="couponPoolPushActivityName" style="margin:-8px 0 16px;color:#666;font-size:14px;"></p>' +
         '<div class="form-group">' +
           '<label>收件對象</label>' +
           '<select id="couponPoolPushMode" onchange="_toggleCouponPoolPushMode()">' +
