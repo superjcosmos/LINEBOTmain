@@ -49,7 +49,9 @@ function renderLotteryList() {
         ' <button class="btn ' + toggleClass + '" onclick="toggleLotteryStatus(' + a.row_index + ')">' + toggleLabel + '</button>' +
         (a.linked_audience_id ? ' <button class="btn btn-sync" onclick="goToBroadcastForActivity(\'' + escHtml(a.linked_audience_id) + '\')">📢 前往推播</button>' : '') +
         (a.type === 'C' ? ' <button class="btn btn-primary" onclick="openDrawModal(\'' + escHtml(a.activity_name) + '\')">開獎</button>' : '') +
-        ' <button class="btn btn-danger" onclick="deleteLotteryActivity(' + a.row_index + ', \'' + escHtml(a.activity_name) + '\')">刪除</button>' +
+        (a.log_count > 0
+          ? ' <button class="btn btn-danger" disabled title="此活動已有 ' + a.log_count + ' 筆參與紀錄，無法刪除，請改用停用">刪除</button>'
+          : ' <button class="btn btn-danger" onclick="deleteLotteryActivity(' + a.row_index + ', \'' + escHtml(a.activity_name) + '\')">刪除</button>') +
       '</td>' +
     '</tr>';
   }).join('');
