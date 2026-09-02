@@ -14,6 +14,7 @@
 
 var lotteryList = [];
 var lotteryLogData = [];
+var _lotteryShowDisabled = false;
 
 async function loadLottery() {
   var res = await apiCall({ action: 'getLotteryList' });
@@ -24,16 +25,15 @@ async function loadLottery() {
 function renderLotteryList() {
   var typeLabel = { A: '限量搶購', B: '機率抽獎', C: '報名開獎', D: '點數紅包' };
   var statusLabel = { active: '進行中', disabled: '停用' };
-
-  var rows = lotteryList.map(function(a) {
+  var disabledCount = lotteryList.filter(function(a) { return a.status !== 'active'; }).length;
+  var visibleList = _lotteryShowDisabled ? lotteryList : lotteryList.filter(function(a) { return a.status === 'active'; });
+  var rows = visibleList.map(function(a) {
     var pendingText = a.type === 'C' ? escHtml(a.pending_count || 0) : '-';
     var toggleLabel = a.status === 'active' ? '停用' : '啟用';
     var toggleClass = a.status === 'active' ? 'btn-disable' : 'btn-enable';
-
     var limitOrPointsText = a.type === 'D'
       ? escHtml(a.remain_points || 0) + ' / ' + escHtml(a.total_points || 0) + ' 點'
       : escHtml(a.limit || '無限');
-
     return '<tr>' +
       '<td>' + escHtml(a.activity_name) + '</td>' +
       '<td><span class="badge badge-' + escHtml(a.type.toLowerCase()) + '">' + escHtml(typeLabel[a.type]) + '</span></td>' +
@@ -53,12 +53,16 @@ function renderLotteryList() {
       '</td>' +
     '</tr>';
   }).join('');
-
   setContent('mainContent', '' +
     '<div class="page-title">小遊戲管理</div>' +
     '<div class="card">' +
       '<div class="toolbar">' +
         '<button class="btn btn-primary" onclick="openLotteryCreateModal()">＋ 新增活動</button>' +
+        (disabledCount > 0
+          ? ' <button class="btn btn-sync" onclick="toggleLotteryShowDisabled()">' +
+              (_lotteryShowDisabled ? '隱藏已停用' : '顯示已停用（' + disabledCount + '）') +
+            '</button>'
+          : '') +
       '</div>' +
       '<table>' +
         '<thead>' +
@@ -68,12 +72,16 @@ function renderLotteryList() {
           '</tr>' +
         '</thead>' +
         '<tbody id="lottery-table-body">' +
-          (rows || '<tr><td colspan="9" class="empty">尚無活動</td></tr>') +
+          (rows || '<tr><td colspan="9" class="empty">' + (lotteryList.length === 0 ? '尚無活動' : '目前沒有進行中的活動') + '</td></tr>') +
         '</tbody>' +
       '</table>' +
     '</div>' +
     '<div id="lottery-modal"></div>'
   );
+}
+function toggleLotteryShowDisabled() {
+  _lotteryShowDisabled = !_lotteryShowDisabled;
+  renderLotteryList();
 }
 
 // ── 啟用/停用切換 ──
