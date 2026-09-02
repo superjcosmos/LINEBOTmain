@@ -28,6 +28,8 @@ var couponPoolEditId          = null;
 var _couponPoolUploadTargetId = null;
 var _couponPoolPushTargetId   = null;
 var _couponInfoTipTimer       = null;
+var _couponShowDisabled     = false;
+var _couponPoolShowDisabled = false;
 
 async function loadCoupon(preserveView) {
   if (!preserveView) setContent('<div class="loading">載入中...</div>');
@@ -46,6 +48,8 @@ async function loadCoupon(preserveView) {
     _couponPage = 1;
     _couponPoolSearch = '';
     _couponPoolPage = 1;
+    _couponShowDisabled = false;
+    _couponPoolShowDisabled = false;
     var tagRes = await apiCall({ action: 'getTagList' });
     _couponTagList = tagRes.success ? (tagRes.data || []).filter(function(t) { return t.status === 'active'; }) : [];
     var audRes = await apiCall({ action: 'getAudienceList' });
@@ -63,10 +67,13 @@ async function loadCoupon(preserveView) {
   _renderCouponPager();
   _renderCouponPoolTable();
   _renderCouponPoolPager();
+  _renderCouponToggleBtn();
+  _renderCouponPoolToggleBtn();
 }
 function _applyCouponFilter() {
   var keyword = _couponSearchKeyword.trim().toLowerCase();
-  _couponFiltered = !keyword ? _couponAll.slice() : _couponAll.filter(function(row) {
+  var base = _couponShowDisabled ? _couponAll : _couponAll.filter(function(row) { return row.status === 'active'; });
+  _couponFiltered = !keyword ? base.slice() : base.filter(function(row) {
     return (row.name || '').toLowerCase().includes(keyword);
   });
 }
@@ -103,6 +110,8 @@ function _buildCouponShell() {
           ' style="flex:1;min-width:180px;max-width:320px;' +
                   'padding:8px 12px;border:1.5px solid #e0e0e0;' +
                   'border-radius:8px;font-size:14px;outline:none;">' +
+        '<button class="btn btn-sync" id="couponToggleDisabledBtn" onclick="toggleCouponShowDisabled()" style="display:none;"></button>' +
+        '<span id="couponTotalHint" style="color:#888;font-size:13px;white-space:nowrap;"></span>' +
         '<span id="couponTotalHint" style="color:#888;font-size:13px;white-space:nowrap;"></span>' +
       '</div>' +
       '<div id="couponTableWrap"></div>' +
@@ -118,6 +127,11 @@ function _buildCouponShell() {
           ' style="flex:1;min-width:180px;max-width:320px;' +
                   'padding:8px 12px;border:1.5px solid #e0e0e0;' +
                   'border-radius:8px;font-size:14px;outline:none;">' +
+      '</div>' +
+          ' style="flex:1;min-width:180px;max-width:320px;' +
+              'padding:8px 12px;border:1.5px solid #e0e0e0;' +
+              'border-radius:8px;font-size:14px;outline:none;">' +
+        '<button class="btn btn-sync" id="couponPoolToggleDisabledBtn" onclick="toggleCouponPoolShowDisabled()" style="display:none;"></button>' +
       '</div>' +
       '<div id="couponPoolTableWrap"></div>' +
       '<div id="couponPoolPager" style="display:flex;justify-content:center;' +
@@ -534,7 +548,8 @@ function _closeCouponInfoTipOnOutsideClick() {
 
 function _applyCouponPoolFilter() {
   var keyword = _couponPoolSearch.trim().toLowerCase();
-  _couponPoolFiltered = !keyword ? _couponPoolAll.slice() : _couponPoolAll.filter(function(row) {
+  var base = _couponPoolShowDisabled ? _couponPoolAll : _couponPoolAll.filter(function(row) { return row.status === 'active'; });
+  _couponPoolFiltered = !keyword ? base.slice() : base.filter(function(row) {
     return (row.name || '').toLowerCase().includes(keyword);
   });
 }
@@ -765,4 +780,36 @@ async function submitCouponPoolPush() {
       showToast(result.message, 'error');
     }
   });
+}
+function _renderCouponToggleBtn() {
+  var btn = document.getElementById('couponToggleDisabledBtn');
+  if (!btn) return;
+  var disabledCount = _couponAll.filter(function(row) { return row.status !== 'active'; }).length;
+  if (disabledCount === 0) { btn.style.display = 'none'; return; }
+  btn.style.display = '';
+  btn.textContent = _couponShowDisabled ? '隱藏已停用' : '顯示已停用（' + disabledCount + '）';
+}
+function toggleCouponShowDisabled() {
+  _couponShowDisabled = !_couponShowDisabled;
+  _applyCouponFilter();
+  _couponPage = 1;
+  _renderCouponTable();
+  _renderCouponPager();
+  _renderCouponToggleBtn();
+}
+function _renderCouponPoolToggleBtn() {
+  var btn = document.getElementById('couponPoolToggleDisabledBtn');
+  if (!btn) return;
+  var disabledCount = _couponPoolAll.filter(function(row) { return row.status !== 'active'; }).length;
+  if (disabledCount === 0) { btn.style.display = 'none'; return; }
+  btn.style.display = '';
+  btn.textContent = _couponPoolShowDisabled ? '隱藏已停用' : '顯示已停用（' + disabledCount + '）';
+}
+function toggleCouponPoolShowDisabled() {
+  _couponPoolShowDisabled = !_couponPoolShowDisabled;
+  _applyCouponPoolFilter();
+  _couponPoolPage = 1;
+  _renderCouponPoolTable();
+  _renderCouponPoolPager();
+  _renderCouponPoolToggleBtn();
 }
