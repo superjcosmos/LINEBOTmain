@@ -329,7 +329,7 @@ function _renderCouponTable() {
       '<td>' + escHtml(row.name) + '</td>' +
       '<td>' + discountText + '</td>' +
       '<td>' + periodText + '</td>' +
-      '<td>' + (isActive ? '啟用' : '停用') + '</td>' +
+      '<td>' + _statusBadge(isActive) + '</td>' +
       '<td>' + issuedCount + ' 發放 / ' + usedCount + ' 已用</td>' +
       '<td style="white-space:nowrap;">' +
         '<span style="display:inline-flex;gap:8px;align-items:center;">' +
@@ -597,7 +597,7 @@ function _renderCouponPoolTable() {
       '<td>' + escHtml(row.trigger_keyword) + '</td>' +
       '<td>' + periodText + '</td>' +
       '<td>' + limitText + '</td>' +
-      '<td>' + (isActive ? '啟用' : '停用') + '</td>' +
+      '<td>' + _statusBadge(isActive) + '</td>' +
       '<td>' + row.total_count + ' 組 / 已發 ' + row.issued_count + ' / 剩 ' + row.remaining_count + '</td>' +
       '<td style="white-space:nowrap;">' +
         '<span style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
@@ -810,4 +810,10 @@ function toggleCouponPoolShowDisabled() {
   _renderCouponPoolTable();
   _renderCouponPoolPager();
   _renderCouponPoolToggleBtn();
+}
+
+function _statusBadge(isActive) {
+  return isActive
+    ? '<span style="background:#e6f9f0;color:#1D9E75;border-radius:20px;padding:2px 10px;font-size:12px">啟用中</span>'
+    : '<span style="background:#f5f5f5;color:#aaa;border-radius:20px;padding:2px 10px;font-size:12px">已停用</span>';
 }
