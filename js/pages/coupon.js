@@ -1,4 +1,3 @@
-// ============================================================
 // js/pages/coupon.js
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / confirmAndRun / openModal / closeModal / renderPager
 // ⚠️ redemption_mode 這次固定送 'self_liff'（關鍵字核銷），表單不開放選擇，
@@ -10,6 +9,15 @@
 //   任何操作（啟用/停用/刪除/儲存）呼叫後都會無條件重置頁碼跟清空搜尋框，
 //   跟useroverview.js修過的同一根因。改為 loadCoupon(preserveView) 只有
 //   真正切換到本頁（非preserveView）才重置，操作後的刷新一律保留目前頁碼與搜尋字。
+// ⚠️ 2026-09-03 修正：_buildCouponShell() 兩個 toolbar 區塊內容錯置的 bug：
+//   1. 第一張卡片（優惠券列表）誤用了序號池的 id/函式（couponPoolSearch /
+//      filterCouponPool / couponPoolToggleDisabledBtn），且與第二張卡片
+//      重複 id="couponPoolSearch"，導致 loadCoupon() 對不存在的
+//      #couponSearch 賦值而丟出例外、整頁載入失敗，序號池表格的搜尋框
+//      也因 id 重複而抓錯元素。已改回正確的 couponSearch / filterCoupon /
+//      couponToggleDisabledBtn，並補回 couponTotalHint。
+//   2. 第二張卡片（序號池活動）殘留一段未包在標籤內的重複 style 文字＋
+//      多一個 </div>，導致頁面出現亂碼文字、版面跑掉。已清除。
 // ============================================================
 var _couponAll           = [];
 var _couponFiltered      = [];
@@ -30,7 +38,6 @@ var _couponPoolPushTargetId   = null;
 var _couponInfoTipTimer       = null;
 var _couponShowDisabled     = false;
 var _couponPoolShowDisabled = false;
-
 async function loadCoupon(preserveView) {
   if (!preserveView) setContent('<div class="loading">載入中...</div>');
   var result = await apiCall({ action: 'getCouponList' });
@@ -39,10 +46,8 @@ async function loadCoupon(preserveView) {
     return;
   }
   _couponAll = result.data || [];
-
   var poolResult = await apiCall({ action: 'getCouponPoolList' });
   _couponPoolAll = poolResult.success ? (poolResult.data || []) : [];
-
   if (!preserveView) {
     _couponSearchKeyword = '';
     _couponPage = 1;
@@ -103,14 +108,15 @@ function _buildCouponShell() {
     '</div>' +
     '<div class="card">' +
       '<div class="toolbar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
-        '<h3 style="margin:0;">序號池活動</h3>' +
-        '<input type="text" id="couponPoolSearch"' +
-          ' placeholder="搜尋活動名稱..."' +
-          ' oninput="filterCouponPool()"' +
+        '<h3 style="margin:0;">優惠券列表</h3>' +
+        '<input type="text" id="couponSearch"' +
+          ' placeholder="搜尋優惠券名稱..."' +
+          ' oninput="filterCoupon()"' +
           ' style="flex:1;min-width:180px;max-width:320px;' +
                   'padding:8px 12px;border:1.5px solid #e0e0e0;' +
                   'border-radius:8px;font-size:14px;outline:none;">' +
-        '<button class="btn btn-sync" id="couponPoolToggleDisabledBtn" onclick="toggleCouponPoolShowDisabled()" style="display:none;"></button>' +
+        '<button class="btn btn-sync" id="couponToggleDisabledBtn" onclick="toggleCouponShowDisabled()" style="display:none;"></button>' +
+        '<span id="couponTotalHint" style="color:#888;font-size:13px;"></span>' +
       '</div>' +
       '<div id="couponTableWrap"></div>' +
       '<div id="couponPager" style="display:flex;justify-content:center;' +
@@ -125,17 +131,12 @@ function _buildCouponShell() {
           ' style="flex:1;min-width:180px;max-width:320px;' +
                   'padding:8px 12px;border:1.5px solid #e0e0e0;' +
                   'border-radius:8px;font-size:14px;outline:none;">' +
-      '</div>' +
-          ' style="flex:1;min-width:180px;max-width:320px;' +
-              'padding:8px 12px;border:1.5px solid #e0e0e0;' +
-              'border-radius:8px;font-size:14px;outline:none;">' +
         '<button class="btn btn-sync" id="couponPoolToggleDisabledBtn" onclick="toggleCouponPoolShowDisabled()" style="display:none;"></button>' +
       '</div>' +
       '<div id="couponPoolTableWrap"></div>' +
       '<div id="couponPoolPager" style="display:flex;justify-content:center;' +
            'gap:6px;margin-top:16px;flex-wrap:wrap;"></div>' +
     '</div>' +
-
     '<div class="modal-overlay" id="couponModal">' +
       '<div class="modal" style="max-height:85vh;overflow-y:auto;">' +
         '<h3 id="couponModalTitle">建立優惠券</h3>' +
@@ -150,7 +151,6 @@ function _buildCouponShell() {
           '<label id="couponNameLabel">優惠券名稱</label>' +
           '<input type="text" id="couponName" placeholder="例如：中秋限定9折券">' +
         '</div>' +
-
         '<div id="couponDiscountFields">' +
           '<div class="form-group">' +
             '<label>使用說明（選填）</label>' +
@@ -192,7 +192,6 @@ function _buildCouponShell() {
             '<select id="couponRedeemTag">' + tagOptions + '</select>' +
           '</div>' +
         '</div>' +
-
         '<div id="couponPoolFields" style="display:none;">' +
           '<div class="form-group">' +
             '<label>觸發關鍵字</label>' +
@@ -219,7 +218,6 @@ function _buildCouponShell() {
             '<p style="font-size:12px;color:#888;margin:4px 0 0;">支援 .csv／.txt 檔案上傳，上傳後會自動帶入下方文字框，送出前可再自行編輯確認。若只有Excel檔，請先另存成CSV再上傳。</p>' +
           '</div>' +
         '</div>' +
-
         '<div class="form-group">' +
           '<label>狀態</label>' +
           '<select id="couponStatus">' +
@@ -233,7 +231,6 @@ function _buildCouponShell() {
         '</div>' +
       '</div>' +
     '</div>' +
-
     '<div class="modal-overlay" id="couponPoolUploadModal">' +
       '<div class="modal">' +
         '<h3>上傳序號</h3>' +
@@ -248,7 +245,6 @@ function _buildCouponShell() {
         '</div>' +
       '</div>' +
     '</div>' +
-
     '<div class="modal-overlay" id="couponPoolPushModal">' +
       '<div class="modal">' +
         '<h3>推播發券</h3>' +
@@ -434,7 +430,6 @@ async function saveCouponItem() {
     await _saveDiscountCouponItem();
   }
 }
-
 async function _saveDiscountCouponItem() {
   var name           = document.getElementById('couponName').value.trim();
   var description    = document.getElementById('couponDescription').value.trim();
@@ -471,7 +466,6 @@ async function _saveDiscountCouponItem() {
     showToast(result.message, 'error');
   }
 }
-
 async function _saveCouponPoolItem() {
   var name       = document.getElementById('couponName').value.trim();
   var keyword    = document.getElementById('couponPoolKeyword').value.trim();
@@ -519,7 +513,6 @@ function _toggleCouponTypeFields() {
   document.getElementById('couponPoolFields').style.display     = isPool ? 'block' : 'none';
   document.getElementById('couponNameLabel').textContent = isPool ? '序號池活動名稱' : '優惠券名稱';
 }
-
 function toggleCouponInfoTip(evt) {
   if (evt) evt.stopPropagation();
   var tip = document.getElementById('couponInfoTip');
@@ -543,7 +536,6 @@ function _closeCouponInfoTipOnOutsideClick() {
   if (tip) tip.style.display = 'none';
   document.removeEventListener('click', _closeCouponInfoTipOnOutsideClick);
 }
-
 function _applyCouponPoolFilter() {
   var keyword = _couponPoolSearch.trim().toLowerCase();
   var base = _couponPoolShowDisabled ? _couponPoolAll : _couponPoolAll.filter(function(row) { return row.status === 'active'; });
@@ -563,7 +555,6 @@ function filterCouponPool() {
   _renderCouponPoolTable();
   _renderCouponPoolPager();
 }
-
 function _renderCouponPoolTable() {
   var wrap = document.getElementById('couponPoolTableWrap');
   if (!wrap) return;
@@ -645,7 +636,6 @@ async function doDeleteCouponPool(poolId) {
     }
   });
 }
-
 function editCouponPoolActivity(poolId, rowJson) {
   var row = JSON.parse(decodeURIComponent(rowJson));
   couponEditId = null;
@@ -665,7 +655,6 @@ function editCouponPoolActivity(poolId, rowJson) {
   _toggleCouponTypeFields();
   openModal('couponModal');
 }
-
 // ── 檔案上傳（純前端解析：每行視為一組序號，若有逗號取第一欄） ──
 function _parseCouponPoolFile(text) {
   var lines = text.split(/\r\n|\n|\r/);
@@ -704,7 +693,6 @@ function _handleCouponPoolUploadFileChange(evt) {
   };
   reader.readAsText(file);
 }
-
 // ── 上傳序號 Modal ──
 function openCouponPoolUploadModal(poolId) {
   _couponPoolUploadTargetId = poolId;
@@ -728,7 +716,6 @@ async function submitCouponPoolUpload() {
     showToast(result.message, 'error');
   }
 }
-
 // ── 推播發券 Modal ──
 function openCouponPoolPushModal(poolId) {
   _couponPoolPushTargetId = poolId;
@@ -752,7 +739,6 @@ async function submitCouponPoolPush() {
   var template = document.getElementById('couponPoolPushTemplate').value.trim();
   if (!template) { showToast('請填入推播訊息範本', 'error'); return; }
   if (template.indexOf('{{序號}}') === -1) { showToast('訊息範本必須包含 {{序號}}', 'error'); return; }
-
   var params = {
     action:           'pushCouponPoolCodes',
     pool_id:          _couponPoolPushTargetId,
@@ -767,7 +753,6 @@ async function submitCouponPoolPush() {
     if (!audienceId) { showToast('請選擇受眾', 'error'); return; }
     params.audience_id = audienceId;
   }
-
   await confirmAndRun('確定要發送這批推播嗎？已經領過序號的人不會重複發送。', async function() {
     var result = await apiCall(params);
     if (result.success) {
@@ -811,7 +796,6 @@ function toggleCouponPoolShowDisabled() {
   _renderCouponPoolPager();
   _renderCouponPoolToggleBtn();
 }
-
 function _statusBadge(isActive) {
   return isActive
     ? '<span style="background:#e6f9f0;color:#1D9E75;border-radius:20px;padding:2px 10px;font-size:12px">啟用中</span>'
