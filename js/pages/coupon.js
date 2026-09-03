@@ -103,16 +103,14 @@ function _buildCouponShell() {
     '</div>' +
     '<div class="card">' +
       '<div class="toolbar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
-        '<button class="btn btn-primary" onclick="openCreateCouponModal()">＋ 建立優惠券</button>' +
-        '<input type="text" id="couponSearch"' +
-          ' placeholder="搜尋優惠券名稱..."' +
-          ' oninput="filterCoupon()"' +
+        '<h3 style="margin:0;">序號池活動</h3>' +
+        '<input type="text" id="couponPoolSearch"' +
+          ' placeholder="搜尋活動名稱..."' +
+          ' oninput="filterCouponPool()"' +
           ' style="flex:1;min-width:180px;max-width:320px;' +
                   'padding:8px 12px;border:1.5px solid #e0e0e0;' +
                   'border-radius:8px;font-size:14px;outline:none;">' +
-        '<button class="btn btn-sync" id="couponToggleDisabledBtn" onclick="toggleCouponShowDisabled()" style="display:none;"></button>' +
-        '<span id="couponTotalHint" style="color:#888;font-size:13px;white-space:nowrap;"></span>' +
-        '<span id="couponTotalHint" style="color:#888;font-size:13px;white-space:nowrap;"></span>' +
+        '<button class="btn btn-sync" id="couponPoolToggleDisabledBtn" onclick="toggleCouponPoolShowDisabled()" style="display:none;"></button>' +
       '</div>' +
       '<div id="couponTableWrap"></div>' +
       '<div id="couponPager" style="display:flex;justify-content:center;' +
