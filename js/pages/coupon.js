@@ -18,6 +18,11 @@
 //      couponToggleDisabledBtn，並補回 couponTotalHint。
 //   2. 第二張卡片（序號池活動）殘留一段未包在標籤內的重複 style 文字＋
 //      多一個 </div>，導致頁面出現亂碼文字、版面跑掉。已清除。
+// ⚠️ 2026-09-13 新增：一般折扣券「發放給客戶」機制——
+//   ①觸發關鍵字自助領取（couponTriggerKeyword欄位，對應後端CS_TRIGGER_KEYWORD）
+//   ②後台推播發券（推播發券按鈕＋couponPushModal，目前僅支援手動貼UserID清單，
+//     「選受眾」推播待補，需要CouponPoolService.gs/AudienceService.gs
+//     實際部署內容才能比照既有受眾成員解析寫法接上）
 // ============================================================
 var _couponAll           = [];
 var _couponFiltered      = [];
@@ -35,6 +40,7 @@ var _audienceListForPool      = []; // 推播Modal的受眾下拉選單資料
 var couponPoolEditId          = null;
 var _couponPoolUploadTargetId = null;
 var _couponPoolPushTargetId   = null;
+var _couponPushTargetId       = null; // 2026-09-13新增：一般折扣券推播發券目標
 var _couponInfoTipTimer       = null;
 var _couponShowDisabled     = false;
 var _couponPoolShowDisabled = false;
@@ -188,6 +194,10 @@ function _buildCouponShell() {
             '</div>' +
           '</div>' +
           '<div class="form-group">' +
+            '<label>觸發關鍵字（選填，客戶輸入此關鍵字可自動領取這張券）</label>' +
+            '<input type="text" id="couponTriggerKeyword" placeholder="例如：領折扣券">' +
+          '</div>' +
+          '<div class="form-group">' +
             '<label>核銷成功自動貼標籤（選填）</label>' +
             '<select id="couponRedeemTag">' + tagOptions + '</select>' +
           '</div>' +
@@ -274,6 +284,20 @@ function _buildCouponShell() {
           '<button class="btn btn-primary" onclick="submitCouponPoolPush()">確認推播</button>' +
         '</div>' +
       '</div>' +
+    '</div>' +
+    '<div class="modal-overlay" id="couponPushModal">' +
+      '<div class="modal">' +
+        '<h3>推播發券</h3>' +
+        '<p id="couponPushActivityName" style="margin:-8px 0 16px;color:#666;font-size:14px;"></p>' +
+        '<div class="form-group">' +
+          '<label>UserID 清單（每行一組，最多200筆）</label>' +
+          '<textarea id="couponPushManualUids" rows="8" placeholder="一行一組 UserID"></textarea>' +
+        '</div>' +
+        '<div class="modal-footer">' +
+          '<button class="btn-cancel" onclick="closeModal(\'couponPushModal\')">取消</button>' +
+          '<button class="btn btn-primary" onclick="submitCouponPush()">確認推播</button>' +
+        '</div>' +
+      '</div>' +
     '</div>';
 }
 function _updateDiscountValueLabel() {
@@ -321,15 +345,19 @@ function _renderCouponTable() {
       : '<button class="btn btn-enable" onclick="doToggleCouponStatus(\'' + escHtml(row.coupon_id) + '\')">啟用</button>';
     var editBtn = '<button class="btn btn-edit" ' +
       'onclick="editCoupon(\'' + escHtml(row.coupon_id) + '\',\'' + rowJson + '\')">編輯</button>';
+    // 2026-09-13新增：推播發券按鈕
+    var pushBtn = '<button class="btn btn-sync" ' +
+      'onclick="openCouponPushModal(\'' + escHtml(row.coupon_id) + '\',\'' + rowJson + '\')">推播發券</button>';
     return '<tr>' +
       '<td>' + escHtml(row.name) + '</td>' +
       '<td>' + discountText + '</td>' +
       '<td>' + periodText + '</td>' +
       '<td>' + _statusBadge(isActive) + '</td>' +
+      '<td>' + (row.trigger_keyword ? escHtml(row.trigger_keyword) : '—') + '</td>' +
       '<td>' + issuedCount + ' 發放 / ' + usedCount + ' 已用</td>' +
       '<td style="white-space:nowrap;">' +
-        '<span style="display:inline-flex;gap:8px;align-items:center;">' +
-          editBtn + toggleBtn + deleteBtn +
+        '<span style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+          editBtn + pushBtn + toggleBtn + deleteBtn +
         '</span>' +
       '</td>' +
     '</tr>';
@@ -341,6 +369,7 @@ function _renderCouponTable() {
         '<th>折扣</th>' +
         '<th>有效期間</th>' +
         '<th>狀態</th>' +
+        '<th>關鍵字</th>' +
         '<th>發放／核銷</th>' +
         '<th>操作</th>' +
       '</tr></thead>' +
@@ -381,6 +410,7 @@ function openCreateCouponModal() {
   document.getElementById('couponValidUntil').value      = '';
   document.getElementById('couponTotalQuota').value      = '';
   document.getElementById('couponPerUserLimit').value    = '1';
+  document.getElementById('couponTriggerKeyword').value  = '';
   document.getElementById('couponRedeemTag').value       = '';
   document.getElementById('couponPoolKeyword').value     = '';
   document.getElementById('couponPoolValidFrom').value   = '';
@@ -416,6 +446,7 @@ function editCoupon(couponId, rowJson) {
   document.getElementById('couponValidUntil').value      = row.valid_until     || '';
   document.getElementById('couponTotalQuota').value      = row.total_quota == null ? '' : row.total_quota;
   document.getElementById('couponPerUserLimit').value    = row.per_user_limit  || 1;
+  document.getElementById('couponTriggerKeyword').value  = row.trigger_keyword || '';
   document.getElementById('couponRedeemTag').value       = row.redeem_tag_id   || '';
   document.getElementById('couponStatus').value           = row.status         || 'active';
   _updateDiscountValueLabel();
@@ -439,6 +470,7 @@ async function _saveDiscountCouponItem() {
   var validUntil     = document.getElementById('couponValidUntil').value;
   var totalQuota     = document.getElementById('couponTotalQuota').value;
   var perUserLimit   = document.getElementById('couponPerUserLimit').value;
+  var triggerKeyword = document.getElementById('couponTriggerKeyword').value.trim();
   var redeemTagId    = document.getElementById('couponRedeemTag').value;
   var status         = document.getElementById('couponStatus').value;
   if (!name)           { showToast('請填入優惠券名稱', 'error'); return; }
@@ -455,6 +487,7 @@ async function _saveDiscountCouponItem() {
     total_quota:     totalQuota,
     per_user_limit:  perUserLimit,
     redemption_mode: 'self_liff',
+    trigger_keyword: triggerKeyword,
     redeem_tag_id:   redeemTagId,
     status:          status
   });
@@ -716,7 +749,7 @@ async function submitCouponPoolUpload() {
     showToast(result.message, 'error');
   }
 }
-// ── 推播發券 Modal ──
+// ── 序號池推播發券 Modal ──
 function openCouponPoolPushModal(poolId) {
   _couponPoolPushTargetId = poolId;
   var row = _couponPoolAll.filter(function(p) { return p.pool_id === poolId; })[0];
@@ -757,6 +790,32 @@ async function submitCouponPoolPush() {
     var result = await apiCall(params);
     if (result.success) {
       closeModal('couponPoolPushModal');
+      showToast((result.data && result.data.message) || '推播完成', 'success');
+      loadCoupon(true);
+    } else {
+      showToast(result.message, 'error');
+    }
+  });
+}
+// ── 一般折扣券推播發券 Modal（2026-09-13新增，目前僅支援手動貼UserID清單） ──
+function openCouponPushModal(couponId, rowJson) {
+  var row = JSON.parse(decodeURIComponent(rowJson));
+  _couponPushTargetId = couponId;
+  document.getElementById('couponPushActivityName').textContent = '優惠券：' + (row.name || '');
+  document.getElementById('couponPushManualUids').value = '';
+  openModal('couponPushModal');
+}
+async function submitCouponPush() {
+  var manualUids = document.getElementById('couponPushManualUids').value.trim();
+  if (!manualUids) { showToast('請貼上 UserID 清單', 'error'); return; }
+  await confirmAndRun('確定要發送這批優惠券嗎？已達領取上限的人不會重複發送。', async function() {
+    var result = await apiCall({
+      action:      'pushCouponCodes',
+      coupon_id:   _couponPushTargetId,
+      manual_uids: manualUids
+    });
+    if (result.success) {
+      closeModal('couponPushModal');
       showToast((result.data && result.data.message) || '推播完成', 'success');
       loadCoupon(true);
     } else {
