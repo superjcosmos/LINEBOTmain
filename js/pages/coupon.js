@@ -859,24 +859,7 @@ async function submitCouponPush() {
     }
   });
 }
-async function submitCouponPush() {
-  var manualUids = document.getElementById('couponPushManualUids').value.trim();
-  if (!manualUids) { showToast('請貼上 UserID 清單', 'error'); return; }
-  await confirmAndRun('確定要發送這批優惠券嗎？已達領取上限的人不會重複發送。', async function() {
-    var result = await apiCall({
-      action:      'pushCouponCodes',
-      coupon_id:   _couponPushTargetId,
-      manual_uids: manualUids
-    });
-    if (result.success) {
-      closeModal('couponPushModal');
-      showToast((result.data && result.data.message) || '推播完成', 'success');
-      loadCoupon(true);
-    } else {
-      showToast(result.message, 'error');
-    }
-  });
-}
+
 function _renderCouponToggleBtn() {
   var btn = document.getElementById('couponToggleDisabledBtn');
   if (!btn) return;
