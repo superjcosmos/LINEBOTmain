@@ -296,6 +296,17 @@ function _buildCouponShell() {
         '<h3>推播發券</h3>' +
         '<p id="couponPushActivityName" style="margin:-8px 0 16px;color:#666;font-size:14px;"></p>' +
         '<div class="form-group">' +
+          '<label>收件對象</label>' +
+          '<select id="couponPushMode" onchange="_toggleCouponPushMode()">' +
+            '<option value="audience">選擇受眾</option>' +
+            '<option value="manual">手動貼上 UserID 清單</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="form-group" id="couponPushAudienceGroup">' +
+          '<label>受眾</label>' +
+          '<select id="couponPushAudience">' + audienceOptions + '</select>' +
+        '</div>' +
+        '<div class="form-group" id="couponPushManualGroup" style="display:none;">' +
           '<label>UserID 清單（每行一組，最多200筆）</label>' +
           '<textarea id="couponPushManualUids" rows="8" placeholder="一行一組 UserID"></textarea>' +
         '</div>' +
@@ -808,8 +819,45 @@ function openCouponPushModal(couponId, rowJson) {
   var row = JSON.parse(decodeURIComponent(rowJson));
   _couponPushTargetId = couponId;
   document.getElementById('couponPushActivityName').textContent = '優惠券：' + (row.name || '');
+  document.getElementById('couponPushMode').value = 'audience';
+  document.getElementById('couponPushAudience').value = '';
   document.getElementById('couponPushManualUids').value = '';
+  _toggleCouponPushMode();
   openModal('couponPushModal');
+}
+
+function _toggleCouponPushMode() {
+  var mode = document.getElementById('couponPushMode').value;
+  var isManual = mode === 'manual';
+  document.getElementById('couponPushAudienceGroup').style.display = isManual ? 'none' : 'block';
+  document.getElementById('couponPushManualGroup').style.display   = isManual ? 'block' : 'none';
+}
+
+async function submitCouponPush() {
+  var mode = document.getElementById('couponPushMode').value;
+  var params = {
+    action:    'pushCouponCodes',
+    coupon_id: _couponPushTargetId
+  };
+  if (mode === 'manual') {
+    var manualUids = document.getElementById('couponPushManualUids').value.trim();
+    if (!manualUids) { showToast('請貼上 UserID 清單', 'error'); return; }
+    params.manual_uids = manualUids;
+  } else {
+    var audienceId = document.getElementById('couponPushAudience').value;
+    if (!audienceId) { showToast('請選擇受眾', 'error'); return; }
+    params.audience_id = audienceId;
+  }
+  await confirmAndRun('確定要發送這批優惠券嗎？已達領取上限的人不會重複發送。', async function() {
+    var result = await apiCall(params);
+    if (result.success) {
+      closeModal('couponPushModal');
+      showToast((result.data && result.data.message) || '推播完成', 'success');
+      loadCoupon(true);
+    } else {
+      showToast(result.message, 'error');
+    }
+  });
 }
 async function submitCouponPush() {
   var manualUids = document.getElementById('couponPushManualUids').value.trim();
