@@ -23,6 +23,10 @@
 //   ②後台推播發券（推播發券按鈕＋couponPushModal，目前僅支援手動貼UserID清單，
 //     「選受眾」推播待補，需要CouponPoolService.gs/AudienceService.gs
 //     實際部署內容才能比照既有受眾成員解析寫法接上）
+// ⚠️ 2026-09-13 修正：兩個 toolbar 都缺少「+新增」按鈕（推測是09-03修
+//   toolbar錯置bug時連帶漏掉，屬於既有問題不是這次新增功能造成），已補上。
+//   openCreateCouponModal() 加一個可選參數 defaultType，讓從「序號池活動」
+//   toolbar點新增時，Modal直接預設在序號池分頁。
 // ============================================================
 var _couponAll           = [];
 var _couponFiltered      = [];
@@ -115,6 +119,7 @@ function _buildCouponShell() {
     '<div class="card">' +
       '<div class="toolbar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
         '<h3 style="margin:0;">優惠券列表</h3>' +
+        '<button class="btn btn-primary" onclick="openCreateCouponModal(\'discount\')">+ 新增優惠券</button>' +
         '<input type="text" id="couponSearch"' +
           ' placeholder="搜尋優惠券名稱..."' +
           ' oninput="filterCoupon()"' +
@@ -131,6 +136,7 @@ function _buildCouponShell() {
     '<div class="card" style="margin-top:20px;">' +
       '<div class="toolbar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
         '<h3 style="margin:0;">序號池活動</h3>' +
+        '<button class="btn btn-primary" onclick="openCreateCouponModal(\'pool\')">+ 新增序號池活動</button>' +
         '<input type="text" id="couponPoolSearch"' +
           ' placeholder="搜尋活動名稱..."' +
           ' oninput="filterCouponPool()"' +
@@ -395,12 +401,12 @@ function gotoCouponPage(page) {
   _renderCouponTable();
   _renderCouponPager();
 }
-function openCreateCouponModal() {
+function openCreateCouponModal(defaultType) {
   couponEditId = null;
   couponPoolEditId = null;
   document.getElementById('couponModalTitle').textContent = '建立優惠券';
   document.getElementById('couponSaveBtn').textContent     = '建立';
-  document.getElementById('couponType').value              = 'discount';
+  document.getElementById('couponType').value              = defaultType || 'discount';
   document.getElementById('couponType').disabled            = false;
   document.getElementById('couponName').value            = '';
   document.getElementById('couponDescription').value     = '';
