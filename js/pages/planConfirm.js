@@ -116,3 +116,63 @@ async function _pcSubmit() {
     showToast(res.message || '送出失敗', 'error');
   }
 }
+
+// ============================================================
+// 到期提醒Modal：登入後（一般客戶）自動檢查是否快到期
+// ⚠️ 沿用 account.js 既有的 globalModalRoot／closeGlobalModal 慣例，
+//    不另外發明第二套Modal機制
+// ============================================================
+
+async function checkExpiryReminder() {
+  var res = await apiCall({ action: 'getClientInfo' });
+  if (!res.success) return;
+  maybeShowExpiryReminder(res.data);
+}
+
+function maybeShowExpiryReminder(d) {
+  if (!d || d.isExpired) return;
+  if (d.daysLeft === null || d.daysLeft > 14) return;
+
+  var todayStr   = new Date().toDateString();
+  var dismissKey = 'expiryReminderDismissed_' + d.clientId;
+  try {
+    if (localStorage.getItem(dismissKey) === todayStr) return; // 今天已經看過，不重複跳出
+  } catch(e) {}
+
+  _renderExpiryReminderModal(d);
+}
+
+function _renderExpiryReminderModal(d) {
+  var root = document.getElementById('globalModalRoot');
+  if (!root) {
+    root = document.createElement('div');
+    root.id = 'globalModalRoot';
+    document.body.appendChild(root);
+  }
+
+  root.innerHTML =
+    '<div class="modal-overlay" id="expiryReminderModal" style="display:flex">' +
+      '<div class="modal">' +
+        '<h3>⏰ 服務即將到期提醒</h3>' +
+        '<p style="font-size:14px;color:#555;margin:12px 0">' +
+          '您的方案將於 <strong style="color:#e67e22">' + escHtml(d.daysLeft) + ' 天後</strong>' +
+          '（' + escHtml(d.expireDate) + '）到期，為避免到期後服務被暫停，建議提前確認續約。' +
+        '</p>' +
+        '<div class="modal-footer">' +
+          '<button class="btn-cancel" onclick="_dismissExpiryReminder(\'' + escHtml(d.clientId) + '\')">稍後再說</button>' +
+          '<button class="btn btn-primary" onclick="_goRenewFromReminder(\'' + escHtml(d.clientId) + '\')">立即確認續約</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+function _dismissExpiryReminder(clientId) {
+  try { localStorage.setItem('expiryReminderDismissed_' + clientId, new Date().toDateString()); } catch(e) {}
+  closeGlobalModal();
+}
+
+function _goRenewFromReminder(clientId) {
+  try { localStorage.setItem('expiryReminderDismissed_' + clientId, new Date().toDateString()); } catch(e) {}
+  closeGlobalModal();
+  navigateTo('planconfirm');
+}
