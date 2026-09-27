@@ -189,6 +189,7 @@ function enterMainPage() {
       if (!firstPage && hasFeature(key)) firstPage = key;
     });
     if (firstPage) navigateTo(firstPage);
+    checkExpiryReminder();
   }
 }
 
