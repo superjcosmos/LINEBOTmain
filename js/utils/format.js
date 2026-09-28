@@ -27,3 +27,17 @@ function formatNumber(num) {
   if (num === null || num === undefined) return '0';
   return Number(num).toLocaleString();
 }
+
+// 方案代碼 → 中英雙語顯示名稱，供各頁面共用（myaccount.js／planConfirm.js）
+var PLAN_LABELS = {
+  trial:      { en: 'Trial',      zh: '試用' },
+  basic:      { en: 'Basic',      zh: '基礎方案' },
+  advanced:   { en: 'Advanced',   zh: '進階方案' },
+  enterprise: { en: 'Enterprise', zh: '企業方案' }
+};
+
+function planLabel(plan) {
+  var key  = (plan || '').toString().trim().toLowerCase();
+  var info = PLAN_LABELS[key];
+  return info ? (info.en + '（' + info.zh + '）') : (plan || '-');
+}
