@@ -6,7 +6,7 @@ var PAGES = {
   admin_support: { label: '客服留言管理', icon: '<i class="ti ti-message-dots"></i>',     load: function() { loadAdminSupport(); }, feature: null,          adminOnly: true },
   // ── 一般客戶 ──
   myaccount:    { label: '我的帳號', icon: '<i class="ti ti-id-badge"></i>',        load: function() { loadMyAccount();    }, feature: null          },
-  planconfirm:  { label: '確認方案', icon: '<i class="ti ti-file-check"></i>', load: function() { loadPlanConfirm(); }, feature: null },
+  planconfirm:  { label: '訂閱方案', icon: '<i class="ti ti-file-check"></i>', load: function() { loadPlanConfirm(); }, feature: null },
   dashboard:    { label: '儀表板',   icon: '<i class="ti ti-layout-dashboard"></i>', load: function() { loadDashboard();    }, feature: 'dashboard'   },
   userlog:      { label: '用戶記錄', icon: '<i class="ti ti-clipboard-list"></i>',  load: function() { loadUserLog();      }, feature: 'userlog'     },
   useroverview: { label: '用戶總覽', icon: '<i class="ti ti-users"></i>',           load: function() { loadUserOverview(); }, feature: 'useroverview'},
