@@ -155,19 +155,7 @@ function enterMainPage() {
     sidebarEmailEl.textContent = authState.company_name || authState.email || "";
   }
 
-  var planEl = document.getElementById("sidebarPlan");
-  if (planEl) {
-    if (authState.role === "admin") {
-      planEl.textContent = "🛡 系統管理者";
-      planEl.className   = "plan";
-      planEl.style.color = "#ffffff";
-    } else {
-      planEl.textContent = (authState.plan || '').charAt(0).toUpperCase() +
-                     (authState.plan || '').slice(1).toLowerCase();
-      planEl.className   = "plan plan-" + (authState.plan || "");
-      planEl.style.color = "";
-    }
-  }
+  _renderSidebarPlan();
 
   buildSidebarMenu();
 
@@ -191,6 +179,34 @@ function enterMainPage() {
     if (firstPage) navigateTo(firstPage);
     checkExpiryReminder();
   }
+}
+
+// ────────────────────────────────────────────────────────────
+// 側邊欄方案標籤渲染／刷新
+// ⚠️ 從 enterMainPage() 抽出來，讓 updateAuthPlan() 也能單獨呼叫，
+//    不用整個重新登入就能刷新側邊欄的方案標籤
+// ────────────────────────────────────────────────────────────
+function _renderSidebarPlan() {
+  var planEl = document.getElementById("sidebarPlan");
+  if (!planEl) return;
+  if (authState.role === "admin") {
+    planEl.textContent = "🛡 系統管理者";
+    planEl.className   = "plan";
+    planEl.style.color = "#ffffff";
+  } else {
+    planEl.textContent = (authState.plan || '').charAt(0).toUpperCase() +
+                   (authState.plan || '').slice(1).toLowerCase();
+    planEl.className   = "plan plan-" + (authState.plan || "");
+    planEl.style.color = "";
+  }
+}
+
+// 供 planConfirm.js 在自助變更方案成功後呼叫：更新 authState／localStorage
+// 並刷新側邊欄標籤，客戶不用重新登入就能看到最新方案
+function updateAuthPlan(newPlan) {
+  authState.plan = newPlan || '';
+  localStorage.setItem('plan', authState.plan);
+  _renderSidebarPlan();
 }
 
 // ============================================================
