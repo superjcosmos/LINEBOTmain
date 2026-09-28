@@ -35,7 +35,7 @@ function renderMyAccount(d) {
         <div style="color:#888">登入 Email</div>
         <div>${escHtml(d.email || '-')}</div>
         <div style="color:#888">目前方案</div>
-        <div><span style="background:${_planColor(d.plan)};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(_capitalize(d.plan))}</span></div>
+        <div><span style="background:${_planColor(d.plan)};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(planLabel(d.plan))}</span></div>
         <div style="color:#888">到期日</div>
         <div style="${expireStyle}">${escHtml(d.expireDate || '-')}${expireHint}</div>
       </div>
