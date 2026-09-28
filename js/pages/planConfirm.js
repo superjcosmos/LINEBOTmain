@@ -30,14 +30,14 @@ function _pcFeatureTableHtml() {
           <td style="text-align:left"></td><td>Basic</td><td>Advanced</td><td>Enterprise</td>
         </tr>
         <tr>
-          <td>儀表板／用戶紀錄／自動回覆／標籤／受眾／推薦碼／客服／匯出／黑名單</td>
+          <td>儀表板／用戶記錄／用戶總覽／自動回覆／標籤管理／受眾管理／推薦碼／聯絡我們／資料匯出／黑名單</td>
           <td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td>
         </tr>
-        <tr><td>推播（依標籤/受眾精準推播）</td><td style="text-align:center">－</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
+        <tr><td>推播管理（依標籤/受眾精準推播）</td><td style="text-align:center">－</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
         <tr><td>圖文選單</td><td style="text-align:center">－</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
-        <tr><td>集點</td><td style="text-align:center">－</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
+        <tr><td>點數卡</td><td style="text-align:center">－</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
         <tr><td>優惠券</td><td style="text-align:center">－</td><td style="text-align:center">－</td><td style="text-align:center">✓</td></tr>
-        <tr><td>抽獎</td><td style="text-align:center">－</td><td style="text-align:center">－</td><td style="text-align:center">✓</td></tr>
+        <tr><td>小遊戲</td><td style="text-align:center">－</td><td style="text-align:center">－</td><td style="text-align:center">✓</td></tr>
       </table>
     </div>
   `;
