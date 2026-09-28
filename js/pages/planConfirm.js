@@ -169,6 +169,7 @@ async function _pcSubmit() {
   });
 
   if (res.success) {
+    updateAuthPlan(plan);
     showToast('方案已確認，到期日：' + res.data.expire_date, 'success');
     loadPlanConfirm();
   } else {
