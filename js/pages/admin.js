@@ -424,9 +424,9 @@ function _buildAdminModal() {
       '<div id="adminDetailStats" style="background:#f8f9fa;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:#555;display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>' +
       '<div class="form-group"><label>公司名稱</label><input type="text" id="adminCompanyName"></div>' +
       '<div class="form-group"><label>方案</label>' +
-        '<select id="adminPlan">' +
+      '<select id="adminPlan">' +
           '<option value="basic">Basic</option>' +
-          '<option value="pro">Pro</option>' +
+          '<option value="advanced">Advanced</option>' +
           '<option value="enterprise">Enterprise</option>' +
           '<option value="trial">Trial</option>' +
         '</select></div>' +
@@ -661,7 +661,7 @@ function _capitalize(str) {
 }
 
 function _planColor(plan) {
-  var colors = { basic: '#95a5a6', pro: '#3498db', enterprise: '#9b59b6', trial: '#e67e22' };
+  var colors = { basic: '#95a5a6', advanced: '#3498db', enterprise: '#9b59b6', trial: '#e67e22' };
   return colors[(plan || '').toLowerCase()] || '#95a5a6';
 }
 
