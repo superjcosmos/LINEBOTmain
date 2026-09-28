@@ -2,8 +2,8 @@
 // PAGES 物件：所有頁面定義集中在這裡
 var PAGES = {
   // ── 管理者專屬 ──
-  admin:         { label: '系統管理',     icon: '<i class="ti ti-shield"></i>',           load: function() { loadAdmin();        }, feature: null,          adminOnly: true },
-  admin_support: { label: '客服留言管理', icon: '<i class="ti ti-message-dots"></i>',     load: function() { loadAdminSupport(); }, feature: null,          adminOnly: true },
+  admin:         { label: '系統管理',     icon: '<i class="ti ti-shield"></i>',           load: function() { loadAdmin();        }, feature: null, adminOnly: true },
+  admin_support: { label: '客服留言管理', icon: '<i class="ti ti-message-dots"></i>',     load: function() { loadAdminSupport(); }, feature: null, adminOnly: true },
   // ── 一般客戶 ──
   myaccount:    { label: '我的帳號', icon: '<i class="ti ti-id-badge"></i>',        load: function() { loadMyAccount();    }, feature: null          },
   planconfirm:  { label: '訂閱方案', icon: '<i class="ti ti-file-check"></i>', load: function() { loadPlanConfirm(); }, feature: null },
