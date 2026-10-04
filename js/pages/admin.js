@@ -435,14 +435,7 @@ function _buildAdminModal() {
         '<input type="text" id="adminWebhookUrl" placeholder="該客戶專屬 GAS 專案的 Web App 部署網址"></div>' +
       '<div class="form-group"><label>推薦人客戶ID</label>' +
         '<input type="text" id="adminReferredBy" placeholder="例如：C002（來自開通表單，選填）"></div>' +
-      '<div class="form-group"><label>狀態</label>' +
-        '<select id="adminStatus">' +
-          '<option value="active">Active（正常）</option>' +
-          '<option value="inactive">Inactive（停用）</option>' +
-        '</select></div>' +
-      '<div class="modal-footer" style="justify-content:space-between;flex-wrap:wrap;gap:8px">' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-          '<button class="btn" style="background:#3498db;color:#fff" onclick="impersonateClient()">👁 切換視角</button>' +
+    impersonateClient()">👁 切換視角</button>' +
           '<button class="btn" style="background:#8e44ad;color:#fff" onclick="initClientSheetForCustomer()">🔧 初始化 Sheet</button>' +
           '<button class="btn" style="background:#2980b9;color:#fff" onclick="openSendEmailModal()">✉️ 發送通知信</button>' +
         '</div>' +
@@ -594,24 +587,36 @@ function submitSendClientEmail() {
   });
 }
 
-function impersonateClient() {
+// ⚠️ 2026-10-04 修正：原本切換視角時沒有更新 authState.features，預覽時沿用的是
+//   管理者自己登入時的 features，側邊欄與頁面內權限判斷都不是客戶實際的方案。
+//   改為切換前先呼叫 adminGetClientFeatures 取得該客戶的 features，失敗就不切換。
+async function impersonateClient() {
   if (!_editingClientId) return;
   var c = _adminClients.find(function(x) { return x.client_id === _editingClientId; });
   if (!c) return;
+  var featRes = await apiCall({ action: 'adminGetClientFeatures', target_client_id: c.client_id });
+  if (!featRes.success) {
+    showToast(featRes.message || '讀取客戶方案功能失敗，無法切換視角', 'error');
+    return;
+  }
+  var clientFeatures = (featRes.data && featRes.data.features) || {};
   localStorage.setItem('adminBackup_token',    authState.sessionToken);
   localStorage.setItem('adminBackup_clientId', authState.clientId);
   localStorage.setItem('adminBackup_email',    authState.email);
   localStorage.setItem('adminBackup_role',     authState.role);
+  localStorage.setItem('adminBackup_features', JSON.stringify(authState.features || {}));
   authState.clientId     = c.client_id;
   authState.email        = c.email;
   authState.plan         = c.plan;
   authState.role         = 'client_preview';
   authState.company_name = c.company_name || c.client_id;
+  authState.features     = clientFeatures;
   localStorage.setItem('clientId',     c.client_id);
   localStorage.setItem('email',        c.email);
   localStorage.setItem('plan',         c.plan);
   localStorage.setItem('role',         'client_preview');
   localStorage.setItem('company_name', c.company_name || c.client_id);
+  localStorage.setItem('features',     JSON.stringify(clientFeatures));
   closeModal('adminEditModal');
   _showImpersonateBar(c.company_name || c.client_id);
   buildSidebarMenu();
