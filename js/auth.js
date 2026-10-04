@@ -116,8 +116,11 @@ function clearSession() {
   authState.role         = "client";
   authState.company_name = "";
   authState.features     = {};
+  // 2026-10-04：切換視角狀態下直接登出時，提示條不會被 exitImpersonate() 移除，
+  // 會殘留到下一個登入的帳號，這裡一併移除
+  var impBar = document.getElementById('impersonateBar');
+  if (impBar) impBar.remove();
 }
-
 // ────────────────────────────────────────────────────────────
 // 顯示登入錯誤訊息
 // ────────────────────────────────────────────────────────────
