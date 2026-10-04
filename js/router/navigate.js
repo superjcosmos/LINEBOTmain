@@ -58,6 +58,14 @@ function hasFeature(pageKey) {
   return authState.features[feature] === true;
 }
 
+// 依「功能key」判斷（不是頁面key），供頁面內的子功能區塊使用
+// 例如 coupon.js 的序號池區塊（coupon_serial），它不是獨立頁面，不能用 hasFeature(pageKey)
+// ⚠️ 2026-10-04 新增；目前方案限制皆只擋前端，後端 routeAction 未依方案檢查（已記錄技術債）
+function hasFeatureKey(featureKey) {
+  if (authState.role === 'admin') return false;
+  return authState.features[featureKey] === true;
+}
+
 function getCurrentPage() {
   return _currentPage;
 }
