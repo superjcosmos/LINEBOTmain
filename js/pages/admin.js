@@ -434,8 +434,15 @@ function _buildAdminModal() {
       '<div class="form-group"><label>Webhook 網址</label>' +
         '<input type="text" id="adminWebhookUrl" placeholder="該客戶專屬 GAS 專案的 Web App 部署網址"></div>' +
       '<div class="form-group"><label>推薦人客戶ID</label>' +
-        '<input type="text" id="adminReferredBy" placeholder="例如：C002（來自開通表單，選填）"></div>' +
-    impersonateClient()">👁 切換視角</button>' +
+      '<input type="text" id="adminReferredBy" placeholder="例如：C002（來自開通表單，選填）"></div>' +
+      '<div class="form-group"><label>狀態</label>' +
+        '<select id="adminStatus">' +
+          '<option value="active">Active（正常）</option>' +
+          '<option value="inactive">Inactive（停用）</option>' +
+        '</select></div>' +
+      '<div class="modal-footer" style="justify-content:space-between;flex-wrap:wrap;gap:8px">' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          '<button class="btn" style="background:#3498db;color:#fff" onclick="impersonateClient()">👁 切換視角</button>' +
           '<button class="btn" style="background:#8e44ad;color:#fff" onclick="initClientSheetForCustomer()">🔧 初始化 Sheet</button>' +
           '<button class="btn" style="background:#2980b9;color:#fff" onclick="openSendEmailModal()">✉️ 發送通知信</button>' +
         '</div>' +
