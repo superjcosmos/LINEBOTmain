@@ -97,6 +97,7 @@ async function loadCoupon(preserveView) {
     _renderCouponPoolPager();
     _renderCouponPoolToggleBtn();
   }
+}  
 function _applyCouponFilter() {
   var keyword = _couponSearchKeyword.trim().toLowerCase();
   var base = _couponShowDisabled ? _couponAll : _couponAll.filter(function(row) { return row.status === 'active'; });
