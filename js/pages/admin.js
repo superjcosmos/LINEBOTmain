@@ -651,21 +651,26 @@ function exitImpersonate() {
   authState.clientId     = localStorage.getItem('adminBackup_clientId') || authState.clientId;
   authState.email        = localStorage.getItem('adminBackup_email')    || authState.email;
   authState.role         = localStorage.getItem('adminBackup_role')     || 'admin';
-  authState.company_name = '';
+  authState.plan         = localStorage.getItem('adminBackup_plan')         || '';
+  authState.company_name = localStorage.getItem('adminBackup_company_name') || '';
+  var backupFeatures = localStorage.getItem('adminBackup_features');
+  authState.features = backupFeatures ? JSON.parse(backupFeatures) : {};
   localStorage.setItem('sessionToken', authState.sessionToken);
   localStorage.setItem('clientId',     authState.clientId);
   localStorage.setItem('email',        authState.email);
   localStorage.setItem('role',         authState.role);
-  localStorage.removeItem('adminBackup_token');
-  localStorage.removeItem('adminBackup_clientId');
-  localStorage.removeItem('adminBackup_email');
-  localStorage.removeItem('adminBackup_role');
-  var backupFeatures = localStorage.getItem('adminBackup_features');
-  authState.features = backupFeatures ? JSON.parse(backupFeatures) : {};
-  localStorage.setItem('features', JSON.stringify(authState.features));
-  localStorage.removeItem('adminBackup_features');
+  localStorage.setItem('plan',         authState.plan);
+  localStorage.setItem('company_name', authState.company_name);
+  localStorage.setItem('features',     JSON.stringify(authState.features));
+  ['adminBackup_token', 'adminBackup_clientId', 'adminBackup_email', 'adminBackup_role',
+   'adminBackup_plan', 'adminBackup_company_name', 'adminBackup_features'].forEach(function(k) {
+    localStorage.removeItem(k);
+  });
   var bar = document.getElementById('impersonateBar');
   if (bar) bar.remove();
+  var emailEl = document.getElementById('sidebarEmail');
+  if (emailEl) emailEl.textContent = authState.company_name || authState.email || '';
+  _renderSidebarPlan();
   buildSidebarMenu();
   var supportBtn = document.getElementById('sidebarSupportBtn');
   if (supportBtn) supportBtn.style.display = 'none';
