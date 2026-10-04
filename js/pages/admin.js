@@ -587,24 +587,29 @@ function submitSendClientEmail() {
   });
 }
 
-// ⚠️ 2026-10-04 修正：原本切換視角時沒有更新 authState.features，預覽時沿用的是
-//   管理者自己登入時的 features，側邊欄與頁面內權限判斷都不是客戶實際的方案。
-//   改為切換前先呼叫 adminGetClientFeatures 取得該客戶的 features，失敗就不切換。
+// ⚠️ 2026-10-04 修正：原本切換視角只換前端顯示資料，後端仍以管理者身分（session的clientId）
+//   處理所有請求，預覽看到的其實是管理者自己的資料與方案。改為：
+//   ①切換前先以客戶身分查 getClientFeatures（失敗就不切換）
+//   ②預覽期間 api.js 自動附帶 impersonate_client_id，後端 doPost 以客戶身分執行
+//   ③備份並在 exitImpersonate() 還原管理者的 plan/company_name/features
+//   ④側邊欄左上角同步顯示客戶名稱與方案標籤
 async function impersonateClient() {
   if (!_editingClientId) return;
   var c = _adminClients.find(function(x) { return x.client_id === _editingClientId; });
   if (!c) return;
-  var featRes = await apiCall({ action: 'adminGetClientFeatures', target_client_id: c.client_id });
+  var featRes = await apiCall({ action: 'getClientFeatures', impersonate_client_id: c.client_id });
   if (!featRes.success) {
     showToast(featRes.message || '讀取客戶方案功能失敗，無法切換視角', 'error');
     return;
   }
   var clientFeatures = (featRes.data && featRes.data.features) || {};
-  localStorage.setItem('adminBackup_token',    authState.sessionToken);
-  localStorage.setItem('adminBackup_clientId', authState.clientId);
-  localStorage.setItem('adminBackup_email',    authState.email);
-  localStorage.setItem('adminBackup_role',     authState.role);
-  localStorage.setItem('adminBackup_features', JSON.stringify(authState.features || {}));
+  localStorage.setItem('adminBackup_token',        authState.sessionToken);
+  localStorage.setItem('adminBackup_clientId',     authState.clientId);
+  localStorage.setItem('adminBackup_email',        authState.email);
+  localStorage.setItem('adminBackup_role',         authState.role);
+  localStorage.setItem('adminBackup_plan',         authState.plan || '');
+  localStorage.setItem('adminBackup_company_name', authState.company_name || '');
+  localStorage.setItem('adminBackup_features',     JSON.stringify(authState.features || {}));
   authState.clientId     = c.client_id;
   authState.email        = c.email;
   authState.plan         = c.plan;
@@ -615,10 +620,13 @@ async function impersonateClient() {
   localStorage.setItem('email',        c.email);
   localStorage.setItem('plan',         c.plan);
   localStorage.setItem('role',         'client_preview');
-  localStorage.setItem('company_name', c.company_name || c.client_id);
+  localStorage.setItem('company_name', authState.company_name);
   localStorage.setItem('features',     JSON.stringify(clientFeatures));
   closeModal('adminEditModal');
-  _showImpersonateBar(c.company_name || c.client_id);
+  _showImpersonateBar(authState.company_name);
+  var emailEl = document.getElementById('sidebarEmail');
+  if (emailEl) emailEl.textContent = authState.company_name || authState.email || '';
+  _renderSidebarPlan();
   buildSidebarMenu();
   var supportBtn = document.getElementById('sidebarSupportBtn');
   if (supportBtn) supportBtn.style.display = 'block';
