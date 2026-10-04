@@ -27,6 +27,11 @@
 //   toolbar錯置bug時連帶漏掉，屬於既有問題不是這次新增功能造成），已補上。
 //   openCreateCouponModal() 加一個可選參數 defaultType，讓從「序號池活動」
 //   toolbar點新增時，Modal直接預設在序號池分頁。
+// ⚠️ 2026-10-04 權限拆分（商業待辦3.7）：一般折扣券＝coupon（Advanced起），
+//   序號池＝coupon_serial（Enterprise限定）。無coupon_serial時整張序號池卡片
+//   不渲染、類別下拉拿掉「序號池」、不呼叫getCouponPoolList。
+//   ⚠️ 序號池相關的getElementById/render呼叫必須包在_couponCanUsePool判斷內，
+//   否則元素不存在會丟例外、整頁載入失敗（同09-03那類bug）
 // ============================================================
 var _couponAll           = [];
 var _couponFiltered      = [];
@@ -48,6 +53,7 @@ var _couponPushTargetId       = null; // 2026-09-13新增：一般折扣券推�
 var _couponInfoTipTimer       = null;
 var _couponShowDisabled     = false;
 var _couponPoolShowDisabled = false;
+var _couponCanUsePool       = false; // 2026-10-04：是否有序號池權限（coupon_serial）
 async function loadCoupon(preserveView) {
   if (!preserveView) setContent('<div class="loading">載入中...</div>');
   var result = await apiCall({ action: 'getCouponList' });
@@ -56,8 +62,13 @@ async function loadCoupon(preserveView) {
     return;
   }
   _couponAll = result.data || [];
-  var poolResult = await apiCall({ action: 'getCouponPoolList' });
-  _couponPoolAll = poolResult.success ? (poolResult.data || []) : [];
+  _couponCanUsePool = hasFeatureKey('coupon_serial');
+  if (_couponCanUsePool) {
+    var poolResult = await apiCall({ action: 'getCouponPoolList' });
+    _couponPoolAll = poolResult.success ? (poolResult.data || []) : [];
+  } else {
+    _couponPoolAll = [];
+  }
   if (!preserveView) {
     _couponSearchKeyword = '';
     _couponPage = 1;
@@ -75,16 +86,17 @@ async function loadCoupon(preserveView) {
   _applyCouponPoolFilter();
   setContent(_buildCouponShell());
   document.getElementById('couponSearch').value = _couponSearchKeyword;
-  document.getElementById('couponPoolSearch').value = _couponPoolSearch;
   _clampCouponPage();
-  _clampCouponPoolPage();
   _renderCouponTable();
   _renderCouponPager();
-  _renderCouponPoolTable();
-  _renderCouponPoolPager();
   _renderCouponToggleBtn();
-  _renderCouponPoolToggleBtn();
-}
+  if (_couponCanUsePool) {
+    document.getElementById('couponPoolSearch').value = _couponPoolSearch;
+    _clampCouponPoolPage();
+    _renderCouponPoolTable();
+    _renderCouponPoolPager();
+    _renderCouponPoolToggleBtn();
+  }
 function _applyCouponFilter() {
   var keyword = _couponSearchKeyword.trim().toLowerCase();
   var base = _couponShowDisabled ? _couponAll : _couponAll.filter(function(row) { return row.status === 'active'; });
@@ -104,6 +116,28 @@ function _buildCouponShell() {
   var audienceOptions = '<option value="">請選擇受眾</option>' + _audienceListForPool.map(function(a) {
     return '<option value="' + escHtml(a.audience_id) + '">' + escHtml(a.name || a.keyword || a.audience_id) + '（' + (a.count || 0) + '人）</option>';
   }).join('');
+    var infoTipText = _couponCanUsePool
+    ? '一般折扣券適合單純的折扣活動；序號池適合客戶方已經有自己的序號/兌換碼（例如實體贈品兌換碼），' +
+      '透過關鍵字或主動推播依序發放給用戶，不需要另外核銷。'
+    : '一般折扣券適合單純的折扣活動，可設定觸發關鍵字讓用戶自助領取，或從後台推播發券給指定用戶。';
+  var poolTypeOption = _couponCanUsePool ? '<option value="pool">序號池</option>' : '';
+  var poolCardHtml = !_couponCanUsePool ? '' :
+    '<div class="card" style="margin-top:20px;">' +
+      '<div class="toolbar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
+        '<h3 style="margin:0;">序號池活動</h3>' +
+        '<button class="btn btn-primary" onclick="openCreateCouponModal(\'pool\')">+ 新增序號池活動</button>' +
+        '<input type="text" id="couponPoolSearch"' +
+          ' placeholder="搜尋活動名稱..."' +
+          ' oninput="filterCouponPool()"' +
+          ' style="flex:1;min-width:180px;max-width:320px;' +
+                  'padding:8px 12px;border:1.5px solid #e0e0e0;' +
+                  'border-radius:8px;font-size:14px;outline:none;">' +
+        '<button class="btn btn-sync" id="couponPoolToggleDisabledBtn" onclick="toggleCouponPoolShowDisabled()" style="display:none;"></button>' +
+      '</div>' +
+      '<div id="couponPoolTableWrap"></div>' +
+      '<div id="couponPoolPager" style="display:flex;justify-content:center;' +
+           'gap:6px;margin-top:16px;flex-wrap:wrap;"></div>' +
+    '</div>';
   return '' +
     '<div style="display:flex;align-items:center;gap:8px;position:relative;">' +
       '<h2 class="page-title" style="margin:0;">優惠券管理</h2>' +
@@ -112,8 +146,7 @@ function _buildCouponShell() {
       '<div id="couponInfoTip" style="display:none;position:absolute;top:32px;left:0;z-index:50;' +
         'background:#fff;border:1px solid #ddd;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);' +
         'padding:14px 16px;max-width:320px;font-size:13px;line-height:1.6;color:#444;">' +
-        '一般折扣券適合單純的折扣活動；序號池適合客戶方已經有自己的序號/兌換碼（例如實體贈品兌換碼），' +
-        '透過關鍵字或主動推播依序發放給用戶，不需要另外核銷。' +
+        infoTipText +
       '</div>' +
     '</div>' +
     '<div class="card">' +
@@ -133,22 +166,7 @@ function _buildCouponShell() {
       '<div id="couponPager" style="display:flex;justify-content:center;' +
            'gap:6px;margin-top:16px;flex-wrap:wrap;"></div>' +
     '</div>' +
-    '<div class="card" style="margin-top:20px;">' +
-      '<div class="toolbar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
-        '<h3 style="margin:0;">序號池活動</h3>' +
-        '<button class="btn btn-primary" onclick="openCreateCouponModal(\'pool\')">+ 新增序號池活動</button>' +
-        '<input type="text" id="couponPoolSearch"' +
-          ' placeholder="搜尋活動名稱..."' +
-          ' oninput="filterCouponPool()"' +
-          ' style="flex:1;min-width:180px;max-width:320px;' +
-                  'padding:8px 12px;border:1.5px solid #e0e0e0;' +
-                  'border-radius:8px;font-size:14px;outline:none;">' +
-        '<button class="btn btn-sync" id="couponPoolToggleDisabledBtn" onclick="toggleCouponPoolShowDisabled()" style="display:none;"></button>' +
-      '</div>' +
-      '<div id="couponPoolTableWrap"></div>' +
-      '<div id="couponPoolPager" style="display:flex;justify-content:center;' +
-           'gap:6px;margin-top:16px;flex-wrap:wrap;"></div>' +
-    '</div>' +
+    poolCardHtml +    
     '<div class="modal-overlay" id="couponModal">' +
       '<div class="modal" style="max-height:85vh;overflow-y:auto;">' +
         '<h3 id="couponModalTitle">建立優惠券</h3>' +
@@ -156,7 +174,7 @@ function _buildCouponShell() {
           '<label>類別</label>' +
           '<select id="couponType" onchange="_toggleCouponTypeFields()">' +
             '<option value="discount">一般折扣券</option>' +
-            '<option value="pool">序號池</option>' +
+            poolTypeOption +
           '</select>' +
         '</div>' +
         '<div class="form-group">' +
