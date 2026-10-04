@@ -199,7 +199,9 @@ function _renderSidebarPlan() {
   } else {
     planEl.textContent = (authState.plan || '').charAt(0).toUpperCase() +
                    (authState.plan || '').slice(1).toLowerCase();
-    planEl.className   = "plan plan-" + (authState.plan || "");
+    // 2026-10-04：Sheet 的 plan 欄可能是手動輸入的大寫（如 "Trial"），CSS class 區分大小寫，
+    // 統一轉小寫才對得到 sidebar.css 的 .plan-trial 等樣式（比照 getClientFeatures 的做法）
+    planEl.className   = "plan plan-" + (authState.plan || "").toLowerCase();
     planEl.style.color = "";
   }
 }
