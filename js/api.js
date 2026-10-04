@@ -17,6 +17,11 @@ async function apiCall(params) {
     if (token && params.action !== 'login') {
       params.sessionToken = token;
     }
+    // 2026-10-04：切換視角預覽中，每個請求自動帶上被預覽客戶的ID，後端確認是管理者後以客戶身分執行
+    // 呼叫端若已自行指定（impersonateClient 切換前預查 features）則不覆蓋
+    if (authState.role === 'client_preview' && authState.clientId && !params.impersonate_client_id) {
+      params.impersonate_client_id = authState.clientId;
+    }
     var response = await fetch(CONFIG.API_URL, {
       method: 'POST',
       body:   JSON.stringify(params)
