@@ -36,7 +36,8 @@ function _pcFeatureTableHtml() {
         <tr><td>推播管理（依標籤/受眾精準推播）</td><td style="text-align:center">－</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
         <tr><td>圖文選單</td><td style="text-align:center">－</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
         <tr><td>點數卡</td><td style="text-align:center">－</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
-        <tr><td>優惠券</td><td style="text-align:center">－</td><td style="text-align:center">－</td><td style="text-align:center">✓</td></tr>
+        <tr><td>優惠券（折扣券建立／發放／核銷）</td><td style="text-align:center">－</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
+        <tr><td>序號池自動派發</td><td style="text-align:center">－</td><td style="text-align:center">－</td><td style="text-align:center">✓</td></tr>
         <tr><td>小遊戲</td><td style="text-align:center">－</td><td style="text-align:center">－</td><td style="text-align:center">✓</td></tr>
       </table>
     </div>
