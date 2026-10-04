@@ -652,6 +652,10 @@ function exitImpersonate() {
   localStorage.removeItem('adminBackup_clientId');
   localStorage.removeItem('adminBackup_email');
   localStorage.removeItem('adminBackup_role');
+  var backupFeatures = localStorage.getItem('adminBackup_features');
+  authState.features = backupFeatures ? JSON.parse(backupFeatures) : {};
+  localStorage.setItem('features', JSON.stringify(authState.features));
+  localStorage.removeItem('adminBackup_features');
   var bar = document.getElementById('impersonateBar');
   if (bar) bar.remove();
   buildSidebarMenu();
