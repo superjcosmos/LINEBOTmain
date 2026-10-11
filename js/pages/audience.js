@@ -335,6 +335,7 @@ async function saveAudience() {
     result = await apiCall({
       action:       'updateAudience',
       index:        audienceEditIndex,
+      audience_id:  _currentEditingAudienceId,
       name:         name,
       keyword:      keyword,
       rich_menu_id: richMenuId
@@ -396,7 +397,7 @@ async function doImportAudience() {
   });
   if (result.success) {
     closeImportModal();
-    showToast(result.message, 'success');
+    showToast((result.data && result.data.message) ? result.data.message : '匯入完成', 'success');
     loadAudience(true);
   } else {
     showToast(result.message, 'error');
@@ -420,7 +421,7 @@ async function doDeleteAudience(audienceId, index) {
       index:       index
     });
     if (result.success) {
-      showToast('受眾已刪除', 'success');
+      showToast((result.data && result.data.message) ? result.data.message : '受眾已刪除', 'success');
       loadAudience(true);
     } else {
       showToast(result.message, 'error');
