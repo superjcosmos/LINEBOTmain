@@ -226,13 +226,13 @@ function _renderAudienceTable() {
       '<td>' + escHtml(rmName) + '</td>' +
       '<td style="white-space:nowrap;">' +
         '<button class="btn btn-edit" ' +
-          'onclick="editAudience(' + row.index + ',\'' + rowJson + '\')">編輯</button> ' +
+          'onclick="editAudience(' + row.index + ',\'' + escJsStr(rowJson) + '\')">編輯</button> ' +
         '<button class="btn btn-sync" ' +
           'onclick="syncCount(\'' + escHtml(row.audience_id) + '\',' + row.index + ')">同步人數</button> ' +
         '<button class="btn" style="background:#e8f0fe;color:#1a73e8;" ' +
-          'onclick="openMembersModal(\'' + escHtml(row.audience_id) + '\',\'' + escHtml(row.name) + '\')">查看成員</button> ' +
+          'onclick="openMembersModal(\'' + escJsStr(row.audience_id) + '\',\'' + escJsStr(row.name) + '\')">查看成員</button> ' +
         '<button class="btn btn-primary" ' +
-          'onclick="openImportModal(\'' + escHtml(row.audience_id) + '\',\'' + escHtml(row.name) + '\')">匯入UID</button> ' +
+          'onclick="openImportModal(\'' + escJsStr(row.audience_id) + '\',\'' + escJsStr(row.name) + '\')">匯入UID</button> ' +
         '<button class="btn btn-danger" ' +
           'onclick="doDeleteAudience(\'' + escHtml(row.audience_id) + '\',' + row.index + ')">刪除</button>' +
       '</td>' +
