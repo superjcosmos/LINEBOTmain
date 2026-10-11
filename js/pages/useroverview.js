@@ -157,7 +157,9 @@ function _renderUoTable() {
       ? '<span style="color:#666;">' + escHtml(row.note.length > 20 ? row.note.substring(0, 20) + '...' : row.note) + '</span>'
       : '<span style="color:#bbb;">無備註</span>';
     return '<tr>' +
-      '<td>' + escHtml(row.display_name || row.user_id) + '</td>' +
+      '<td>' + escHtml(row.display_name || row.user_id) +
+      (row.status === '封鎖中' ? ' <span style="display:inline-block;background:#fdecea;color:#e74c3c;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:6px;">黑名單</span>' : '') +
+      '</td>' +
       '<td>' + (row.last_seen ? escHtml(String(row.last_seen)) : '-') + '</td>' +
       '<td>' + (tagChips || '<span style="color:#bbb;">無標籤</span>') + '</td>' +
       '<td>' + noteDisplay + '</td>' +
