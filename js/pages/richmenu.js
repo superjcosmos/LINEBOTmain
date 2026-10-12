@@ -37,7 +37,7 @@ async function loadRichMenu() {
       '<td>' +
         '<button class="btn btn-edit" ' +
           'onclick="editRichMenu(' + row.index + ',\'' +
-          encodeURIComponent(JSON.stringify(row)) + '\')">編輯</button> ' +
+          escJsStr(encodeURIComponent(JSON.stringify(row))) + '\')">編輯</button> ' +
         '<button class="btn btn-primary" ' +
           'onclick="openUploadModal(\'' + escHtml(row.rich_menu_id) + '\',' + row.index + ')">上傳圖片</button> ' +
         '<button class="btn btn-danger" ' +
