@@ -330,51 +330,60 @@ async function saveAudience() {
     document.querySelectorAll('.audienceTagCheckbox:checked'),
     function(cb) { return cb.value; }
   );
-  var result;
-  if (audienceEditIndex !== null) {
-    result = await apiCall({
-      action:       'updateAudience',
-      index:        audienceEditIndex,
-      audience_id:  _currentEditingAudienceId,
-      name:         name,
-      keyword:      keyword,
-      rich_menu_id: richMenuId
-    });
-  } else {
-    result = await apiCall({
-      action:        'createAudience',
-      name:          name,
-      keyword:       keyword,
-      rich_menu_id:  richMenuId,
-      auto_reply:    autoReply,
-      reply_content: replyContent
-    });
-  }
-  if (result.success) {
-    var targetAudienceId = _currentEditingAudienceId || (result.data && result.data.audience_id);
-    var tagMsg = '';
-    if (targetAudienceId) {
-      var linkResult = await apiCall({
-        action:      'setAudienceTagLinks',
-        audience_id: targetAudienceId,
-        tag_ids:     selectedTagIds
+  var saveBtn = document.getElementById('audienceSaveBtn');
+  if (saveBtn) saveBtn.disabled = true;
+  try {
+    var result;
+    if (audienceEditIndex !== null) {
+      result = await apiCall({
+        action:       'updateAudience',
+        index:        audienceEditIndex,
+        audience_id:  _currentEditingAudienceId,
+        name:         name,
+        keyword:      keyword,
+        rich_menu_id: richMenuId
       });
-      if (linkResult.success && linkResult.data && linkResult.data.pushed > 0) {
-        tagMsg = '，已推播 ' + linkResult.data.pushed + ' 人加入受眾';
-      }
+    } else {
+      result = await apiCall({
+        action:        'createAudience',
+        name:          name,
+        keyword:       keyword,
+        rich_menu_id:  richMenuId,
+        auto_reply:    autoReply,
+        reply_content: replyContent
+      });
     }
-    closeCreateModal();
-    showToast(
-      (audienceEditIndex !== null
-        ? '更新成功'
-        : (result.data && result.data.message ? result.data.message : '受眾建立成功')) + tagMsg,
-      'success'
-    );
-    loadAudience(true);
-  } else {
-    showToast(result.message, 'error');
+    if (result.success) {
+      var targetAudienceId = _currentEditingAudienceId || (result.data && result.data.audience_id);
+      var tagMsg = '';
+      if (targetAudienceId) {
+        var linkResult = await apiCall({
+          action:      'setAudienceTagLinks',
+          audience_id: targetAudienceId,
+          tag_ids:     selectedTagIds
+        });
+        if (linkResult.success && linkResult.data && linkResult.data.pushed > 0) {
+          tagMsg = '，已推播 ' + linkResult.data.pushed + ' 人加入受眾';
+        }
+      }
+      var wasEdit = (audienceEditIndex !== null);
+      closeCreateModal();
+      showToast(
+        (wasEdit
+          ? '更新成功'
+          : (result.data && result.data.message ? result.data.message : '受眾建立成功')) + tagMsg,
+        'success'
+      );
+      loadAudience(true);
+    } else {
+      showToast(result.message, 'error');
+    }
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
   }
 }
+
+
 function openImportModal(audienceId, name) {
   currentAudienceId = audienceId;
   document.getElementById('importModalTitle').textContent = '受眾：' + name;
