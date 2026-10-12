@@ -300,10 +300,3 @@ async function doSaveUserNote() {
   }
 }
 
-// 日期格式化（台北時區）；空值回傳空字串，無法解析的值原樣轉成字串
-function _formatUserTime(v) {
-  if (v === '' || v === null || v === undefined) return '';
-  var d = (Object.prototype.toString.call(v) === '[object Date]') ? v : new Date(v);
-  if (isNaN(d.getTime())) return String(v);
-  return formatTaipei(d, 'yyyy/MM/dd HH:mm');
-}
