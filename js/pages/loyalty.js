@@ -165,7 +165,7 @@ async function searchUserLogForAdjust() {
     return;
   }
   dropdown.innerHTML = matched.map(function(u) {
-    return '<div onclick="selectAdjustUser(\'' + u.user_id.replace(/'/g, "\\'") + '\',\'' + (u.display_name || '').replace(/'/g, "\\'") + '\')" ' +
+    return '<div onclick="selectAdjustUser(\'' + escJsStr(u.user_id) + '\',\'' + escJsStr(u.display_name || '') + '\')" ' +
       'style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:13px" ' +
       'onmouseover="this.style.background=\'#f5f5f5\'" onmouseout="this.style.background=\'#fff\'">' +
       '<strong>' + escHtml(u.display_name || '(無名稱)') + '</strong> ' +
