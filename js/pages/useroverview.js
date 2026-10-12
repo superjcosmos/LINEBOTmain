@@ -149,25 +149,26 @@ function _renderUoTable() {
       return '<span class="tag-chip" style="display:inline-block;background:#eef7f0;' +
         'color:#06C755;border-radius:12px;padding:2px 10px;margin:2px 4px 2px 0;font-size:12px;">' +
         escHtml(tagStr) +
-        ' <a href="javascript:void(0)" onclick="doRemoveUserTag(\'' + escHtml(row.user_id) + '\',\'' + escHtml(tagStr) + '\')" ' +
+        ' <a href="javascript:void(0)" onclick="doRemoveUserTag(\'' + escJsStr(row.user_id) + '\',\'' + escJsStr(tagStr) + '\')" ' +
           'style="color:#e74c3c;text-decoration:none;margin-left:4px;">×</a>' +
         '</span>';
     }).join('');
     var noteDisplay = row.note
       ? '<span style="color:#666;">' + escHtml(row.note.length > 20 ? row.note.substring(0, 20) + '...' : row.note) + '</span>'
       : '<span style="color:#bbb;">無備註</span>';
+    var blacklistBadge = row.status === '封鎖中'
+      ? ' <span style="display:inline-block;background:#fdecea;color:#e74c3c;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:6px;">黑名單</span>'
+      : '';
     return '<tr>' +
-      '<td>' + escHtml(row.display_name || row.user_id) +
-      (row.status === '封鎖中' ? ' <span style="display:inline-block;background:#fdecea;color:#e74c3c;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:6px;">黑名單</span>' : '') +
-      '</td>' +
+      '<td>' + escHtml(row.display_name || row.user_id) + blacklistBadge + '</td>' +
       '<td>' + (row.last_seen ? escHtml(String(row.last_seen)) : '-') + '</td>' +
       '<td>' + (tagChips || '<span style="color:#bbb;">無標籤</span>') + '</td>' +
       '<td>' + noteDisplay + '</td>' +
       '<td style="white-space:nowrap;">' +
         '<button class="btn btn-primary" ' +
-          'onclick="openUoAddTagModal(\'' + escHtml(row.user_id) + '\',\'' + escHtml(row.display_name || row.user_id) + '\')">＋ 貼標籤</button> ' +
+          'onclick="openUoAddTagModal(\'' + escJsStr(row.user_id) + '\',\'' + escJsStr(row.display_name || row.user_id) + '\')">＋ 貼標籤</button> ' +
         '<button class="btn btn-edit" ' +
-          'onclick="openUoNoteModal(\'' + escHtml(row.user_id) + '\',\'' + escHtml(row.display_name || row.user_id) + '\',\'' + escHtml(encodeURIComponent(row.note || '')) + '\')">📝 備註</button>' +
+          'onclick="openUoNoteModal(\'' + escJsStr(row.user_id) + '\',\'' + escJsStr(row.display_name || row.user_id) + '\',\'' + escJsStr(encodeURIComponent(row.note || '')) + '\')">📝 備註</button>' +
       '</td>' +
     '</tr>';
   }).join('');
