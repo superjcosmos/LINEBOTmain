@@ -36,11 +36,11 @@ function renderBlacklist() {
       '<td>' + escHtml(item.note || '—') + '</td>' +
       '<td>' +
         '<button class="btn btn-sm btn-secondary" ' +
-          'onclick="openEditNoteModal(' + item.row_index + ',\'' + encodeURIComponent(item.note || '') + '\')">' +
+          'onclick="openEditNoteModal(' + Number(item.row_index) + ',\'' + escJsStr(encodeURIComponent(item.note || '')) + '\')">' +
           '編輯備註' +
         '</button> ' +
         '<button class="btn btn-sm btn-danger" ' +
-          'onclick="confirmDeleteBlacklist(' + item.row_index + ',\'' + encodeURIComponent(item.display_name || item.user_id) + '\')">' +
+          'onclick="confirmDeleteBlacklist(' + Number(item.row_index) + ',\'' + escJsStr(encodeURIComponent(item.display_name || item.user_id)) + '\')">' +
           '移除' +
         '</button>' +
       '</td>' +
