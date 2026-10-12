@@ -243,7 +243,7 @@ function filterBcAudience() {
   var filtered = _broadcastAudienceData.filter(function(a) {
     return (a.name || '').toLowerCase().includes(q) ||
            (a.keyword || '').toLowerCase().includes(q) ||
-           (a.audience_id || '').includes(q);
+           String(a.audience_id || '').includes(q)
   });
   renderBcAudienceList(filtered);
 }
@@ -404,17 +404,23 @@ async function submitBroadcast() {
   var name = _selectedAudience.name || _selectedAudience.keyword || _selectedAudience.audience_id;
 
   await confirmAndRun(
-    '確定要推播給「' + name + '」受眾嗎？\n預計發送 ' + (_selectedAudience.count || 0) + ' 人。',
+    '確定要推播給「' + name + '」受眾嗎？\n受眾共 ' + (_selectedAudience.count || 0) + ' 人（已封鎖或在黑名單的用戶會自動略過）。',
     async function() {
+      var sendBtn = document.getElementById('bc-send-btn');
+      if (sendBtn) sendBtn.disabled = true;
+
       var res = await apiCall({
         action: 'broadcastToAudience',
         audience_id: _selectedAudience.audience_id,
         messages: messages
       });
 
+      if (sendBtn) sendBtn.disabled = false;
+
       if (res.success) {
         var d = res.data;
-        showToast('✅ 推播完成！成功 ' + d.success + ' 人，失敗 ' + d.fail + ' 人', 'success');
+        var skippedText = d.skipped > 0 ? '，略過 ' + d.skipped + ' 人（封鎖或黑名單）' : '';
+        showToast('✅ 推播完成！成功 ' + d.success + ' 人，失敗 ' + d.fail + ' 人' + skippedText, 'success');
         loadBroadcastLog();
       } else {
         showToast(res.message || '推播失敗', 'error');
