@@ -362,7 +362,7 @@ function _renderCouponTable() {
   var end   = Math.min(start + _couponPageSize, total);
   var page  = _couponFiltered.slice(start, end);
   var rows = page.map(function(row) {
-    var rowJson = encodeURIComponent(JSON.stringify(row));
+    var rowJson = escJsStr(encodeURIComponent(JSON.stringify(row)));
     var issuedCount = row.issued_count || 0;
     var usedCount   = row.used_count   || 0;
     var isActive    = row.status === 'active';
@@ -636,7 +636,7 @@ function _renderCouponPoolTable() {
   var end   = Math.min(start + _couponPoolPageSize, total);
   var page  = _couponPoolFiltered.slice(start, end);
   var rows = page.map(function(row) {
-    var rowJson = encodeURIComponent(JSON.stringify(row));
+    var rowJson = escJsStr(encodeURIComponent(JSON.stringify(row)));
     var isActive = row.status === 'active';
     var periodText = (row.valid_from || row.valid_until)
       ? (escHtml(String(row.valid_from || '不限').split('T')[0]) + ' ~ ' + escHtml(String(row.valid_until || '不限').split('T')[0]))
