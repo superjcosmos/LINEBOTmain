@@ -228,13 +228,13 @@ function _renderAudienceTable() {
         '<button class="btn btn-edit" ' +
           'onclick="editAudience(' + row.index + ',\'' + escJsStr(rowJson) + '\')">編輯</button> ' +
         '<button class="btn btn-sync" ' +
-          'onclick="syncCount(\'' + escHtml(row.audience_id) + '\',' + row.index + ')">同步人數</button> ' +
+          'onclick="syncCount(\'' + escJsStr(row.audience_id) + '\',' + row.index + ')">同步人數</button> ' +
         '<button class="btn" style="background:#e8f0fe;color:#1a73e8;" ' +
           'onclick="openMembersModal(\'' + escJsStr(row.audience_id) + '\',\'' + escJsStr(row.name) + '\')">查看成員</button> ' +
         '<button class="btn btn-primary" ' +
           'onclick="openImportModal(\'' + escJsStr(row.audience_id) + '\',\'' + escJsStr(row.name) + '\')">匯入UID</button> ' +
         '<button class="btn btn-danger" ' +
-          'onclick="doDeleteAudience(\'' + escHtml(row.audience_id) + '\',' + row.index + ')">刪除</button>' +
+          'onclick="doDeleteAudience(\'' + escJsStr(row.audience_id) + '\',' + row.index + ')">刪除</button>' +
       '</td>' +
     '</tr>';
   }).join('');
