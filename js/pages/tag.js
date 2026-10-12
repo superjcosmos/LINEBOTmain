@@ -155,7 +155,7 @@ function _renderTagTable() {
   var end   = Math.min(start + _tagPageSize, total);
   var page  = _tagFiltered.slice(start, end);
   var rows = page.map(function(row) {
-    var rowJson = encodeURIComponent(JSON.stringify(row));
+    var rowJson = escJsStr(encodeURIComponent(JSON.stringify(row)));
     var usageCount = row.usage_count || 0;
     var isActive = row.status === 'active';
     // ⚠️ 使用人數>0時隱藏刪除按鈕，避免使用者點了才收到後端拒絕的錯誤訊息（後端仍保留同樣的檢查作為最終防線）
