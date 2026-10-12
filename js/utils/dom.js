@@ -1,6 +1,7 @@
 // js/utils/dom.js
 // DOM 操作相關共用工具
 // ⚠️ 規範詳見專案知識 CODE_STYLE.md
+// ⚠️ 2026-10-11 健檢：新增 escJsStr（onclick 內 JS 字串參數專用，見函式註解）
 
 function setContent(idOrHtml, html) {
   // 支援雙參數 setContent('elementId', html)
@@ -23,6 +24,19 @@ function escHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+// ── onclick="fn('...')" 這類「HTML 屬性裡的 JS 字串」位置專用 ──
+// escHtml 只擋 HTML 層：瀏覽器會先把 &#39; 還原成單引號才執行 JS，名稱仍可跳出字串
+// 並執行腳本。這裡把所有非英數字元（含中文、引號、反斜線）轉成 \uXXXX，
+// JS 執行時會還原成原字串，兩層解碼都不可能提早結束字串。
+// 用法：onclick="fn(\'' + escJsStr(使用者資料) + '\')"
+function escJsStr(str) {
+  if (str === null || str === undefined) return '';
+  var s = String(str).replace(/[^A-Za-z0-9 ]/g, function(c) {
+    return '\\u' + ('0000' + c.charCodeAt(0).toString(16)).slice(-4);
+  });
+  return escHtml(s);
 }
 
 // ── 確認對話框（回傳 Promise<boolean>） ──
