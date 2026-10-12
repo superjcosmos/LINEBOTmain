@@ -5,7 +5,7 @@
 
 async function loadSupport() {
   setContent('<div class="loading">載入客服留言...</div>');
-  var histRes = await apiCall({ action: 'getSupportLog', status: 'all' });
+  var histRes = await apiCall({ action: 'getMySupportLog' });
   var history = [];
   if (histRes.success && Array.isArray(histRes.data)) {
     history = histRes.data.filter(function(r) {
