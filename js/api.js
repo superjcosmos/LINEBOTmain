@@ -22,11 +22,23 @@ async function apiCall(params) {
     if (authState.role === 'client_preview' && authState.clientId && !params.impersonate_client_id) {
       params.impersonate_client_id = authState.clientId;
     }
-    var response = await fetch(CONFIG.API_URL, {
-      method: 'POST',
-      body:   JSON.stringify(params)
-    });
-    var result = await response.json();
+    // 2026-10-12：讀取類請求（get 開頭）連線失敗時自動重試 1 次；寫入類不重試，避免重複寫入
+    var isRead = typeof params.action === 'string' && params.action.indexOf('get') === 0;
+    var maxAttempts = isRead ? 2 : 1;
+    var result = null;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        var response = await fetch(CONFIG.API_URL, {
+          method: 'POST',
+          body:   JSON.stringify(params)
+        });
+        result = await response.json();
+        break;
+      } catch (fetchErr) {
+        if (attempt >= maxAttempts) throw fetchErr;
+        await new Promise(function(resolve) { setTimeout(resolve, 800); });
+      }
+    }
     if (!result.success && result.message === '請重新登入') {
       clearSession();
       showLoginPage();
