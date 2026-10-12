@@ -96,14 +96,14 @@ function _renderLotteryTableBody() {
       '<td>' + escHtml(a.winner_count || 0) + '</td>' +
       '<td>' + _statusBadge(a.status === 'active') + '</td>' +
       '<td>' +
-        '<button class="btn btn-edit" onclick="viewLotteryLog(\'' + escHtml(a.activity_name) + '\')">記錄</button>' +
+        '<button class="btn btn-edit" onclick="viewLotteryLog(\'' + escJsStr(a.activity_name) + '\')">記錄</button>' +
         ' <button class="btn btn-edit" onclick="openLotteryEditModal(' + a.row_index + ')">編輯</button>' +
         ' <button class="btn ' + toggleClass + '" onclick="toggleLotteryStatus(' + a.row_index + ')">' + toggleLabel + '</button>' +
-        (a.linked_audience_id ? ' <button class="btn btn-sync" onclick="goToBroadcastForActivity(\'' + escHtml(a.linked_audience_id) + '\')">📢 前往推播</button>' : '') +
-        (a.type === 'C' ? ' <button class="btn btn-primary" onclick="openDrawModal(\'' + escHtml(a.activity_name) + '\')">開獎</button>' : '') +
+        (a.linked_audience_id ? ' <button class="btn btn-sync" onclick="goToBroadcastForActivity(\'' + escJsStr(a.linked_audience_id) + '\')">📢 前往推播</button>' : '') +
+        (a.type === 'C' ? ' <button class="btn btn-primary" onclick="openDrawModal(\'' + escJsStr(a.activity_name) + '\')">開獎</button>' : '') +
         (a.log_count > 0
           ? ' <button class="btn btn-danger" disabled title="此活動已有 ' + a.log_count + ' 筆參與紀錄，無法刪除，請改用停用">刪除</button>'
-          : ' <button class="btn btn-danger" onclick="deleteLotteryActivity(' + a.row_index + ', \'' + escHtml(a.activity_name) + '\')">刪除</button>') +
+          : ' <button class="btn btn-danger" onclick="deleteLotteryActivity(' + a.row_index + ', \'' + escJsStr(a.activity_name) + '\')">刪除</button>') +
       '</td>' +
     '</tr>';
   }).join('');
@@ -523,7 +523,7 @@ function openDrawModal(activityName) {
         '</div>' +
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="closeLotteryModal()">取消</button>' +
-          '<button class="btn btn-primary" onclick="executeDraw(\'' + escHtml(activityName) + '\')">確認開獎</button>' +
+          '<button class="btn btn-primary" onclick="executeDraw(\'' + escJsStr(activityName) + '\')">確認開獎</button>' +
         '</div>' +
       '</div>' +
     '</div>'
