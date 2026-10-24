@@ -309,7 +309,7 @@ function toggleShowDisabledCards() {
 // ── 刪除 ──
 async function deleteCard(idx) {
   var c = _loyaltyCards[idx];
-  await confirmAndRun('確定刪除「' + c.card_name + '」？\n歷史記錄將一併移除，此動作無法復原。', async function() {
+    await confirmAndRun('確定刪除「' + c.card_name + '」？\n此點數卡尚無任何集點紀錄，刪除後無法復原。', async function() {
     var res = await apiCall({ action: 'deleteLoyaltyCard', card_id: c.card_id });
     if (res.success) { showToast('已刪除', 'success'); loadLoyalty(); }
     else showToast(res.message || '刪除失敗', 'error');
