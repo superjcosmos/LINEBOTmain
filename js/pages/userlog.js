@@ -84,11 +84,11 @@ async function resetLog() {
 function _buildUserLogTable(data) {
   var rows = data.map(function(row) {
     return '<tr>' +
-      '<td>' + escHtml(formatDate(row.time)) + '</td>' +
-      '<td>' + escHtml(row.name    || "-") + '</td>' +
-      '<td class="uid-cell">' + escHtml(row.userId  || "-") + '</td>' +
-      '<td>' + escHtml(row.keyword || "-") + '</td>' +
-      '<td>' + escHtml(row.status  || "-") + '</td>' +
+      '<td>' + escHtml(row.time || "-") + '</td>' +
+      '<td>' + escHtml(row.name || "-") + '</td>' +
+      '<td class="uid-cell">' + escHtml(row.userId || "-") + '</td>' +
+      '<td>' + escHtml(row.raw_message || row.keyword || "-") + '</td>' +
+      '<td>' + escHtml(row.referral_code || "-") + '</td>' +
     '</tr>';
   }).join("");
   return '<table>' +
@@ -97,7 +97,7 @@ function _buildUserLogTable(data) {
       '<th>名稱</th>' +
       '<th>UserID</th>' +
       '<th>訊息內容</th>' +
-      '<th>狀態</th>' +
+      '<th>推薦碼</th>' +
     '</tr></thead>' +
     '<tbody>' +
       (rows || '<tr><td colspan="5" class="empty">尚無資料</td></tr>') +
