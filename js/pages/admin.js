@@ -304,8 +304,6 @@ function submitReferralRecord() {
   });
 }
 
-// 1. _loadAdminSettings() 內，tabContent.innerHTML 的字串結尾
-//    （原本是 '</div>';  收在聯絡資訊卡片後面），改成在後面串接一張新卡片：
  
 async function _loadAdminSettings() {
   var tabContent = document.getElementById('adminTabContent');
@@ -551,9 +549,10 @@ async function openSendEmailModal() {
   document.getElementById('sendEmailModalTitle').textContent = '✉️ 發送通知信給 ' + (c ? (c.company_name || c.client_id) : _editingClientId);
   document.getElementById('emailSubject').value = 'J Cosmos 系統開通通知';
   var webhookText = (c && c.webhook_url) ? c.webhook_url : '⚠️ 尚未設定，請先至客戶詳情填入 Webhook 網址';
+  // FE10：用函式形式替換，避免 Email／網址含 $& 等字元時被當成特殊替換符號
   document.getElementById('emailMessage').value = _sendEmailDefaultTemplate
-    .replace('{email}', c ? c.email : '')
-    .replace('{webhook_url}', webhookText);
+    .replace('{email}', function() { return c ? c.email : ''; })
+    .replace('{webhook_url}', function() { return webhookText; });
   document.getElementById('emailLogList').innerHTML = '<div style="color:#aaa">載入寄送紀錄...</div>';
   openModal('sendEmailModal');
 
