@@ -35,7 +35,7 @@ function buildSidebarMenu() {
   var lineLinkItem = document.createElement('div');
   lineLinkItem.className = 'menu-item';
   lineLinkItem.innerHTML = '<span class="menu-icon"><i class="ti ti-external-link"></i></span>前往LINE後台';
-  lineLinkItem.onclick   = function() { window.open('https://manager.line.biz/', '_blank'); };
+  lineLinkItem.onclick   = function() { window.open('https://manager.line.biz/', '_blank', 'noopener'); };
   menu.appendChild(lineLinkItem);
   // admin 登入後啟動輪詢
   if (authState.role === 'admin' || authState.role === 'client_preview') {
@@ -67,7 +67,7 @@ function _startSupportPolling() {
 async function _fetchSupportBadge() {
   try {
     if (authState.role !== 'admin') return; // 只有 admin 才呼叫
-    var res = await apiCall({ action: 'getSupportUnreadCount' });
+    var res = await apiCall({ action: 'getSupportUnreadCount' }, { silent: true });
     if (res.success) {
       _updateSupportBadge(res.data.count || 0);
     }
