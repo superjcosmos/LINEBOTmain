@@ -85,6 +85,11 @@ function _downloadCsv(csvContent, filename) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// FE9：改用瀏覽器本地時間（台灣客戶即台北時間），原本 toISOString() 是 UTC，凌晨 0～8 點會少一天
 function _today() {
-  return new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  var d = new Date();
+  return d.getFullYear() +
+    String(d.getMonth() + 1).padStart(2, '0') +
+    String(d.getDate()).padStart(2, '0');
 }
