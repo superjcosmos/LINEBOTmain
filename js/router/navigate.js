@@ -37,7 +37,7 @@ function navigateTo(pageKey) {
     PAGES[pageKey].load();
   } catch(e) {
     if (mainContent) {
-      mainContent.innerHTML = '<div class="empty">頁面載入失敗：' + e.message + '</div>';
+      mainContent.innerHTML = '<div class="empty">頁面載入失敗：' + escHtml(e.message) + '</div>';
     }
   }
 }
