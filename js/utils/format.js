@@ -13,20 +13,8 @@ function formatDate(dateStr) {
   return y + '-' + mo + '-' + day + ' ' + h + ':' + mi;
 }
 
-function formatDateOnly(dateStr) {
-  if (!dateStr) return '';
-  var d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  var y   = d.getFullYear();
-  var mo  = String(d.getMonth() + 1).padStart(2, '0');
-  var day = String(d.getDate()).padStart(2, '0');
-  return y + '-' + mo + '-' + day;
-}
 
-function formatNumber(num) {
-  if (num === null || num === undefined) return '0';
-  return Number(num).toLocaleString();
-}
+
 
 // 方案代碼 → 中英雙語顯示名稱，供各頁面共用（myaccount.js／planConfirm.js）
 var PLAN_LABELS = {
