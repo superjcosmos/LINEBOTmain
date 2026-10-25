@@ -1,17 +1,27 @@
 // js/api.js
+// ⚠️ 2026-10-25 修正（批次 3 健檢）：
+//   FE26：apiCall 新增選用第二參數 opts，{ silent: true } 時不顯示遮罩、連線失敗不跳 toast（供背景輪詢使用）
+//   FE27：遮罩改用計數，多個請求同時進行時，全部完成才關閉
+//   FE16：verify 也納入連線失敗重試（純查詢，重試無副作用）
+
+var _apiLoadingCount = 0;
 
 function showLoading() {
+  _apiLoadingCount++;
   var el = document.getElementById('global-loading');
   if (el) el.style.display = 'flex';
 }
 
 function hideLoading() {
+  _apiLoadingCount = Math.max(0, _apiLoadingCount - 1);
+  if (_apiLoadingCount > 0) return;
   var el = document.getElementById('global-loading');
   if (el) el.style.display = 'none';
 }
 
-async function apiCall(params) {
-  showLoading();
+async function apiCall(params, opts) {
+  var silent = !!(opts && opts.silent);
+  if (!silent) showLoading();
   try {
     var token = localStorage.getItem('sessionToken');
     if (token && params.action !== 'login') {
@@ -23,7 +33,9 @@ async function apiCall(params) {
       params.impersonate_client_id = authState.clientId;
     }
     // 2026-10-12：讀取類請求（get 開頭）連線失敗時自動重試 1 次；寫入類不重試，避免重複寫入
-    var isRead = typeof params.action === 'string' && params.action.indexOf('get') === 0;
+    // 2026-10-25：verify 也納入（FE16）
+    var isRead = typeof params.action === 'string' &&
+      (params.action.indexOf('get') === 0 || params.action === 'verify');
     var maxAttempts = isRead ? 2 : 1;
     var result = null;
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -45,9 +57,10 @@ async function apiCall(params) {
     }
     return result;
   } catch(err) {
-    showToast('連線失敗，請稍後再試', 'error');
+    // ⚠️ auth.js 的 verifyAndEnter 以 message === '連線失敗' 判斷連線問題，改這段文字時要一起改
+    if (!silent) showToast('連線失敗，請稍後再試', 'error');
     return { success: false, message: '連線失敗' };
   } finally {
-    hideLoading();
+    if (!silent) hideLoading();
   }
 }
