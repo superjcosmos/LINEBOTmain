@@ -12,8 +12,18 @@ var authState = {
   email:        localStorage.getItem("email")         || null,
   role:         localStorage.getItem("role")          || "client",
   company_name: localStorage.getItem("company_name")  || "",
-  features:     JSON.parse(localStorage.getItem("features") || "{}")
+  features:     _readStoredFeatures()
 };
+
+
+// FE18：瀏覽器存的 features 損壞時回傳空物件，避免整支 auth.js 載入失敗、無法登入
+function _readStoredFeatures() {
+  try {
+    return JSON.parse(localStorage.getItem("features") || "{}") || {};
+  } catch (e) {
+    return {};
+  }
+}
 
 // ────────────────────────────────────────────────────────────
 // 頁面載入時自動驗證
@@ -87,6 +97,9 @@ async function verifyAndEnter() {
     var result = await apiCall({ action: "verify" });
     if (result.success) {
       enterMainPage();
+    } else if (result.message === "連線失敗") {
+      // FE16：連線問題不清除登入資料，使用者重新整理後會再自動驗證一次
+      showLoginError("目前無法連線，請稍後重新整理頁面");
     } else {
       clearSession();
     }
@@ -120,6 +133,11 @@ function clearSession() {
   // 會殘留到下一個登入的帳號，這裡一併移除
   var impBar = document.getElementById('impersonateBar');
   if (impBar) impBar.remove();
+  // FE24：登出時停止客服未讀數的背景輪詢（計時器定義在 sidebar.js）
+  if (_supportPollTimer) {
+    clearInterval(_supportPollTimer);
+    _supportPollTimer = null;
+  }
 }
 // ────────────────────────────────────────────────────────────
 // 顯示登入錯誤訊息
