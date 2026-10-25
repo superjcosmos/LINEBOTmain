@@ -296,9 +296,7 @@ async function submitForgotPassword() {
 async function resendOtp() {
   if (!_forgotState.email) { _showForgotError(2, "找不到 Email，請重新操作"); return; }
 
-  var btn = document.getElementById("btnResendOtp");
-  if (btn) { btn.disabled = true; btn.textContent = "寄送中..."; }
-
+    
   try {
     var res = await apiCall({ action: "forgotPassword", email: _forgotState.email });
     if (res.success) {
@@ -310,9 +308,7 @@ async function resendOtp() {
     }
   } catch (err) {
     _showForgotError(2, "連線失敗，請稍後再試");
-  }
-
-  if (btn) { btn.disabled = false; btn.textContent = "重新寄送"; }
+  }  
 }
 
 async function submitVerifyOtp() {
