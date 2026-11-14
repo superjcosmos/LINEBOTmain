@@ -2,6 +2,7 @@
 // DOM 操作相關共用工具
 // ⚠️ 規範詳見專案知識 CODE_STYLE.md
 // ⚠️ 2026-10-11 健檢：新增 escJsStr（onclick 內 JS 字串參數專用，見函式註解）
+// ⚠️ 2026-11-14 第 4d 批：新增 passwordLengthError／updatePasswordLengthHint（新密碼長度共用）
 
 function setContent(idOrHtml, html) {
   // 支援雙參數 setContent('elementId', html)
@@ -76,4 +77,24 @@ function initSheet() {
       showToast(res.message || '初始化失敗', 'error');
     }
   });
+}
+
+
+// ── 新密碼長度（2026-11-14 第 4d 批 F04）：全站共用，長度只看 CONFIG.MIN_PASSWORD_LEN ──
+// 比對前先 trim，與後端 changePassword／resetPassword 的檢查方式一致
+
+// 送出前檢查：不足時回傳錯誤訊息，通過回傳空字串
+function passwordLengthError(pw) {
+  var min = CONFIG.MIN_PASSWORD_LEN;
+  return String(pw || '').trim().length < min ? '密碼至少需要 ' + min + ' 個字元' : '';
+}
+
+// 輸入時即時提示「還差 N 個字元」；欄位空白或已達長度時不顯示（由 oninput 呼叫）
+function updatePasswordLengthHint(inputId, hintId) {
+  var input = document.getElementById(inputId);
+  var hint  = document.getElementById(hintId);
+  if (!input || !hint) return;
+  var len  = String(input.value || '').trim().length;
+  var lack = CONFIG.MIN_PASSWORD_LEN - len;
+  hint.textContent = (len > 0 && lack > 0) ? '還差 ' + lack + ' 個字元' : '';
 }
