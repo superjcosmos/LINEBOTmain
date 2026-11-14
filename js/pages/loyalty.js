@@ -7,6 +7,7 @@
 //   修過的同一根因。改為 viewLoyaltyCard(idx, preserveView)，只有真正點擊
 //   「會員點數」按鈕打開Modal（非preserveView）才重置分頁與搜尋字，
 //   Modal內操作後的刷新一律保留目前頁碼與搜尋字。
+// ⚠️ 2026-11-14 第 4e 批 F69：兌換貼標下拉改用 buildTagSelectOptions（已停用的既有設定不會被清掉）
 // ============================================================
 var _loyaltyCards      = [];
 var _loyaltyUserAll    = [];
@@ -192,7 +193,7 @@ async function openCardModal(card) {
   document.getElementById('cardModalForm').innerHTML = '<div class="loading">載入中...</div>';
   openModal('cardModal');
   var tagRes  = await apiCall({ action: 'getTagList' });
-  var tagList = tagRes.success ? (tagRes.data || []).filter(function(t) { return t.status === 'active'; }) : [];
+  var tagList = tagRes.success ? (tagRes.data || []) : []; // F69：不先過濾，由 buildTagSelectOptions 處理
   document.getElementById('cardModalForm').innerHTML = _buildCardForm(c, m, tagList);
 }
 function editLoyaltyCard(idx) { openCardModal(_loyaltyCards[idx]); }
@@ -200,10 +201,7 @@ function closeCardModal()     { closeModal('cardModal'); }
 function _buildCardForm(c, m, tagList) {
   var showStamp  = m === 'stamp'  || m === 'both';
   var showDeduct = m === 'deduct' || m === 'both';
-  var tagOptions = '<option value="">不自動貼標籤</option>' + (tagList || []).map(function(t) {
-    var sel = String(c.milestone_tag_id || '') === String(t.tag_id) ? ' selected' : '';
-    return '<option value="' + escHtml(t.tag_id) + '"' + sel + '>' + escHtml(t.tag_name) + '</option>';
-  }).join('');
+  var tagOptions = buildTagSelectOptions(tagList, c.milestone_tag_id); // F69
   return '<div class="form-group"><label>點數卡名稱</label><input type="text" id="cfCardName" placeholder="咖啡集點卡" value="' + escHtml(c.card_name || '') + '"></div>' +
     '<div class="form-group"><label>模式</label>' +
       '<select id="cfMode" onchange="refreshCardForm()">' +
