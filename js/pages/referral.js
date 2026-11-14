@@ -2,7 +2,7 @@
 // 路徑：js/pages/referral.js
 // 功能：推薦碼管理頁
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / openModal/closeModal / renderPager
-// ⚠️ 2026-11-14 第 4e 批：顯示系統固定關鍵字（CONFIG.SYSTEM_KEYWORDS）；設定視窗加前綴修改提醒（F70 暫時處置）
+// ⚠️ 2026-11-14 第 4e 批：顯示系統固定關鍵字（CONFIG.SYSTEM_KEYWORDS）；F70 已有人取得推薦碼時前綴欄唯讀並說明原因
 
 var _referralAll      = [];
 var _referralFiltered = [];
@@ -40,6 +40,7 @@ async function loadReferral() {
 }
 
 function _buildReferralPage(stats, ranking, settings) {
+  var prefixLocked = (stats.users_with_code || 0) > 0; // F70：已有人取得推薦碼就不能改前綴
   var topRows = ranking.slice(0, 10).map(function(r, idx) {
     var medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : (idx + 1) + '.';
     return '<tr>' +
@@ -129,9 +130,14 @@ function _buildReferralPage(stats, ranking, settings) {
       '<div class="form-group">' +
         '<label>推薦碼前綴（大寫英文，例如 REF、VIP、JOIN）</label>' +
         '<input type="text" id="refPrefix" placeholder="REF" maxlength="8"' +
-          ' style="text-transform:uppercase"' +
+          ' style="text-transform:uppercase' + (prefixLocked ? ';background:#f5f5f5;color:#888' : '') + '"' +
+          (prefixLocked ? ' readonly' : '') +
           ' value="' + escHtml(settings.prefix || 'REF') + '">' +
-        '<p style="font-size:12px;color:#e67e22;margin:4px 0 0;">⚠️ 已發出的推薦碼不會跟著改。修改前綴後，舊推薦碼將無法使用。</p>' +
+        '<p style="font-size:12px;color:#e67e22;margin:4px 0 0;">' +
+          (prefixLocked
+            ? '⚠️ 已有 ' + escHtml(stats.users_with_code) + ' 位用戶取得推薦碼，前綴不能再修改（修改後舊推薦碼會全部失效）。'
+            : '⚠️ 第一位用戶取得推薦碼後，前綴就不能再修改，請在開始推廣前確認。') +
+        '</p>' +
       '</div>' +
       '<div class="form-group">' +
         '<label>推薦人每次獲得點數</label>' +
