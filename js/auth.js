@@ -3,6 +3,7 @@
 // 路徑：js/auth.js
 // 功能：登入/登出/Session、忘記密碼三步驟、role 分流
 // ⚠️ 修正：登入成功/登出/showLoginError 時清空密碼欄位，避免殘留在 DOM 中（資安問題）
+// ⚠️ 2026-11-14 第 4d 批 F04：設定新密碼改用共用長度檢查與即時提示（dom.js、CONFIG.MIN_PASSWORD_LEN）
 // ============================================================
 
 var authState = {
@@ -258,6 +259,12 @@ function _showForgotStep(step) {
     var el = document.getElementById("forgotStep" + n);
     if (el) el.style.display = (n === step) ? "block" : "none";
   });
+    // F04：設定新密碼頁的 placeholder 與長度提示，長度由 CONFIG.MIN_PASSWORD_LEN 決定
+  if (step === 3) {
+    var newPwEl = document.getElementById("newPassword");
+    if (newPwEl) newPwEl.placeholder = "至少 " + CONFIG.MIN_PASSWORD_LEN + " 個字元";
+    updatePasswordLengthHint("newPassword", "newPasswordLenHint");
+  }
   var focusMap = { 1: "forgotEmail", 2: "otpInput", 3: "newPassword" };
   var focusEl  = document.getElementById(focusMap[step]);
   if (focusEl) setTimeout(function () { focusEl.focus(); }, 50);
@@ -345,7 +352,8 @@ async function submitResetPassword() {
   var confirmPass   = confirmPassEl ? confirmPassEl.value : "";
 
   if (!newPass)                { _showForgotError(3, "請輸入新密碼");       return; }
-  if (newPass.length < 6)      { _showForgotError(3, "密碼至少需要 6 個字元"); return; }
+  var lenErr = passwordLengthError(newPass);
+  if (lenErr)                  { _showForgotError(3, lenErr); return; }
   if (newPass !== confirmPass) {
     _showForgotError(3, "兩次密碼輸入不一致");
     if (confirmPassEl) { confirmPassEl.value = ""; confirmPassEl.focus(); }
@@ -383,10 +391,11 @@ function updatePasswordStrength() {
   var password = document.getElementById("newPassword").value;
   var el       = document.getElementById("passwordStrength");
   if (!el) return;
-  if (!password) { el.textContent = ""; return; }
+  // F04：長度不足時不顯示強度，由「還差 N 個字元」提示（updatePasswordLengthHint）
+  if (!password || password.trim().length < CONFIG.MIN_PASSWORD_LEN) { el.textContent = ""; return; }
 
   var score = 0;
-  if (password.length >= 6)           score++;
+  if (password.length >= CONFIG.MIN_PASSWORD_LEN) score++;
   if (password.length >= 10)          score++;
   if (/[A-Z]/.test(password))         score++;
   if (/[0-9]/.test(password))         score++;
