@@ -3,6 +3,7 @@
 // ⚠️ 規範詳見專案知識 CODE_STYLE.md
 // ⚠️ 2026-10-11 健檢：新增 escJsStr（onclick 內 JS 字串參數專用，見函式註解）
 // ⚠️ 2026-11-14 第 4d 批：新增 passwordLengthError／updatePasswordLengthHint（新密碼長度共用）
+// ⚠️ 2026-11-14 第 4e 批 F69：新增 buildTagSelectOptions（貼標下拉保留已停用的既有設定）
 
 function setContent(idOrHtml, html) {
   // 支援雙參數 setContent('elementId', html)
@@ -97,4 +98,28 @@ function updatePasswordLengthHint(inputId, hintId) {
   var len  = String(input.value || '').trim().length;
   var lack = CONFIG.MIN_PASSWORD_LEN - len;
   hint.textContent = (len > 0 && lack > 0) ? '還差 ' + lack + ' 個字元' : '';
+}
+
+
+// ── 標籤下拉選項（點數卡兌換貼標、優惠券核銷貼標共用，2026-11-14 第 4e 批 F69）──
+// 只列啟用中的標籤；但目前已設定的標籤若已停用或已不存在，仍保留為選項並標示，
+// 避免編輯時下拉對不到值、按儲存就把原設定靜靜清掉
+// allTags：getTagList 回傳的完整清單（不要先過濾）；selectedId：目前設定的 tag_id
+function buildTagSelectOptions(allTags, selectedId) {
+  var sel   = String(selectedId || '');
+  var found = false;
+  var html  = '<option value="">不自動貼標籤</option>';
+  (allTags || []).forEach(function(t) {
+    var id       = String(t.tag_id);
+    var isSel    = sel !== '' && id === sel;
+    var isActive = t.status === 'active';
+    if (!isActive && !isSel) return;
+    if (isSel) found = true;
+    html += '<option value="' + escHtml(id) + '"' + (isSel ? ' selected' : '') + '>' +
+      escHtml(t.tag_name) + (isActive ? '' : '（已停用）') + '</option>';
+  });
+  if (sel && !found) {
+    html += '<option value="' + escHtml(sel) + '" selected>（標籤已不存在：' + escHtml(sel) + '）</option>';
+  }
+  return html;
 }
