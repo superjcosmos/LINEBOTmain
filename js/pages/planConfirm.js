@@ -4,6 +4,7 @@
 // ⚠️ 條款版本號寫死在這裡，terms.html之後改版時，這裡與 API ClientService.gs 的 CURRENT_TERMS_VERSION 都要手動同步更新
 // ⚠️ 下方 _pcFeatureTableHtml() 的方案功能對照表是「靜態寫死」的行銷展示內容，
 //    不會自動反映 Master Sheet 的 Features 權限分層表，兩邊需要手動保持同步
+// ⚠️ 2026-11-14 第 4b 批：畫面上的到期日一律改顯示「服務至」（後端 serviceUntil／service_until）
 // ============================================================
 
 var PLAN_CONFIRM_TERMS_VERSION = 'v1';
@@ -63,8 +64,8 @@ function renderPlanConfirm(d) {
           <div>${escHtml(d.billing_cycle === 'quarterly' ? '季繳' : '月繳')}</div>
           <div style="color:#888">續約偏好</div>
           <div>${escHtml(renewalLabel)}</div>
-          <div style="color:#888">到期日</div>
-          <div>${escHtml(d.expireDate || '-')}</div>
+          <div style="color:#888">服務至</div>
+          <div>${escHtml(d.serviceUntil || '-')}</div>
         </div>
 
         <div style="margin-top:20px;padding-top:16px;border-top:1px solid #eee">
@@ -171,7 +172,7 @@ async function _pcSubmit() {
 
   if (res.success) {
     updateAuthPlan(plan);
-    showToast('方案已確認，到期日：' + res.data.expire_date, 'success');
+    showToast('方案已確認，服務至：' + res.data.service_until, 'success');
     loadPlanConfirm();
   } else {
     showToast(res.message || '送出失敗', 'error');
@@ -190,7 +191,7 @@ function _pcRenewNow() {
   }
 
   var cycleText = (billingCycle === 'quarterly') ? '3個半月（季繳，含贈送15天）' : '1個月';
-  confirmAndRun('確定要提前續約嗎？到期日將從目前到期日（' + _pcCurrentInfo.expireDate + '）往後延長' + cycleText + '。', async function () {
+  confirmAndRun('確定要提前續約嗎？服務期限將從目前的服務至（' + _pcCurrentInfo.serviceUntil + '）往後延長' + cycleText + '。', async function () {
     var res = await apiCall({
       action: 'updateMyPlan',
       plan: _pcCurrentInfo.plan,
@@ -200,7 +201,7 @@ function _pcRenewNow() {
       terms_agreed: true
     });
     if (res.success) {
-      showToast('已提前續約，新到期日：' + res.data.expire_date, 'success');
+      showToast('已提前續約，服務至：' + res.data.service_until, 'success');
       loadPlanConfirm();
     } else {
       showToast(res.message || '續約失敗', 'error');
@@ -246,8 +247,8 @@ function _renderExpiryReminderModal(d) {
       '<div class="modal">' +
         '<h3>⏰ 服務即將到期提醒</h3>' +
         '<p style="font-size:14px;color:#555;margin:12px 0">' +
-          '您的方案將於 <strong style="color:#e67e22">' + escHtml(d.daysLeft) + ' 天後</strong>' +
-          '（' + escHtml(d.expireDate) + '）到期，為避免到期後服務被暫停，建議提前確認續約。' +
+          '您的方案服務至 <strong style="color:#e67e22">' + escHtml(d.serviceUntil) + '</strong>' +
+          '（剩 ' + escHtml(d.daysLeft) + ' 天），為避免到期後服務被暫停，建議提前確認續約。' +
         '</p>' +
         '<div class="modal-footer">' +
           '<button class="btn-cancel" onclick="_dismissExpiryReminder(\'' + escHtml(d.clientId) + '\')">稍後再說</button>' +
