@@ -2,6 +2,7 @@
 // 路徑：js/pages/referral.js
 // 功能：推薦碼管理頁
 // ⚠️ 已套用 CODE_STYLE.md 規範：escHtml / openModal/closeModal / renderPager
+// ⚠️ 2026-11-14 第 4e 批：顯示系統固定關鍵字（CONFIG.SYSTEM_KEYWORDS）；設定視窗加前綴修改提醒（F70 暫時處置）
 
 var _referralAll      = [];
 var _referralFiltered = [];
@@ -86,6 +87,12 @@ function _buildReferralPage(stats, ranking, settings) {
 
   settingsDisplay +
 
+  '<p style="font-size:13px;color:#888;margin:-8px 0 20px;line-height:1.6;">' +
+    'LINE 好友傳「' + CONFIG.SYSTEM_KEYWORDS.referral.map(function(k) { return escHtml(k); }).join('」「') + '」任一個，會收到自己的推薦碼；' +
+    '朋友輸入「' + escHtml(settings.prefix || 'REF') + '-XXXX」格式的推薦碼即完成推薦。' +
+    '這些是系統固定關鍵字，不能設為其他功能的觸發關鍵字。' +
+  '</p>' +
+
   '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">' +
     _refCard('總推薦事件',  stats.total_events   || 0, '📨', '#1a1a2e') +
     _refCard('成功完成',    stats.completed      || 0, '✅', '#06C755') +
@@ -124,6 +131,7 @@ function _buildReferralPage(stats, ranking, settings) {
         '<input type="text" id="refPrefix" placeholder="REF" maxlength="8"' +
           ' style="text-transform:uppercase"' +
           ' value="' + escHtml(settings.prefix || 'REF') + '">' +
+        '<p style="font-size:12px;color:#e67e22;margin:4px 0 0;">⚠️ 已發出的推薦碼不會跟著改。修改前綴後，舊推薦碼將無法使用。</p>' +
       '</div>' +
       '<div class="form-group">' +
         '<label>推薦人每次獲得點數</label>' +
