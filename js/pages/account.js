@@ -2,6 +2,7 @@
 // ⚠️ 已套用 CODE_STYLE.md 規範：openModal/closeModal（取代動態建立 global-modal 容器）
 // ⚠️ 注意：此頁面無對應的 loadAccount()，Modal 需確保 'globalModalRoot' 容器已存在於 index.html 主版面中
 //    （建議在 index.html 的 <body> 內、router 容器之外，固定放一個 <div id="globalModalRoot"></div>）
+// ⚠️ 2026-11-14 第 4d 批 F04：新密碼長度改用共用 passwordLengthError，輸入時即時提示（dom.js）
 
 function openChangePasswordModal() {
   var root = document.getElementById('globalModalRoot');
@@ -22,7 +23,9 @@ function openChangePasswordModal() {
         '</div>' +
         '<div class="form-group">' +
           '<label>新密碼</label>' +
-          '<input id="cp-new" type="password" placeholder="至少6碼">' +
+          '<input id="cp-new" type="password" placeholder="至少 ' + CONFIG.MIN_PASSWORD_LEN + ' 個字元"' +
+            ' oninput="updatePasswordLengthHint(\'cp-new\', \'cp-new-hint\')">' +
+          '<div id="cp-new-hint" style="font-size:12px;margin-top:4px;color:#e67e22"></div>' +
         '</div>' +
         '<div class="form-group">' +
           '<label>確認新密碼</label>' +
@@ -43,7 +46,8 @@ async function submitChangePassword() {
 
   if (!oldPw || !newPw || !confirmPw) { showToast('請填寫所有欄位', 'error'); return; }
   if (newPw !== confirmPw) { showToast('新密碼兩次輸入不一致', 'error'); return; }
-  if (newPw.length < 6) { showToast('新密碼至少6碼', 'error'); return; }
+  var lenErr = passwordLengthError(newPw);
+  if (lenErr) { showToast(lenErr, 'error'); return; }
 
   var res = await apiCall({
     action:       'changePassword',
