@@ -2,6 +2,7 @@
 // 檔案：js/pages/myaccount.js
 // 路徑：js/pages/myaccount.js
 // 功能：客戶查看自己的帳號資訊（公司名稱、方案、到期日、推薦計畫）
+// ⚠️ 2026-11-14 第 4b 批：到期日改顯示「服務至」（到期日前一天，後端 serviceUntil）
 // ============================================================
 
 async function loadMyAccount() {
@@ -36,8 +37,8 @@ function renderMyAccount(d) {
         <div>${escHtml(d.email || '-')}</div>
         <div style="color:#888">目前方案</div>
         <div><span style="background:${_planColor(d.plan)};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${escHtml(planLabel(d.plan))}</span></div>
-        <div style="color:#888">到期日</div>
-        <div style="${expireStyle}">${escHtml(d.expireDate || '-')}${expireHint}</div>
+        <div style="color:#888">服務至</div>
+        <div style="${expireStyle}">${escHtml(d.serviceUntil || '-')}${expireHint}</div>
       </div>
     </div>
 
