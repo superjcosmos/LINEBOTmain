@@ -17,6 +17,7 @@
 //       _renderLotteryTableBody()（表格內容依篩選/搜尋/切換單獨更新），
 //       避免搜尋框在輸入時失焦（比照 coupon.js 的作法）。
 //       刪除防呆（log_count）沿用既有邏輯，未變動。
+// ⚠️ 2026-11-14 第 4c 批 F21：已有參與紀錄的活動，編輯時活動名稱改為唯讀
 var lotteryList = [];
 var lotteryLogData = [];
 var _lotteryShowDisabled = false;
@@ -267,8 +268,10 @@ function openLotteryEditModal(rowIndex) {
       '<div class="modal modal-scrollable">' +
         '<h3>編輯抽獎活動</h3>' +
         '<div class="form-group">' +
-          '<label>活動名稱</label>' +
-          '<input id="l-name" type="text" value="' + escHtml(activity.activity_name) + '">' +
+        '<div class="form-group">' +
+          '<label>活動名稱' + (activity.log_count > 0 ? '（已有參與紀錄，不可修改）' : '') + '</label>' +
+          '<input id="l-name" type="text" value="' + escHtml(activity.activity_name) + '"' +
+            (activity.log_count > 0 ? ' readonly style="background:#f5f5f5;color:#888"' : '') + '>' +
         '</div>' +
         '<div class="form-group">' +
           '<label>類型（建立後不可變更）</label>' +
