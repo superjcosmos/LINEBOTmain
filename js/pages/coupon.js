@@ -32,6 +32,8 @@
 //   不渲染、類別下拉拿掉「序號池」、不呼叫getCouponPoolList。
 //   ⚠️ 序號池相關的getElementById/render呼叫必須包在_couponCanUsePool判斷內，
 //   否則元素不存在會丟例外、整頁載入失敗（同09-03那類bug）
+// ⚠️ 2026-11-14 第 4e 批：F69 核銷貼標下拉改用 buildTagSelectOptions（已停用的既有設定不會被清掉）；
+//    頁面標題下方顯示系統固定關鍵字（CONFIG.SYSTEM_KEYWORDS）
 // ============================================================
 var _couponAll           = [];
 var _couponFiltered      = [];
@@ -77,7 +79,7 @@ async function loadCoupon(preserveView) {
     _couponShowDisabled = false;
     _couponPoolShowDisabled = false;
     var tagRes = await apiCall({ action: 'getTagList' });
-    _couponTagList = tagRes.success ? (tagRes.data || []).filter(function(t) { return t.status === 'active'; }) : [];
+    _couponTagList = tagRes.success ? (tagRes.data || []) : []; // F69：不先過濾，由 buildTagSelectOptions 處理
     var audRes = await apiCall({ action: 'getAudienceList' });
     var audRaw = audRes.success ? (Array.isArray(audRes.data) ? audRes.data : (audRes.data.list || [])) : [];
     _audienceListForPool = audRaw.filter(function(a) { return a.status !== 'disabled'; });
@@ -111,9 +113,7 @@ function _clampCouponPage() {
   if (_couponPage < 1) _couponPage = 1;
 }
 function _buildCouponShell() {
-  var tagOptions = '<option value="">不自動貼標籤</option>' + _couponTagList.map(function(t) {
-    return '<option value="' + escHtml(t.tag_id) + '">' + escHtml(t.tag_name) + '</option>';
-  }).join('');
+  var tagOptions = buildTagSelectOptions(_couponTagList, ''); // F69
   var audienceOptions = '<option value="">請選擇受眾</option>' + _audienceListForPool.map(function(a) {
     return '<option value="' + escHtml(a.audience_id) + '">' + escHtml(a.name || a.keyword || a.audience_id) + '（' + (a.count || 0) + '人）</option>';
   }).join('');
@@ -150,6 +150,11 @@ function _buildCouponShell() {
         infoTipText +
       '</div>' +
     '</div>' +
+    '<p style="font-size:13px;color:#888;margin:8px 0 16px;line-height:1.6;">' +
+      'LINE 好友傳「' + escHtml(CONFIG.SYSTEM_KEYWORDS.couponQuery) + '」可查看自己已領取的優惠券；' +
+      '核銷由優惠券卡片上的「使用」按鈕自動完成（會送出「' + escHtml(CONFIG.SYSTEM_KEYWORDS.couponUsePrefix) + ' ＋券號」）。' +
+      '這兩個是系統固定關鍵字，不能設為優惠券、序號池或其他功能的觸發關鍵字。' +
+    '</p>' +
     '<div class="card">' +
       '<div class="toolbar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
         '<h3 style="margin:0;">優惠券列表</h3>' +
@@ -447,7 +452,7 @@ function openCreateCouponModal(defaultType) {
   document.getElementById('couponTotalQuota').value      = '';
   document.getElementById('couponPerUserLimit').value    = '1';
   document.getElementById('couponTriggerKeyword').value  = '';
-  document.getElementById('couponRedeemTag').value       = '';
+  document.getElementById('couponRedeemTag').innerHTML   = buildTagSelectOptions(_couponTagList, ''); // F69
   document.getElementById('couponPoolKeyword').value     = '';
   document.getElementById('couponPoolValidFrom').value   = '';
   document.getElementById('couponPoolValidUntil').value  = '';
@@ -483,7 +488,7 @@ function editCoupon(couponId, rowJson) {
   document.getElementById('couponTotalQuota').value      = row.total_quota == null ? '' : row.total_quota;
   document.getElementById('couponPerUserLimit').value    = row.per_user_limit  || 1;
   document.getElementById('couponTriggerKeyword').value  = row.trigger_keyword || '';
-  document.getElementById('couponRedeemTag').value       = row.redeem_tag_id   || '';
+  document.getElementById('couponRedeemTag').innerHTML   = buildTagSelectOptions(_couponTagList, row.redeem_tag_id); // F69
   document.getElementById('couponStatus').value           = row.status         || 'active';
   _updateDiscountValueLabel();
   _toggleCouponTypeFields();
