@@ -20,9 +20,9 @@
 //      多一個 </div>，導致頁面出現亂碼文字、版面跑掉。已清除。
 // ⚠️ 2026-09-13 新增：一般折扣券「發放給客戶」機制——
 //   ①觸發關鍵字自助領取（couponTriggerKeyword欄位，對應後端CS_TRIGGER_KEYWORD）
-//   ②後台推播發券（推播發券按鈕＋couponPushModal，目前僅支援手動貼UserID清單，
-//     「選受眾」推播待補，需要CouponPoolService.gs/AudienceService.gs
-//     實際部署內容才能比照既有受眾成員解析寫法接上）
+//   ②後台推播發券（推播發券按鈕＋couponPushModal，支援選受眾與手動貼UserID清單）
+// ⚠️ 2026-11-15 第 5a 批：Modal 的「類別」欄位隱藏，類別由新增／編輯按鈕決定
+//    （couponType 下拉仍保留供程式判斷，不可刪除 pool 選項）
 // ⚠️ 2026-09-13 修正：兩個 toolbar 都缺少「+新增」按鈕（推測是09-03修
 //   toolbar錯置bug時連帶漏掉，屬於既有問題不是這次新增功能造成），已補上。
 //   openCreateCouponModal() 加一個可選參數 defaultType，讓從「序號池活動」
@@ -176,7 +176,7 @@ function _buildCouponShell() {
     '<div class="modal-overlay" id="couponModal">' +
       '<div class="modal" style="max-height:85vh;overflow-y:auto;">' +
         '<h3 id="couponModalTitle">建立優惠券</h3>' +
-        '<div class="form-group">' +
+        '<div class="form-group" style="display:none;">' +
           '<label>類別</label>' +
           '<select id="couponType" onchange="_toggleCouponTypeFields()">' +
             '<option value="discount">一般折扣券</option>' +
@@ -439,7 +439,7 @@ function gotoCouponPage(page) {
 function openCreateCouponModal(defaultType) {
   couponEditId = null;
   couponPoolEditId = null;
-  document.getElementById('couponModalTitle').textContent = '建立優惠券';
+  document.getElementById('couponModalTitle').textContent = defaultType === 'pool' ? '建立序號池活動' : '建立優惠券';
   document.getElementById('couponSaveBtn').textContent     = '建立';
   document.getElementById('couponType').value              = defaultType || 'discount';
   document.getElementById('couponType').disabled            = false;
@@ -838,7 +838,7 @@ async function submitCouponPoolPush() {
     }
   });
 }
-// ── 一般折扣券推播發券 Modal（2026-09-13新增，目前僅支援手動貼UserID清單） ──
+// ── 一般折扣券推播發券 Modal（2026-09-13新增；支援選受眾與手動貼UserID清單） ──
 function openCouponPushModal(couponId, rowJson) {
   var row = JSON.parse(decodeURIComponent(rowJson));
   _couponPushTargetId = couponId;
