@@ -1,17 +1,7 @@
 // js/utils/format.js
 // 資料格式化相關
 
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  var d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  var y  = d.getFullYear();
-  var mo = String(d.getMonth() + 1).padStart(2, '0');
-  var day = String(d.getDate()).padStart(2, '0');
-  var h  = String(d.getHours()).padStart(2, '0');
-  var mi = String(d.getMinutes()).padStart(2, '0');
-  return y + '-' + mo + '-' + day + ' ' + h + ':' + mi;
-}
+
 
 // ── 時間顯示（2026-11-22 第 5g-2 批，健檢決定 35）──
 // 「發生時間」類（建立時間、紀錄時間等）用 formatDateTimeText → yyyy/MM/dd HH:mm:ss
