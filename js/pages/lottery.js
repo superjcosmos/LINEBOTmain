@@ -18,14 +18,37 @@
 //       避免搜尋框在輸入時失焦（比照 coupon.js 的作法）。
 //       刪除防呆（log_count）沿用既有邏輯，未變動。
 // ⚠️ 2026-11-14 第 4c 批 F21：已有參與紀錄的活動，編輯時活動名稱改為唯讀
+// ⚠️ 2026-11-22 第 5g-2 批：
+//   ① 決定 42：連結受眾改下拉（啟用中受眾＋人數；既有設定的受眾已刪除時保留並標示）；
+//      清單新增「連結受眾」欄；受眾已刪除或不存在時不顯示「前往推播」
+//   ② 清單新增「建立時間」欄；參與紀錄時間改用 formatDateTimeText
+//   ③ FE-C：活動清單、參與紀錄、切換狀態前的重新讀取失敗時顯示錯誤，不再當成空清單
+//   ④ F71：_statusBadge 移到 dom.js
+//   ⑤ 編輯視窗刪除多餘、未關閉的 <div class="form-group">
 var lotteryList = [];
 var lotteryLogData = [];
 var _lotteryShowDisabled = false;
 var _lotterySearchKeyword = '';
 var _lotteryInfoTipTimer = null;
+var _lotteryAudienceList = [];  // getAudienceList 結果（含已刪除）；載入失敗時為 null
 async function loadLottery() {
-  var res = await apiCall({ action: 'getLotteryList' });
-  lotteryList = (res.success && res.data && res.data.list) ? res.data.list : [];
+  var results = await Promise.all([
+    apiCall({ action: 'getLotteryList' }),
+    apiCall({ action: 'getAudienceList' })
+  ]);
+  var res    = results[0];
+  var audRes = results[1];
+  if (!res.success) {
+    setContent('<div class="empty">載入失敗：' + escHtml(res.message || '') + '</div>');
+    return;
+  }
+  lotteryList = (res.data && res.data.list) ? res.data.list : [];
+  if (audRes.success) {
+    _lotteryAudienceList = Array.isArray(audRes.data) ? audRes.data : ((audRes.data && audRes.data.list) || []);
+  } else {
+    _lotteryAudienceList = null;
+    showToast('受眾清單載入失敗，連結受眾可能顯示不完整：' + (audRes.message || ''), 'error');
+  }
   _lotterySearchKeyword = '';
   renderLotteryList();
 }
@@ -64,7 +87,7 @@ function _buildLotteryShell() {
         '<thead>' +
           '<tr>' +
             '<th>活動名稱</th><th>類型</th><th>關鍵字</th><th>時段</th>' +
-            '<th>名額 / 點數池</th><th>報名中</th><th>得獎數</th><th>狀態</th><th>操作</th>' +
+            '<th>名額 / 點數池</th><th>報名中</th><th>得獎數</th><th>連結受眾</th><th>狀態</th><th>建立時間</th><th>操作</th>' +
           '</tr>' +
         '</thead>' +
         '<tbody id="lottery-table-body"></tbody>' +
@@ -87,6 +110,23 @@ function _renderLotteryTableBody() {
     var limitOrPointsText = a.type === 'D'
       ? escHtml(a.remain_points || 0) + ' / ' + escHtml(a.total_points || 0) + ' 點'
       : escHtml(a.limit || '無限');
+    // 決定 42：連結受眾顯示名稱；已刪除或不存在時標示，且不顯示「前往推播」
+    var audCell = '-';
+    var canGoBroadcast = false;
+    if (a.linked_audience_id) {
+      var info = _lotteryAudienceInfo(a.linked_audience_id);
+      if (info.unknown) {
+        audCell = escHtml(a.linked_audience_id);
+        canGoBroadcast = true;
+      } else if (!info.found) {
+        audCell = '<span style="color:#e74c3c">（受眾已不存在）</span>';
+      } else if (!info.active) {
+        audCell = escHtml(info.name) + '<span style="color:#e74c3c">（已刪除）</span>';
+      } else {
+        audCell = escHtml(info.name);
+        canGoBroadcast = true;
+      }
+    }
     return '<tr>' +
       '<td>' + escHtml(a.activity_name) + '</td>' +
       '<td><span class="badge badge-' + escHtml(a.type.toLowerCase()) + '">' + escHtml(typeLabel[a.type]) + '</span></td>' +
@@ -95,12 +135,14 @@ function _renderLotteryTableBody() {
       '<td>' + limitOrPointsText + '</td>' +
       '<td>' + pendingText + '</td>' +
       '<td>' + escHtml(a.winner_count || 0) + '</td>' +
+      '<td>' + audCell + '</td>' +
       '<td>' + _statusBadge(a.status === 'active') + '</td>' +
+      '<td style="font-size:12px;color:#888;white-space:nowrap;">' + escHtml(formatDateTimeText(a.created_at)) + '</td>' +
       '<td>' +
         '<button class="btn btn-edit" onclick="viewLotteryLog(\'' + escJsStr(a.activity_name) + '\')">記錄</button>' +
         ' <button class="btn btn-edit" onclick="openLotteryEditModal(' + a.row_index + ')">編輯</button>' +
         ' <button class="btn ' + toggleClass + '" onclick="toggleLotteryStatus(' + a.row_index + ')">' + toggleLabel + '</button>' +
-        (a.linked_audience_id ? ' <button class="btn btn-sync" onclick="goToBroadcastForActivity(\'' + escJsStr(a.linked_audience_id) + '\')">📢 前往推播</button>' : '') +
+        (canGoBroadcast ? ' <button class="btn btn-sync" onclick="goToBroadcastForActivity(\'' + escJsStr(a.linked_audience_id) + '\')">📢 前往推播</button>' : '') +
         (a.type === 'C' ? ' <button class="btn btn-primary" onclick="openDrawModal(\'' + escJsStr(a.activity_name) + '\')">開獎</button>' : '') +
         (a.log_count > 0
           ? ' <button class="btn btn-danger" disabled title="此活動已有 ' + a.log_count + ' 筆參與紀錄，無法刪除，請改用停用">刪除</button>'
@@ -110,9 +152,51 @@ function _renderLotteryTableBody() {
   }).join('');
   var tbody = document.getElementById('lottery-table-body');
   if (tbody) {
-    tbody.innerHTML = rows || ('<tr><td colspan="9" class="empty">' + (lotteryList.length === 0 ? '尚無活動' : '沒有符合的活動') + '</td></tr>');
+    tbody.innerHTML = rows || ('<tr><td colspan="11" class="empty">' + (lotteryList.length === 0 ? '尚無活動' : '沒有符合的活動') + '</td></tr>');
   }
   _renderLotteryToggleBtn(disabledCount);
+}
+// 決定 42：查受眾資訊。unknown＝受眾清單載入失敗、無法判斷
+function _lotteryAudienceInfo(audienceId) {
+  if (_lotteryAudienceList === null) return { unknown: true, found: false, active: false, name: '' };
+  var id = String(audienceId || '');
+  for (var i = 0; i < _lotteryAudienceList.length; i++) {
+    var a = _lotteryAudienceList[i];
+    if (String(a.audience_id) === id) {
+      return {
+        unknown: false,
+        found:   true,
+        active:  a.status !== 'deleted' && a.status !== 'disabled',
+        name:    a.name || a.keyword || id
+      };
+    }
+  }
+  return { unknown: false, found: false, active: false, name: '' };
+}
+// 決定 42：連結受眾下拉。只列啟用中受眾；目前設定的受眾若已刪除或不存在，仍保留為選項並標示
+// （比照 dom.js buildTagSelectOptions，避免編輯時下拉對不到值、按儲存就把原設定清掉）
+function _buildLotteryAudienceOptions(selectedId) {
+  var sel   = String(selectedId || '');
+  var found = false;
+  var html  = '<option value="">不連結</option>';
+  (_lotteryAudienceList || []).forEach(function(a) {
+    var id       = String(a.audience_id);
+    var isSel    = sel !== '' && id === sel;
+    var isActive = a.status !== 'deleted' && a.status !== 'disabled';
+    if (!isActive && !isSel) return;
+    if (isSel) found = true;
+    html += '<option value="' + escHtml(id) + '"' + (isSel ? ' selected' : '') + '>' +
+      escHtml(a.name || a.keyword || id) +
+      (isActive ? '（' + (Number(a.count) || 0) + ' 人）' : '（受眾已刪除）') + '</option>';
+  });
+  if (sel && !found) {
+    html += '<option value="' + escHtml(sel) + '" selected>' +
+      (_lotteryAudienceList === null
+        ? '目前設定：' + escHtml(sel) + '（受眾清單載入失敗）'
+        : '（受眾已不存在：' + escHtml(sel) + '）') +
+      '</option>';
+  }
+  return html;
 }
 function _renderLotteryToggleBtn(disabledCount) {
   var btn = document.getElementById('lotteryToggleDisabledBtn');
@@ -128,11 +212,6 @@ function filterLottery() {
 function toggleLotteryShowDisabled() {
   _lotteryShowDisabled = !_lotteryShowDisabled;
   _renderLotteryTableBody();
-}
-function _statusBadge(isActive) {
-  return isActive
-    ? '<span style="background:#e6f9f0;color:#1D9E75;border-radius:20px;padding:2px 10px;font-size:12px">啟用中</span>'
-    : '<span style="background:#f5f5f5;color:#aaa;border-radius:20px;padding:2px 10px;font-size:12px">已停用</span>';
 }
 function toggleLotteryInfoTip(evt) {
   if (evt) evt.stopPropagation();
@@ -162,7 +241,11 @@ function _closeLotteryInfoTipOnOutsideClick() {
 // lotteryList 蓋掉這期間發生的即時變動（例如 D 型 remain_points 持續遞減）
 async function toggleLotteryStatus(rowIndex) {
   var freshRes = await apiCall({ action: 'getLotteryList' });
-  var freshList = (freshRes.success && freshRes.data && freshRes.data.list) ? freshRes.data.list : [];
+  if (!freshRes.success) {
+    showToast(freshRes.message || '讀取活動資料失敗，請稍後再試', 'error');
+    return;
+  }
+  var freshList = (freshRes.data && freshRes.data.list) ? freshRes.data.list : [];
   var matches = freshList.filter(function(a) { return a.row_index === rowIndex; });
   var activity = matches[0];
   if (!activity) {
@@ -243,8 +326,8 @@ function openLotteryCreateModal() {
           '<input id="l-max-per-user" type="number" placeholder="留空 = 限1次" min="0">' +
         '</div>' +
         '<div class="form-group">' +
-          '<label>連結受眾ID（選填，供前往推播使用）</label>' +
-          '<input id="l-linked-audience-id" type="text" placeholder="至「受眾管理」頁面查詢ID">' +
+          '<label>連結受眾（選填，供「前往推播」使用）</label>' +
+          '<select id="l-linked-audience-id">' + _buildLotteryAudienceOptions('') + '</select>' +
         '</div>' +
         '<div id="lottery-type-fields"></div>' +
         '<div class="modal-footer">' +
@@ -267,7 +350,6 @@ function openLotteryEditModal(rowIndex) {
     '<div class="modal-overlay show">' +
       '<div class="modal modal-scrollable">' +
         '<h3>編輯抽獎活動</h3>' +
-        '<div class="form-group">' +
         '<div class="form-group">' +
           '<label>活動名稱' + (activity.log_count > 0 ? '（已有參與紀錄，不可修改）' : '') + '</label>' +
           '<input id="l-name" type="text" value="' + escHtml(activity.activity_name) + '"' +
@@ -305,8 +387,8 @@ function openLotteryEditModal(rowIndex) {
           '<input id="l-max-per-user" type="number" value="' + escHtml(activity.max_per_user || '') + '" placeholder="留空 = 限1次" min="0">' +
         '</div>' +
         '<div class="form-group">' +
-          '<label>連結受眾ID（選填，供前往推播使用）</label>' +
-          '<input id="l-linked-audience-id" type="text" value="' + escHtml(activity.linked_audience_id || '') + '" placeholder="至「受眾管理」頁面查詢ID">' +
+          '<label>連結受眾（選填，供「前往推播」使用）</label>' +
+          '<select id="l-linked-audience-id">' + _buildLotteryAudienceOptions(activity.linked_audience_id) + '</select>' +
         '</div>' +
         '<div id="lottery-type-fields"></div>' +
         '<div class="modal-footer">' +
@@ -481,7 +563,11 @@ async function submitLottery(rowIndex) {
 }
 async function viewLotteryLog(activityName) {
   var res = await apiCall({ action: 'getLotteryLog', activity_name: activityName });
-  var logs = (res.success && res.data && res.data.list) ? res.data.list : [];
+  if (!res.success) {
+    showToast(res.message || '讀取參與記錄失敗，請稍後再試', 'error');
+    return;
+  }
+  var logs = (res.data && res.data.list) ? res.data.list : [];
   var rows = logs.map(function(l) {
     var resultText;
     if (l.result === 'entered') {
@@ -494,7 +580,7 @@ async function viewLotteryLog(activityName) {
       resultText = '未中獎';
     }
     return '<tr>' +
-      '<td>' + escHtml(formatDate(l.time)) + '</td>' +
+      '<td style="white-space:nowrap;">' + escHtml(formatDateTimeText(l.time)) + '</td>' +
       '<td>' + escHtml(l.display_name) + '</td>' +
       '<td>' + escHtml(resultText) + '</td>' +
       '<td>' + escHtml(l.status) + '</td>' +
