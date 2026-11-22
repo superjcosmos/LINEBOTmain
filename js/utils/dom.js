@@ -123,3 +123,12 @@ function buildTagSelectOptions(allTags, selectedId) {
   }
   return html;
 }
+
+
+
+// ── 啟用／停用狀態徽章（2026-11-22 第 5g-2 批 F71：原本 lottery.js、coupon.js 各一份，搬到這裡共用）──
+function _statusBadge(isActive) {
+  return isActive
+    ? '<span style="background:#e6f9f0;color:#1D9E75;border-radius:20px;padding:2px 10px;font-size:12px">啟用中</span>'
+    : '<span style="background:#f5f5f5;color:#aaa;border-radius:20px;padding:2px 10px;font-size:12px">已停用</span>';
+}
