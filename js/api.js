@@ -21,6 +21,13 @@ function hideLoading() {
 
 async function apiCall(params, opts) {
   var silent = !!(opts && opts.silent);
+  // FE-A（2026-11-22）：其他分頁已換帳號或登出時，不以新憑證送出本分頁的請求
+  // （_handleAuthTabChanged 定義在 auth.js）
+  var storedToken = localStorage.getItem('sessionToken') || null;
+  if (authState.sessionToken && params.action !== 'login' && storedToken !== authState.sessionToken) {
+    _handleAuthTabChanged();
+    return { success: false, message: '登入狀態已在其他分頁變更，請重新整理頁面' };
+  }
   if (!silent) showLoading();
   try {
     var token = localStorage.getItem('sessionToken');
