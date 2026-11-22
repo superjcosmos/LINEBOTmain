@@ -36,6 +36,33 @@ window.onload = function () {
 };
 
 // ────────────────────────────────────────────────────────────
+// FE-A（2026-11-22）：偵測其他分頁換帳號或登出
+// 同一瀏覽器的分頁共用 localStorage：其他分頁登入別的帳號或登出後，
+// 本分頁畫面還是舊帳號，但送出的請求會帶新的登入憑證 → 提示並重新整理。
+// storage 事件只在「其他分頁」改動 localStorage 時觸發，本分頁自己的寫入不會觸發。
+// 只看 sessionToken：切換視角／返回管理後台不改 token，不會觸發。
+// ────────────────────────────────────────────────────────────
+var _authTabChanged = false;
+
+window.addEventListener('storage', function (e) {
+  // e.key 為 null 代表其他分頁執行了 localStorage.clear()（登出）
+  if (e.key !== 'sessionToken' && e.key !== null) return;
+  var latest = localStorage.getItem('sessionToken') || null;
+  if (latest === authState.sessionToken) return;
+  _handleAuthTabChanged();
+});
+
+// api.js 送出前發現 token 不一致時也會呼叫
+function _handleAuthTabChanged() {
+  if (_authTabChanged) return;
+  _authTabChanged = true;
+  // 本分頁原本就停在登入頁時，直接重新整理（其他分頁已登入的話會自動進入）
+  if (!authState.sessionToken) { location.reload(); return; }
+  showToast('此瀏覽器已在其他分頁登入其他帳號或登出，本頁將重新整理', 'error');
+  setTimeout(function () { location.reload(); }, 1500);
+}
+
+// ────────────────────────────────────────────────────────────
 // 登入
 // ────────────────────────────────────────────────────────────
 async function login() {
