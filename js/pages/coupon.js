@@ -56,6 +56,9 @@ var _couponInfoTipTimer       = null;
 var _couponShowDisabled     = false;
 var _couponPoolShowDisabled = false;
 var _couponCanUsePool       = false; // 2026-10-04：是否有序號池權限（coupon_serial）
+var _couponPoolLoadError    = '';    // 2026-11-22 FE-C：序號池清單載入失敗的訊息（空白＝正常）
+
+
 async function loadCoupon(preserveView) {
   if (!preserveView) setContent('<div class="loading">載入中...</div>');
   var result = await apiCall({ action: 'getCouponList' });
@@ -68,8 +71,11 @@ async function loadCoupon(preserveView) {
   if (_couponCanUsePool) {
     var poolResult = await apiCall({ action: 'getCouponPoolList' });
     _couponPoolAll = poolResult.success ? (poolResult.data || []) : [];
+    // 2026-11-22 FE-C：載入失敗時在序號池區塊顯示錯誤，不當成「沒有活動」
+    _couponPoolLoadError = poolResult.success ? '' : (poolResult.message || '載入失敗');
   } else {
     _couponPoolAll = [];
+    _couponPoolLoadError = '';
   }
   if (!preserveView) {
     _couponSearchKeyword = '';
@@ -81,8 +87,12 @@ async function loadCoupon(preserveView) {
     var tagRes = await apiCall({ action: 'getTagList' });
     _couponTagList = tagRes.success ? (tagRes.data || []) : []; // F69：不先過濾，由 buildTagSelectOptions 處理
     var audRes = await apiCall({ action: 'getAudienceList' });
-    var audRaw = audRes.success ? (Array.isArray(audRes.data) ? audRes.data : (audRes.data.list || [])) : [];
-    _audienceListForPool = audRaw.filter(function(a) { return a.status !== 'disabled'; });
+    var audRaw = audRes.success ? (Array.isArray(audRes.data) ? audRes.data : ((audRes.data && audRes.data.list) || [])) : [];
+    // 2026-11-22：受眾狀態值為 active／deleted，原本只排除 disabled，會列出已刪除的受眾
+    _audienceListForPool = audRaw.filter(function(a) { return a.status !== 'disabled' && a.status !== 'deleted'; });
+    if (!tagRes.success || !audRes.success) {
+      showToast('標籤或受眾清單載入失敗，核銷貼標與推播對象的選項可能不完整，請重新整理頁面', 'error');
+    }
   }
   _applyCouponFilter();
   _applyCouponPoolFilter();
@@ -99,7 +109,9 @@ async function loadCoupon(preserveView) {
     _renderCouponPoolPager();
     _renderCouponPoolToggleBtn();
   }
-}  
+}
+
+
 function _applyCouponFilter() {
   var keyword = _couponSearchKeyword.trim().toLowerCase();
   var base = _couponShowDisabled ? _couponAll : _couponAll.filter(function(row) { return row.status === 'active'; });
@@ -353,6 +365,7 @@ function filterCoupon() {
   _renderCouponTable();
   _renderCouponPager();
 }
+
 function _renderCouponTable() {
   var wrap = document.getElementById('couponTableWrap');
   var hint = document.getElementById('couponTotalHint');
@@ -374,8 +387,10 @@ function _renderCouponTable() {
     var discountText = row.discount_type === 'percentage'
       ? (row.discount_value + '%')
       : ('$' + row.discount_value);
+    // 2026-11-22 決定 35：有效期間以天計算，只顯示日期
     var periodText = (row.valid_from || row.valid_until)
-      ? (escHtml(row.valid_from || '不限') + ' ~ ' + escHtml(row.valid_until || '不限'))
+      ? (escHtml(row.valid_from ? formatDateText(row.valid_from) : '不限') + ' ~ ' +
+         escHtml(row.valid_until ? formatDateText(row.valid_until) : '不限'))
       : '不限期間';
     // ⚠️ 已發放過的券不可刪除，隱藏按鈕，比照 tag.js 使用人數>0隱藏刪除按鈕的做法
     var deleteBtn = issuedCount === 0
@@ -396,6 +411,7 @@ function _renderCouponTable() {
       '<td>' + _statusBadge(isActive) + '</td>' +
       '<td>' + (row.trigger_keyword ? escHtml(row.trigger_keyword) : '—') + '</td>' +
       '<td>' + issuedCount + ' 發放 / ' + usedCount + ' 已用</td>' +
+      '<td style="font-size:12px;color:#888;white-space:nowrap;">' + escHtml(formatDateTimeText(row.created_at)) + '</td>' +
       '<td style="white-space:nowrap;">' +
         '<span style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
           editBtn + pushBtn + toggleBtn + deleteBtn +
@@ -412,11 +428,14 @@ function _renderCouponTable() {
         '<th>狀態</th>' +
         '<th>關鍵字</th>' +
         '<th>發放／核銷</th>' +
+        '<th>建立時間</th>' +
         '<th>操作</th>' +
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table>';
 }
+
+
 async function doToggleCouponStatus(couponId) {
   var result = await apiCall({ action: 'toggleCouponStatus', coupon_id: couponId });
   if (result.success) {
@@ -629,9 +648,15 @@ function filterCouponPool() {
   _renderCouponPoolTable();
   _renderCouponPoolPager();
 }
+
 function _renderCouponPoolTable() {
   var wrap = document.getElementById('couponPoolTableWrap');
   if (!wrap) return;
+  // 2026-11-22 FE-C：載入失敗時顯示錯誤，不當成「沒有序號池活動」
+  if (_couponPoolLoadError) {
+    wrap.innerHTML = '<p class="empty">序號池活動載入失敗：' + escHtml(_couponPoolLoadError) + '</p>';
+    return;
+  }
   var total = _couponPoolFiltered.length;
   if (total === 0) {
     wrap.innerHTML = '<p class="empty">沒有序號池活動</p>';
@@ -643,8 +668,10 @@ function _renderCouponPoolTable() {
   var rows = page.map(function(row) {
     var rowJson = escJsStr(encodeURIComponent(JSON.stringify(row)));
     var isActive = row.status === 'active';
+    // 2026-11-22 決定 35：有效期間以天計算，只顯示日期（取代原本的 split('T') 權宜寫法）
     var periodText = (row.valid_from || row.valid_until)
-      ? (escHtml(String(row.valid_from || '不限').split('T')[0]) + ' ~ ' + escHtml(String(row.valid_until || '不限').split('T')[0]))
+      ? (escHtml(row.valid_from ? formatDateText(row.valid_from) : '不限') + ' ~ ' +
+         escHtml(row.valid_until ? formatDateText(row.valid_until) : '不限'))
       : '不限期間';
     var limitText = row.issue_limit == null ? '不限' : row.issue_limit;
     var deleteBtn = row.issued_count === 0
@@ -664,6 +691,7 @@ function _renderCouponPoolTable() {
       '<td>' + limitText + '</td>' +
       '<td>' + _statusBadge(isActive) + '</td>' +
       '<td>' + row.total_count + ' 組 / 已發 ' + row.issued_count + ' / 剩 ' + row.remaining_count + '</td>' +
+      '<td style="font-size:12px;color:#888;white-space:nowrap;">' + escHtml(formatDateTimeText(row.created_at)) + '</td>' +
       '<td style="white-space:nowrap;">' +
         '<span style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
           editBtn + uploadBtn + pushBtn + toggleBtn + deleteBtn +
@@ -675,11 +703,13 @@ function _renderCouponPoolTable() {
     '<table>' +
       '<thead><tr>' +
         '<th>活動名稱</th><th>觸發關鍵字</th><th>有效期間</th><th>發放上限</th>' +
-        '<th>狀態</th><th>序號數量</th><th>操作</th>' +
+        '<th>狀態</th><th>序號數量</th><th>建立時間</th><th>操作</th>' +
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table>';
 }
+
+
 function _renderCouponPoolPager() {
   renderPager('couponPoolPager', _couponPoolFiltered.length, _couponPoolPage, _couponPoolPageSize, gotoCouponPoolPage);
 }
@@ -916,8 +946,4 @@ function toggleCouponPoolShowDisabled() {
   _renderCouponPoolPager();
   _renderCouponPoolToggleBtn();
 }
-function _statusBadge(isActive) {
-  return isActive
-    ? '<span style="background:#e6f9f0;color:#1D9E75;border-radius:20px;padding:2px 10px;font-size:12px">啟用中</span>'
-    : '<span style="background:#f5f5f5;color:#aaa;border-radius:20px;padding:2px 10px;font-size:12px">已停用</span>';
-}
+
